@@ -116,13 +116,91 @@
       "median": 0.506,
       "min": -3.251,
       "max": 5.325,
+      "p1": -0.809,
+      "p99": 2.523,
       "iqr_bounds": [
         -1.3275,
         2.4205
       ],
+      "outliers_low_count": 21,
+      "outliers_high_count": 178,
       "outliers_iqr_count": 199,
       "outliers_iqr_pct": 1.45
     },
-    "outlier_interpretation": "Các giá trị vượt ngưỡng IQR chủ yếu tập trung tại các vùng cực Bắc (Svalbard, Greenland, Canada, Nga) vào các đợt nắng nóng kỷ lục sau năm 2010. Toàn bộ các giá trị này đều có cờ FAO là E (Estimated), phản ánh hiện tượng khí hậu cực đoan thực tế (Arctic Amplification), không phải lỗi nhập liệu."
+    "top_positive_extremes": [
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 2016,
+        "temperature_anomaly": 5.325,
+        "source_flag": "E"
+      },
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 2018,
+        "temperature_anomaly": 4.063,
+        "source_flag": "E"
+      },
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 2025,
+        "temperature_anomaly": 3.918,
+        "source_flag": "E"
+      },
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 2006,
+        "temperature_anomaly": 3.884,
+        "source_flag": "E"
+      },
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 2012,
+        "temperature_anomaly": 3.823,
+        "source_flag": "E"
+      }
+    ],
+    "top_negative_extremes": [
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 1968,
+        "temperature_anomaly": -3.251,
+        "source_flag": "E"
+      },
+      {
+        "country": "Greenland",
+        "iso_alpha": "GRL",
+        "year": 1983,
+        "temperature_anomaly": -2.425,
+        "source_flag": "E"
+      },
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 1966,
+        "temperature_anomaly": -2.356,
+        "source_flag": "E"
+      },
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 1963,
+        "temperature_anomaly": -2.244,
+        "source_flag": "E"
+      },
+      {
+        "country": "Svalbard and Jan Mayen",
+        "iso_alpha": "SJM",
+        "year": 1988,
+        "temperature_anomaly": -2.109,
+        "source_flag": "E"
+      }
+    ],
+    "outlier_interpretation": "Trong 199 quan sát ngoại lai theo ngưỡng IQR ([-1.33°C, 2.42°C]), có 178 điểm ngoại lai nóng (> 2.42°C) tập trung tại các vùng cực Bắc (Svalbard, Greenland, Nga, Canada) sau năm 2010. Có 21 điểm ngoại lai lạnh (< -1.33°C) chủ yếu xảy ra ở các thập niên trước (Greenland 1983, Canada 1972). Toàn bộ ngoại lai nóng đều mang cờ FAO E (Estimated), phản ánh hiện tượng Khuếch đại Bắc Cực (Arctic Amplification) có thật, không phải lỗi nhập liệu."
   }
 }
