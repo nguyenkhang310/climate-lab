@@ -19,9 +19,9 @@ python app.py                 # mở http://127.0.0.1:8050
 python -m unittest tests.test_pipeline -v
 ```
 
-Dữ liệu thô (~81MB) không commit theo `.gitignore`; tải theo link trong
-[`data/README.md`](data/README.md). File `processed/` + `outputs/` đã có sẵn nên
-có thể chạy `python app.py` ngay sau khi cài requirements.
+Dữ liệu thô (~81MB) được lưu trong `data/raw/`; nguồn tải và mô tả từng bộ dữ liệu
+nằm trong [`data/README.md`](data/README.md). File `processed/` + `outputs/` đã có
+sẵn nên có thể chạy `python app.py` ngay sau khi cài requirements.
 
 ## Phân công & sở hữu file
 
@@ -41,7 +41,7 @@ xem [`data/README.md`](data/README.md). Insight phần Quân:
 ```text
 app.py / charts.py / climate_data.py    # Dashboard (Khang): entry + biểu đồ + nạp dữ liệu
 assets/                                 # Logo và CSS dùng chung của dashboard
-data/                                   # README + raw/ chứa dữ liệu gốc (ignored)
+data/                                   # README + raw/ chứa dữ liệu gốc được theo dõi
 docs/                                   # Barem và tài liệu dùng chung
 notebooks/duc/                          # Notebook làm sạch + EDA nhiệt độ (Đức)
 scripts/quan/                           # Pipeline làm sạch + EDA + Plotly (Quân)

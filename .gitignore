@@ -12,11 +12,7 @@ venv/
 .env
 .env.*
 
-# Dữ liệu thô dung lượng lớn (81MB): không commit, tải theo link trong data/README.md.
-# Ngoại lệ: giữ lại tài liệu mô tả dữ liệu.
-data/*
-!data/README.md
-!data/README.pdf
+# Dữ liệu thô được lưu trong repository để các pipeline có thể chạy lại.
 *.zip
 
 # Jupyter
