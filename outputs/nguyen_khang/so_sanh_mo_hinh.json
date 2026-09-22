@@ -1,0 +1,36 @@
+{
+  "year_linear": {
+    "feature": "year",
+    "train_period": [
+      1970,
+      2014
+    ],
+    "test_period": [
+      2015,
+      2024
+    ],
+    "intercept": -34.081031181379466,
+    "slope": 0.017287220026350684,
+    "mae": 0.1578,
+    "rmse": 0.1942,
+    "r2": -1.0333
+  },
+  "cumulative_co2_linear": {
+    "feature": "cumulative_co2",
+    "train_period": [
+      1970,
+      2014
+    ],
+    "test_period": [
+      2015,
+      2024
+    ],
+    "intercept": -0.28596212518133324,
+    "slope": 7.244617448716798e-07,
+    "mae": 0.1091,
+    "rmse": 0.1235,
+    "r2": 0.1777
+  },
+  "selected_model": "cumulative_co2_linear",
+  "selection_rule": "RMSE thấp nhất trên tập kiểm tra 2015–2024"
+}

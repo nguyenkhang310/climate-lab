@@ -1,0 +1,33 @@
+{
+  "period": [
+    1970,
+    2024
+  ],
+  "rows": 13131,
+  "countries_or_territories": 241,
+  "continents": [
+    "Africa",
+    "Antarctica",
+    "Asia",
+    "Europe",
+    "North America",
+    "Oceania",
+    "South America"
+  ],
+  "duplicate_keys": 0,
+  "coverage_non_null": {
+    "temperature_anomaly": 0.8735,
+    "co2": 0.8782,
+    "co2_per_capita": 0.8718,
+    "population": 0.9047,
+    "renewable_percent": 0.5843
+  },
+  "countries_with_data": {
+    "temperature_anomaly": 231,
+    "co2": 215,
+    "co2_per_capita": 213,
+    "population": 216,
+    "renewable_percent": 230
+  },
+  "join_strategy": "Full outer join theo iso_alpha + year; giữ null, không nội suy và không thay giá trị thiếu bằng 0."
+}

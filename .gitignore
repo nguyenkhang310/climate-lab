@@ -1,9 +1,26 @@
+# macOS / Python
 .DS_Store
 __pycache__/
 *.py[cod]
+.pytest_cache/
+tmp/
+.coverage
+htmlcov/
+*.log
 .venv/
 venv/
 .env
 .env.*
-data/
+
+# Dữ liệu thô dung lượng lớn (81MB): không commit, tải theo link trong data/README.md.
+# Ngoại lệ: giữ lại tài liệu mô tả dữ liệu.
+data/*
+!data/README.md
+!data/README.pdf
 *.zip
+
+# Jupyter
+.ipynb_checkpoints/
+
+# File rác do VSCode Code Runner tự sinh
+tempCodeRunnerFile.py

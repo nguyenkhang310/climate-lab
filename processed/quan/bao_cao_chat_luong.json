@@ -1,0 +1,233 @@
+{
+  "data_dictionary": {
+    "co2_quoc_gia.csv": {
+      "country": "Ten quoc gia/lanh tho (OWID)",
+      "iso_alpha": "Ma ISO3, khoa ghep cung year",
+      "continent": "Chau luc theo OWID (null neu khong ghep duoc: ATA)",
+      "year": "Nam (1750-2024; phan tich chinh 1970-2024)",
+      "decade": "Thap ky = floor(year/10)*10 (2020-2024 la giai doan chua du 10 nam)",
+      "co2": "Phat thai CO2 Mt/nam, khong gom thay doi su dung dat (GCP via OWID); null=thieu",
+      "co2_per_capita": "tan CO2/nguoi (khong LUC); null=thieu",
+      "population": "Dan so (nguoi); null=thieu"
+    },
+    "co2_theo_nganh.csv": {
+      "country": "Ten quoc gia (EDGAR)",
+      "iso_alpha": "Ma quoc gia EDGAR (tuong duong ISO3), khoa ghep cung year",
+      "year": "Nam (1970-2025, dang long)",
+      "sector": "Nganh EDGAR: Power Industry, Industrial Combustion, Transport, Buildings, Fuel Production, Agriculture, Processes, Waste",
+      "co2": "Phat thai CO2 Mt/nam cua nganh (Substance=CO2 da loc)",
+      "sector_share_percent": "Ty trong nganh trong tong CO2 quoc gia-nam (%)"
+    },
+    "nang_luong_tai_tao.csv": {
+      "country": "Ten quoc gia",
+      "iso_alpha": "Ma ISO3, khoa ghep cung year",
+      "year": "Nam (1990-2024; phan tich chinh 1990-2023 vi 2024 chi 84 nuoc)",
+      "renewable_percent": "% nang luong tai tao trong tong tieu thu nang luong cuoi cung (khong phai % dien tai tao)"
+    }
+  },
+  "quan_co2_quoc_gia": {
+    "rows_raw": 50411,
+    "rows_output": 42480,
+    "aggregates_separated": [
+      "Africa",
+      "Africa (GCP)",
+      "Asia",
+      "Asia (GCP)",
+      "Asia (excl. China and India)",
+      "Central America (GCP)",
+      "Europe",
+      "Europe (GCP)",
+      "Europe (excl. EU-27)",
+      "Europe (excl. EU-28)",
+      "European Union (27)",
+      "European Union (28)",
+      "High-income countries",
+      "International aviation",
+      "International shipping",
+      "Kosovo",
+      "Kuwaiti Oil Fires",
+      "Kuwaiti Oil Fires (GCP)",
+      "Least developed countries (Jones et al.)",
+      "Low-income countries",
+      "Lower-middle-income countries",
+      "Middle East (GCP)",
+      "Non-OECD (GCP)",
+      "North America",
+      "North America (GCP)",
+      "North America (excl. USA)",
+      "OECD (GCP)",
+      "OECD (Jones et al.)",
+      "Oceania",
+      "Oceania (GCP)",
+      "Ryukyu Islands",
+      "Ryukyu Islands (GCP)",
+      "South America",
+      "South America (GCP)",
+      "Upper-middle-income countries",
+      "World"
+    ],
+    "world_rows": 275,
+    "countries": 218,
+    "year_min": 1750,
+    "year_max": 2024,
+    "missing_rate": {
+      "country": 0.0,
+      "iso_alpha": 0.0,
+      "continent": 0.0065,
+      "year": 0.0,
+      "decade": 0.0,
+      "co2": 0.449,
+      "co2_per_capita": 0.4599,
+      "population": 0.0976
+    },
+    "continent_unmatched_iso": [
+      "ATA"
+    ],
+    "co2_yoy_median_pct": 3.878,
+    "co2_yoy_p99_pct": 219.882,
+    "top_co2_2023": [
+      {
+        "country": "China",
+        "iso_alpha": "CHN",
+        "co2": 12172.009
+      },
+      {
+        "country": "United States",
+        "iso_alpha": "USA",
+        "co2": 4918.407
+      },
+      {
+        "country": "India",
+        "iso_alpha": "IND",
+        "co2": 3062.756
+      },
+      {
+        "country": "Russia",
+        "iso_alpha": "RUS",
+        "co2": 1733.135
+      },
+      {
+        "country": "Japan",
+        "iso_alpha": "JPN",
+        "co2": 986.91
+      }
+    ]
+  },
+  "quan_co2_theo_nganh": {
+    "rows_raw_wide": 4858,
+    "rows_co2_wide": 1483,
+    "excluded_entities": [
+      "EU27",
+      "GLOBAL TOTAL",
+      "International Aviation",
+      "International Shipping"
+    ],
+    "rows_output_long": 82040,
+    "countries": 208,
+    "sectors": [
+      "Agriculture",
+      "Buildings",
+      "Fuel Production",
+      "Industrial Combustion",
+      "Power Industry",
+      "Processes",
+      "Transport",
+      "Waste"
+    ],
+    "year_min": 1970,
+    "year_max": 2025,
+    "missing_rate": {
+      "country": 0.0,
+      "iso_alpha": 0.0,
+      "year": 0.0,
+      "sector": 0.0,
+      "co2": 0.0331,
+      "sector_share_percent": 0.0331
+    },
+    "continent_unmatched_iso": [
+      "SCG"
+    ],
+    "sector_share_check_max": 97.06
+  },
+  "quan_nang_luong_tai_tao": {
+    "rows_raw": 8309,
+    "rows_output": 7673,
+    "aggregates_separated": [
+      "Africa (UN)",
+      "Asia (UN)",
+      "Australia and New Zealand (UN SDG)",
+      "Central and Southern Asia (UN SDG)",
+      "Eastern and South-Eastern Asia (UN SDG)",
+      "Europe (UN)",
+      "Europe and Northern America (UN SDG)",
+      "Kosovo",
+      "Latin America and the Caribbean (UN SDG)",
+      "Latin America and the Caribbean (UN)",
+      "Northern Africa and Western Asia (UN SDG)",
+      "Northern America (UN)",
+      "Oceania (UN SDG)",
+      "Oceania (UN)",
+      "Sub-Saharan Africa (UN SDG)",
+      "World"
+    ],
+    "entities_without_code_separated": [
+      "Developing regions",
+      "Least Developed Countries (LDCs)",
+      "Small Island Developing States (SIDS)"
+    ],
+    "year_min": 1990,
+    "year_max": 2024,
+    "coverage_by_year": {
+      "1990": 216,
+      "1991": 217,
+      "1992": 221,
+      "1993": 221,
+      "1994": 221,
+      "1995": 221,
+      "1996": 221,
+      "1997": 221,
+      "1998": 221,
+      "1999": 221,
+      "2000": 222,
+      "2001": 222,
+      "2002": 224,
+      "2003": 224,
+      "2004": 224,
+      "2005": 225,
+      "2006": 225,
+      "2007": 225,
+      "2008": 225,
+      "2009": 225,
+      "2010": 225,
+      "2011": 222,
+      "2012": 225,
+      "2013": 225,
+      "2014": 225,
+      "2015": 225,
+      "2016": 225,
+      "2017": 225,
+      "2018": 225,
+      "2019": 225,
+      "2020": 225,
+      "2021": 225,
+      "2022": 225,
+      "2023": 225,
+      "2024": 84
+    },
+    "coverage_2023": 225,
+    "coverage_2024": 84,
+    "missing_rate": {
+      "country": 0.0,
+      "iso_alpha": 0.0,
+      "year": 0.0,
+      "renewable_percent": 0.0
+    },
+    "continent_unmatched_iso": []
+  },
+  "notes": [
+    "co2 OWID don vi Mt/nam (khong gom thay doi su dung dat); co2_per_capita tan/nguoi; EDGAR Substance=CO2 don vi Mt CO2.",
+    "renewable_percent la ty le nang luong tai tao trong tong tieu thu nang luong cuoi cung (%), khong phai ty le dien tai tao.",
+    "Giai doan phan tich chinh 1970-2024; co nang luong tai tao thi 1990-2023 (2024 chi 84 quoc gia).",
+    "Quoc gia phat thai cao KHONG bi xoa; SCG (Serbia and Montenegro) giu continent=null va bao cao unmatched de Khang quyet dinh khi join."
+  ]
+}

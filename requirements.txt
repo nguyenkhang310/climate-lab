@@ -1,3 +1,13 @@
+# Runtime: dashboard Dash + xử lý dữ liệu
 dash>=3.1,<4
 plotly>=6.0,<7
 pandas>=2.2,<3
+numpy>=1.26,<3
+# Đọc EDGAR .xlsx (pipeline Quân)
+openpyxl>=3.1,<4
+# EDA tĩnh xuất PNG (pipeline Đức/Quân)
+matplotlib>=3.8,<4
+seaborn>=0.13,<1
+kaleido>=1,<2
+# Dev (không bắt buộc): kiểm thử giao diện tests/browser_smoke.py
+# playwright>=1.40; python -m playwright install chromium

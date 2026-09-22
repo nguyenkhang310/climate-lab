@@ -1,6 +1,7 @@
-"""Ứng dụng dashboard khí hậu viết bằng Dash."""
 import base64
 import os
+
+import pandas as pd
 
 from dash import ALL, Dash, Input, Output, State, ctx, dcc, html, no_update
 from dash.exceptions import MissingCallbackContextException
@@ -15,20 +16,28 @@ from charts import (
     create_globe,
     create_heatmap,
     create_ranking_chart,
+    create_renewable_scatter_chart,
     create_scatter_chart,
+    create_sector_chart,
     create_temperature_chart,
 )
-from mock_data import (
+from climate_data import (
     CONTINENTS,
     COORDINATES,
     COUNTRY_NAMES,
+    DATA,
+    FORECAST_DATA,
+    GLOBAL_DATA,
+    HISTORICAL_PREDICTIONS,
+    MODEL_METRICS,
     aggregate,
     filter_data,
+    filter_sector_data,
 )
 
 app = Dash(
     __name__,
-    assets_folder="tainguyen",
+    assets_folder="assets",
     suppress_callback_exceptions=True,
     title="Climate Lab · HCMUTE",
     update_title=None,
@@ -85,7 +94,6 @@ PATHS = {
     "download": '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
 }
 
-
 def icon(name, class_name="icon"):
     svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
@@ -99,6 +107,42 @@ def icon(name, class_name="icon"):
         alt="",
     )
 
+def _empty(*children):
+    if len(children) == 1 and isinstance(children[0], str):
+        children = children[0]
+    else:
+        children = list(children)
+    return html.Div(children, className="card empty-state")
+
+def _select_field(label, dropdown_id, options, value, symbol=None,
+                  field_id=None, field_class="filter-field", **dropdown_props):
+    text = [icon(symbol), label] if symbol else label
+    wrapper = {"className": field_class}
+    if field_id is not None:
+        wrapper["id"] = field_id
+    return html.Div([
+        html.Label(text, htmlFor=dropdown_id),
+        dcc.Dropdown(options, value, id=dropdown_id, clearable=False, **dropdown_props),
+    ], **wrapper)
+
+def _setting_row(title, desc, control_id, options, value):
+    return html.Div([
+        html.Div([html.H3(title), html.P(desc)]),
+        dcc.RadioItems(
+            id=control_id, options=options, value=value,
+            className="settings-radio", inline=True,
+        ),
+    ], className="setting-row")
+
+def _stat_row(label, value, tone=None):
+    strong = {"className": tone} if tone else {}
+    return html.Div([html.Span(label), html.Strong(value, **strong)])
+
+def _rotation_from_keys(view, fallback):
+    return {
+        axis: view.get(f"geo.projection.rotation.{axis}", fallback.get(axis, 0))
+        for axis in ("lon", "lat", "roll")
+    }
 
 def create_header():
     logo = html.Img(
@@ -129,7 +173,7 @@ def create_header():
         icon("calendar"),
         html.Div([
             html.Span("Dữ liệu bao phủ"),
-            html.Strong("1960–2020"),
+            html.Strong(f"{int(DATA.year.min())}–{int(DATA.year.max())}"),
         ]),
     ], className="header-data-range")
     export_button = html.Button(
@@ -141,7 +185,6 @@ def create_header():
     )
     actions = html.Div([data_range, export_button], className="header-actions")
     return html.Header([identity, actions], className="header")
-
 
 def create_sidebar():
     links = []
@@ -182,7 +225,7 @@ def create_sidebar():
         [
             html.Div(
                 html.Img(
-                    src=app.get_asset_url("shipcode logo sáng.png"),
+                    src=app.get_asset_url("shipcode-logo.png"),
                     alt="Logo Team Shipcode",
                     className="sidebar-user-logo",
                 ),
@@ -198,12 +241,12 @@ def create_sidebar():
     )
     return [sidebar_top, navigation, credit]
 
-
 def create_filters():
     year_options = [
-        {"label": "1960 – 2020", "value": "1960-2020"},
-        {"label": "1980 – 2020", "value": "1980-2020"},
-        {"label": "2000 – 2020", "value": "2000-2020"},
+        {"label": "1970 – 2024", "value": "1970-2024"},
+        {"label": "1990 – 2023", "value": "1990-2023"},
+        {"label": "2000 – 2024", "value": "2000-2024"},
+        {"label": "2015 – 2024", "value": "2015-2024"},
     ]
     continent_options = [
         {"label": "Tất cả châu lục", "value": "all"},
@@ -221,58 +264,28 @@ def create_filters():
         {"label": "Khí thải CO₂", "value": "co2"},
     ]
 
-    year_filter = html.Div([
-        html.Label([icon("calendar"), "Khoảng năm"], htmlFor="year-range"),
-        dcc.Dropdown(
-            year_options,
-            "1960-2020",
-            id="year-range",
-            clearable=False,
-            searchable=False,
-        ),
-    ], className="filter-years")
-    continent_filter = html.Div([
-        html.Label("Châu lục", htmlFor="continent-filter"),
-        dcc.Dropdown(
-            continent_options,
-            "all",
-            id="continent-filter",
-            clearable=False,
-        ),
-    ], className="filter-field hidden-filter")
-    country_filter = html.Div([
-        html.Label(
-            [icon("globe"), "Phạm vi / Quốc gia"],
-            htmlFor="country-filter",
-        ),
-        dcc.Dropdown(
-            country_options,
-            "all",
-            id="country-filter",
-            clearable=False,
-            placeholder="Tìm quốc gia…",
-        ),
-    ], id="country-field", className="filter-field")
-    metric_filter = html.Div([
-        html.Label(
-            [icon("chart"), "Chỉ số hiển thị"],
-            htmlFor="metric-filter",
-        ),
-        dcc.Dropdown(
-            metric_options,
-            "temperature",
-            id="metric-filter",
-            clearable=False,
-            searchable=False,
-        ),
-    ], id="metric-field", className="filter-field")
+    year_filter = _select_field(
+        "Khoảng năm", "year-range", year_options, "1970-2024",
+        symbol="calendar", field_class="filter-years", searchable=False,
+    )
+    continent_filter = _select_field(
+        "Châu lục", "continent-filter", continent_options, "all",
+        field_class="filter-field hidden-filter",
+    )
+    country_filter = _select_field(
+        "Phạm vi / Quốc gia", "country-filter", country_options, "all",
+        symbol="globe", field_id="country-field", placeholder="Tìm quốc gia…",
+    )
+    metric_filter = _select_field(
+        "Chỉ số hiển thị", "metric-filter", metric_options, "temperature",
+        symbol="chart", field_id="metric-field", searchable=False,
+    )
 
     return html.Div(
         [year_filter, continent_filter, country_filter, metric_filter],
         id="filter-bar",
         className="filter-bar",
     )
-
 
 def graph(figure, graph_id=None, globe=False):
     config = {
@@ -283,7 +296,7 @@ def graph(figure, graph_id=None, globe=False):
         "doubleClick": False if globe else "reset+autosize",
         "modeBarButtonsToRemove": ["select2d", "lasso2d"],
         "toImageButtonOptions": {
-            "filename": "climate-lab-demo",
+            "filename": "climate-lab",
             "scale": 2,
         },
     }
@@ -297,7 +310,6 @@ def graph(figure, graph_id=None, globe=False):
     if graph_id:
         options["id"] = graph_id
     return dcc.Graph(**options)
-
 
 def create_chart_card(
     title,
@@ -316,7 +328,6 @@ def create_chart_card(
         className="card chart-card",
     )
 
-
 def create_kpi_card(label, value, unit, note, symbol, tone="blue"):
     value_row = html.Div([
         html.Strong(value, className=tone),
@@ -332,13 +343,21 @@ def create_kpi_card(label, value, unit, note, symbol, tone="blue"):
         content,
     ], className="card kpi-card")
 
-
 def scope_name(continent, country):
     return COUNTRY_NAMES.get(country, "Toàn cầu" if continent == "all" else continent)
 
+def format_number(value, pattern, missing="—"):
+    return missing if pd.isna(value) else format(value, pattern)
+
+def slider_marks(years):
+    first, last = years[0], years[-1]
+    return {
+        year: str(year)
+        for year in years
+        if year in (first, last) or (year % 10 == 0 and last - year >= 7)
+    }
 
 def choose_country(frame, requested="all", fallback="VNM"):
-    """Chọn một mã quốc gia chắc chắn có trong dữ liệu đang lọc."""
     available = set(frame.iso_alpha.unique())
     if requested in available:
         return requested
@@ -346,9 +365,7 @@ def choose_country(frame, requested="all", fallback="VNM"):
         return fallback
     return frame.iloc[0].iso_alpha
 
-
 def country_from_click(click_data, available):
-    """Lấy mã quốc gia từ sự kiện bấm trên bản đồ."""
     if not click_data or not click_data.get("points"):
         return None
 
@@ -356,11 +373,12 @@ def country_from_click(click_data, available):
     country = point.get("location") or point.get("customdata")
     return country if isinstance(country, str) and country in available else None
 
-
 def overview_details(frame, selected, year, scope):
-    """Tính chỉ số và hai biểu đồ từ cùng một phạm vi dữ liệu."""
     chosen = frame if selected == "all" else frame[frame.iso_alpha == selected]
-    series = aggregate(chosen)
+    series = aggregate(chosen, use_global=selected == "all" and scope == "Toàn cầu")
+    available_years = set(series.year.astype(int))
+    if year not in available_years:
+        year = int(series.year.max())
     row = series[series.year == year].iloc[0]
     period = f"{int(series.year.min())} – {int(series.year.max())}"
     if selected == "all":
@@ -368,9 +386,9 @@ def overview_details(frame, selected, year, scope):
     else:
         region = chosen.iloc[0].continent
     metrics = [
-        ("Độ lệch nhiệt độ", f"{row.temperature_anomaly:+.2f}", "°C", "red"),
-        ("Tổng phát thải CO₂", f"{row.co2:,.1f}", "Mt", "blue"),
-        ("CO₂ bình quân", f"{row.co2_per_capita:.2f}", "tấn/người", "blue"),
+        ("Độ lệch nhiệt độ", format_number(row.temperature_anomaly, "+.2f"), "°C", "red"),
+        ("Tổng phát thải CO₂", format_number(row.co2, ",.1f"), "Mt", "blue"),
+        ("CO₂ bình quân", format_number(row.co2_per_capita, ".2f"), "tấn/người", "blue"),
     ]
     summary = [
         html.Div([
@@ -392,14 +410,11 @@ def overview_details(frame, selected, year, scope):
     ]
     temperature = create_temperature_chart(series, 200)
     co2 = create_co2_chart(series, 200)
-    # Giữ nguyên toàn bộ xu hướng; đường dọc chỉ mốc năm đang xem trên bản đồ.
     for figure in (temperature, co2):
         figure.add_vline(x=year, line_width=1, line_dash="dot", line_color="#8496AA")
     return summary, temperature, co2, f"{scope} · {period}"
 
-
 def create_overview(frame, selected, scope, metric):
-    """Địa cầu là điểm nhấn, bên cạnh là số liệu và hai xu hướng chính."""
     years = sorted(int(year) for year in frame.year.unique())
     year = years[-1]
     snapshot = frame[frame.year == year]
@@ -440,7 +455,7 @@ def create_overview(frame, selected, scope, metric):
     selection = html.Div([
         html.Span(className="selection-dot"),
         html.Span(scope, id="overview-map-selection"),
-        html.Span("Dữ liệu mô phỏng", className="overview-demo-label"),
+        html.Span("Dữ liệu quan trắc", className="overview-demo-label"),
     ], className="overview-map-selection", **{"aria-live": "polite"})
     timeline = html.Div([
         html.Div([
@@ -451,8 +466,8 @@ def create_overview(frame, selected, scope, metric):
             id="overview-year",
             min=years[0],
             max=years[-1],
-            step=None,
-            marks={value: str(value) for value in years},
+            step=1,
+            marks=slider_marks(years),
             value=year,
             included=False,
             updatemode="mouseup",
@@ -487,28 +502,18 @@ def create_overview(frame, selected, scope, metric):
     )
     return html.Div([map_card, summary_card, temperature_card, co2_card], className="overview-grid")
 
-
 def create_country_panel(frame, selected):
     series = aggregate(frame[frame.iso_alpha == selected])
     latest = series.iloc[-1]
     country_name = COUNTRY_NAMES[selected]
     heading = html.Div([
         html.Span("VỊ TRÍ ĐANG CHỌN", className="eyebrow"),
-        html.Span(f"{int(latest.year)} · Mô phỏng", className="small-meta"),
+        html.Span(f"{int(latest.year)} · Dữ liệu quan trắc", className="small-meta"),
     ], className="country-eyebrow")
     metrics = html.Div([
-        html.Div([
-            html.Span("Nhiệt độ"),
-            html.Strong(f"{latest.temperature_anomaly:+.2f} °C", className="red"),
-        ]),
-        html.Div([
-            html.Span("Tổng CO₂"),
-            html.Strong(f"{latest.co2:,.1f} Mt", className="blue"),
-        ]),
-        html.Div([
-            html.Span("CO₂ / người"),
-            html.Strong(f"{latest.co2_per_capita:.2f} tấn"),
-        ]),
+        _stat_row("Nhiệt độ", f"{format_number(latest.temperature_anomaly, '+.2f')} °C", "red"),
+        _stat_row("Tổng CO₂", f"{format_number(latest.co2, ',.1f')} Mt", "blue"),
+        _stat_row("CO₂ / người", f"{format_number(latest.co2_per_capita, '.2f')} tấn"),
     ], className="country-metrics")
     country_card = html.Section(
         [heading, html.H2(country_name), metrics],
@@ -516,7 +521,7 @@ def create_country_panel(frame, selected):
     )
     temperature_card = create_chart_card(
         "Biến đổi nhiệt độ",
-        f"{country_name} · °C so với mốc mô phỏng",
+        f"{country_name} · °C so với trung bình 1951–1980",
         create_temperature_chart(series, 230),
         "thermometer",
     )
@@ -527,7 +532,6 @@ def create_country_panel(frame, selected):
         "cloud",
     )
     return [country_card, temperature_card, emission_card]
-
 
 def create_earth_lower(frame, selected):
     year = frame.year.max()
@@ -547,35 +551,36 @@ def create_earth_lower(frame, selected):
     )
     charts = html.Div([scatter_card, ranking_card], className="chart-grid")
 
-    co2_share = row.co2 / snapshot.co2.sum() * 100
+    co2_total = snapshot.co2.sum(min_count=1)
+    co2_share = row.co2 / co2_total * 100 if pd.notna(row.co2) and co2_total else float("nan")
     summary = html.Section([
         html.Div([
             html.Div("HỒ SƠ QUỐC GIA", className="eyebrow"),
             html.H2(row.country),
-            html.P(f"{row.continent} · {year} · Dữ liệu giả định"),
+            html.P(f"{row.continent} · {year} · Dữ liệu quan trắc"),
         ]),
-        html.Div([
-            html.Span("Dân số mô phỏng"),
-            html.Strong(f"{row.population / 1e6:,.1f} triệu"),
-        ]),
-        html.Div([
-            html.Span("Năng lượng tái tạo"),
-            html.Strong(f"{row.renewable_percent:.1f}%", className="green"),
-        ]),
-        html.Div([
-            html.Span("Tỷ trọng CO₂ trong mẫu"),
-            html.Strong(f"{co2_share:.1f}%"),
-        ]),
+        _stat_row(
+            "Dân số",
+            "—" if pd.isna(row.population) else f"{row.population / 1e6:,.1f} triệu",
+        ),
+        _stat_row(
+            "Năng lượng tái tạo",
+            "—" if pd.isna(row.renewable_percent) else f"{row.renewable_percent:.1f}%",
+            "green",
+        ),
+        _stat_row(
+            "Tỷ trọng CO₂ trong mẫu",
+            "—" if pd.isna(co2_share) else f"{co2_share:.1f}%",
+        ),
     ], className="card country-summary")
     return [charts, summary]
-
 
 def create_earth(frame, selected, metric):
     selected = choose_country(frame, selected)
     layer = "co2" if metric == "co2" else "temperature"
     year = int(frame.year.max())
     snapshot = frame[frame.year == year]
-    lon, lat = COORDINATES[selected]
+    lon, lat = COORDINATES.get(selected, (105, 15))
     figure = create_globe(
         snapshot,
         selected,
@@ -629,22 +634,24 @@ def create_earth(frame, selected, metric):
     return [
         html.Div([
             html.H2("Bản đồ khí hậu theo quốc gia"),
-            html.Span("Kéo để xoay, bấm vào quốc gia để xem chi tiết"),
+            html.Span("Kéo để xoay · Bấm quốc gia để xem dữ liệu"),
         ], className="section-heading"),
         html.Div([globe_card, country_panel], className="earth-grid"),
         html.Div(create_earth_lower(frame, selected), id="earth-lower"),
     ]
 
-
 def create_temperature_page(frame, series, scope):
-    first, last = series.iloc[0], series.iloc[-1]
+    valid_series = series.dropna(subset=["temperature_anomaly"])
+    if valid_series.empty:
+        return _empty("Không có dữ liệu nhiệt độ trong phạm vi đã chọn.")
+    first, last = valid_series.iloc[0], valid_series.iloc[-1]
     change = last.temperature_anomaly - first.temperature_anomaly
     kpis = [
         create_kpi_card(
             "Biến đổi nhiệt độ hiện tại",
             f"{last.temperature_anomaly:+.2f}",
             "°C",
-            f"{scope} · Mô phỏng",
+            f"{scope} · Dữ liệu quan trắc",
             "thermometer",
             "red",
         ),
@@ -657,10 +664,10 @@ def create_temperature_page(frame, series, scope):
             "red",
         ),
         create_kpi_card(
-            "Thập kỷ đang xem",
+            "Năm mới nhất",
             str(int(last.year)),
-            "s",
-            "Một mốc dữ liệu cho mỗi thập kỷ",
+            "",
+            "Mốc gần nhất có số liệu nhiệt độ",
             "calendar",
             "navy",
         ),
@@ -669,13 +676,13 @@ def create_temperature_page(frame, series, scope):
         create_chart_card(
             "Nhiệt độ qua các thập kỷ",
             f"{scope} · °C so với mốc tham chiếu",
-            create_temperature_chart(series, 280),
+            create_temperature_chart(valid_series, 280),
             "thermometer",
         ),
         create_chart_card(
             "Nhiệt độ trung bình theo thập kỷ",
-            "Trung bình có trọng số dân số",
-            create_decade_chart(series),
+            "Trung bình các năm trong từng thập kỷ",
+            create_decade_chart(valid_series),
             "compare",
         ),
         create_chart_card(
@@ -696,11 +703,19 @@ def create_temperature_page(frame, series, scope):
         html.Div(charts, className="chart-grid"),
     ]
 
-
 def create_co2_page(frame, series, scope, selected):
-    first, last = series.iloc[0], series.iloc[-1]
-    growth = (last.co2 / first.co2 - 1) * 100
+    valid_series = series.dropna(subset=["co2"])
+    if valid_series.empty:
+        return _empty("Không có dữ liệu CO₂ trong phạm vi đã chọn.")
+    first, last = valid_series.iloc[0], valid_series.iloc[-1]
+    growth = (last.co2 / first.co2 - 1) * 100 if first.co2 else float("nan")
     snapshot = frame[frame.year == last.year]
+    sector_frame = filter_sector_data(frame)
+    renewable_years = frame.loc[frame.renewable_percent.notna(), "year"]
+    renewable_snapshot = (
+        frame[frame.year == renewable_years.max()] if not renewable_years.empty
+        else frame.iloc[0:0]
+    )
     kpis = [
         create_kpi_card(
             "Tổng phát thải CO₂",
@@ -719,7 +734,7 @@ def create_co2_page(frame, series, scope, selected):
         ),
         create_kpi_card(
             "Tăng trưởng trong giai đoạn",
-            f"{growth:+.1f}",
+            format_number(growth, "+.1f"),
             "%",
             f"Từ {int(first.year)} đến {int(last.year)}",
             "trend",
@@ -729,7 +744,7 @@ def create_co2_page(frame, series, scope, selected):
         create_chart_card(
             "Xu hướng phát thải",
             f"{scope} · Mt CO₂",
-            create_co2_chart(series, 310),
+            create_co2_chart(valid_series, 310),
             "cloud",
         ),
         create_chart_card(
@@ -750,19 +765,33 @@ def create_co2_page(frame, series, scope, selected):
             create_ranking_chart(snapshot, selected, "co2_per_capita", 10, 310),
             "compare",
         ),
+        create_chart_card(
+            "Cơ cấu phát thải theo ngành",
+            "8 nhóm ngành · EDGAR · Mt CO₂",
+            create_sector_chart(sector_frame, 330),
+            "grid",
+        ),
+        create_chart_card(
+            "Năng lượng tái tạo và CO₂/người",
+            (
+                "Tỷ trọng trong tiêu thụ năng lượng cuối cùng"
+                + (f" · {int(renewable_snapshot.year.max())}" if not renewable_snapshot.empty else "")
+            ),
+            create_renewable_scatter_chart(renewable_snapshot, selected, 330),
+            "scatter",
+        ),
     ]
     return [
         html.Div(kpis, className="kpi-grid three"),
         html.Div(charts, className="chart-grid"),
     ]
 
-
 def create_comparison_results(frame, country_a, country_b):
     if country_a == country_b:
-        return html.Div([
+        return _empty(
             html.H3("Chọn hai quốc gia khác nhau"),
             html.P("Thay quốc gia A hoặc B để bắt đầu so sánh."),
-        ], className="card empty-state")
+        )
 
     snapshot = frame[frame.year == frame.year.max()].set_index("iso_alpha")
     indicators = [
@@ -810,16 +839,15 @@ def create_comparison_results(frame, country_a, country_b):
         html.Div(charts, className="chart-grid"),
     ]
 
-
 def create_comparison_page(frame):
     available = frame[["iso_alpha", "country"]].drop_duplicates()
     options = [{"label": row.country, "value": row.iso_alpha} for row in available.itertuples()]
     values = available.iso_alpha.tolist()
     if len(values) < 2:
-        return html.Div([
+        return _empty(
             html.H3("Cần ít nhất hai quốc gia để so sánh"),
             html.P("Hãy chọn phạm vi có nhiều quốc gia hơn."),
-        ], className="card empty-state")
+        )
 
     country_a = "VNM" if "VNM" in values else values[0]
     country_b = "THA" if "THA" in values else next(iso for iso in values if iso != country_a)
@@ -841,7 +869,6 @@ def create_comparison_page(frame):
         id="comparison-results",
     )
     return [controls, results]
-
 
 def create_relationship_page(frame, selected):
     snapshot = frame[frame.year == frame.year.max()]
@@ -870,7 +897,6 @@ def create_relationship_page(frame, selected):
             html.Div([html.Span("R²"), html.Strong(r_squared_text)]),
         ], className="correlation-values"),
         html.P(explanation, className="body-copy"),
-        html.Div("Các chỉ số dưới đây được tính từ dữ liệu minh họa.", className="demo-notice"),
         html.P(
             "Mỗi điểm là một quốc gia. Màu thể hiện châu lục.",
             className="body-copy",
@@ -884,29 +910,54 @@ def create_relationship_page(frame, selected):
     )
     return html.Div([chart, stats], className="relationship-grid")
 
-
-def create_forecast_page(series, scope):
+def create_forecast_page():
+    selected_name = MODEL_METRICS["selected_model"]
+    metrics = MODEL_METRICS[selected_name]
+    scenario_2050 = FORECAST_DATA[FORECAST_DATA.year == 2050].sort_values(
+        "temperature_prediction", ascending=False
+    )
     notice = html.Div(
-        "Đường dự báo và các chỉ số chỉ dùng để minh họa giao diện.",
+        (
+            "Mô hình hồi quy dùng CO₂ tích lũy, huấn luyện 1970–2014 và kiểm tra "
+            "2015–2024. Ba đường sau 2024 là mô phỏng thống kê theo giả định phát "
+            "thải, không phải kịch bản khí hậu chính thức của IPCC."
+        ),
         className="demo-notice",
     )
+    kpi_specs = [
+        ("R² kiểm tra", f"{metrics['r2']:.3f}", "", "Tập 2015–2024", "scatter", "blue"),
+        ("MAE kiểm tra", f"{metrics['mae']:.3f}", "°C", "Sai số tuyệt đối trung bình", "compare", "blue"),
+        ("RMSE kiểm tra", f"{metrics['rmse']:.3f}", "°C", "Dùng để chọn mô hình", "trend", "blue"),
+    ]
     kpis = html.Div([
-        create_kpi_card("R² minh họa", "0.92", "", "Chưa đánh giá mô hình", "scatter"),
-        create_kpi_card("MAE minh họa", "0.08", "°C", "Chưa đánh giá mô hình", "compare"),
-        create_kpi_card("RMSE minh họa", "0.11", "°C", "Chưa đánh giá mô hình", "trend"),
+        create_kpi_card(label, value, unit, note, symbol, tone)
+        for label, value, unit, note, symbol, tone in kpi_specs
     ], className="kpi-grid three")
     chart = create_chart_card(
-        "Kịch bản nhiệt độ",
-        f"{scope} · Nét liền: lịch sử · Nét đứt: dự báo",
-        create_forecast_chart(series),
+        "Kịch bản nhiệt độ toàn cầu đến 2050",
+        "Nét liền: quan trắc · Nét chấm: kiểm tra · Nét đứt: kịch bản",
+        create_forecast_chart(GLOBAL_DATA, FORECAST_DATA, HISTORICAL_PREDICTIONS),
         "trend",
     )
-    note = html.P(
-        "Vùng nền nhạt biểu thị 30 năm tiếp theo sau mốc đang chọn.",
-        className="body-copy",
-    )
-    return [notice, kpis, chart, note]
-
+    scenario_rows = [
+        html.Tr([
+            html.Td(row.scenario),
+            html.Td(f"{row.co2:,.0f} Mt"),
+            html.Td(f"{row.temperature_prediction:+.2f} °C"),
+        ])
+        for row in scenario_2050.itertuples()
+    ]
+    scenario_table = html.Div([
+        html.H3("Kết quả tại năm 2050"),
+        html.Table([
+            html.Thead(html.Tr([
+                html.Th("Giả định phát thải"), html.Th("CO₂ năm 2050"),
+                html.Th("Nhiệt độ dự báo"),
+            ])),
+            html.Tbody(scenario_rows),
+        ], className="data-table comparison-table"),
+    ], className="card table-wrap")
+    return [notice, kpis, chart, scenario_table]
 
 def create_insights_page(frame, series, scope, selected):
     first, last = series.iloc[0], series.iloc[-1]
@@ -977,7 +1028,6 @@ def create_insights_page(frame, series, scope, selected):
     )
     return [notice, html.Div(articles, className="stories")]
 
-
 def format_table_value(row, key):
     decimal_columns = {
         "temperature_anomaly",
@@ -986,12 +1036,13 @@ def format_table_value(row, key):
         "renewable_percent",
     }
     value = getattr(row, key)
+    if pd.isna(value):
+        return "—"
     if key in decimal_columns:
         return f"{value:,.2f}"
     if key == "population":
-        return f"{value:,}"
+        return f"{value:,.0f}"
     return str(value)
-
 
 def create_data_page(frame):
     columns = [
@@ -1006,10 +1057,11 @@ def create_data_page(frame):
         ("renewable_percent", "Tái tạo (%)"),
     ]
     ordered = frame.sort_values(["year", "country"], ascending=[False, True])
-    table_rows = []
-    for row in ordered.itertuples():
-        cells = [html.Td(format_table_value(row, key)) for key, _ in columns]
-        table_rows.append(html.Tr(cells))
+    visible = ordered.head(500)
+    table_rows = [
+        html.Tr([html.Td(format_table_value(row, key)) for key, _ in columns])
+        for row in visible.itertuples()
+    ]
 
     table = html.Table([
         html.Thead(html.Tr([html.Th(label) for _, label in columns])),
@@ -1022,7 +1074,7 @@ def create_data_page(frame):
     )
     heading = html.Div([
         html.Div([
-            html.H2("Bộ dữ liệu mô phỏng"),
+            html.H2("Bộ dữ liệu khí hậu đã làm sạch"),
             html.Span(record_count, className="small-meta"),
         ]),
         html.Button(
@@ -1033,13 +1085,17 @@ def create_data_page(frame):
         ),
     ], className="section-heading")
     notice = html.Div(
-        "Dữ liệu cố định dùng để kiểm thử giao diện, không phải số liệu quan trắc.",
+        (
+            f"Đang hiển thị {len(visible):,}/{len(ordered):,} dòng gần nhất để trang tải nhanh. "
+            "Nút Tải CSV xuất toàn bộ dữ liệu trong phạm vi đang lọc."
+        ),
         className="demo-notice",
     )
     guide = html.Div([
         html.H3("Cách đọc dữ liệu"),
         html.P("CO₂ dùng đơn vị Mt; dân số tính theo người; CO₂ bình quân tính theo tấn/người."),
-        html.P("Nhiệt độ là mức chênh lệch so với mốc tham chiếu giả định."),
+        html.P("Nhiệt độ là độ lệch °C so với trung bình 1951–1980."),
+        html.P("Nguồn: NASA GISTEMP, FAOSTAT, OWID/GCP, EDGAR và UN Statistics."),
     ], className="card data-note")
     return [
         heading,
@@ -1047,7 +1103,6 @@ def create_data_page(frame):
         html.Div(table, className="card table-wrap scroll-table"),
         guide,
     ]
-
 
 def create_settings_page(preferences):
     heading = html.Div([
@@ -1059,44 +1114,30 @@ def create_settings_page(preferences):
         {"label": "Thoáng", "value": "comfortable"},
         {"label": "Gọn", "value": "compact"},
     ]
-    density = html.Div([
-        html.Div([
-            html.H3("Mật độ giao diện"),
-            html.P("Điều chỉnh khoảng cách trong các thẻ dữ liệu."),
-        ]),
-        dcc.RadioItems(
-            id="setting-density",
-            options=density_options,
-            value=preferences.get("density", "comfortable"),
-            className="settings-radio",
-            inline=True,
-        ),
-    ], className="setting-row")
+    density = _setting_row(
+        "Mật độ giao diện",
+        "Điều chỉnh khoảng cách trong các thẻ dữ liệu.",
+        "setting-density", density_options, preferences.get("density", "comfortable"),
+    )
     grid_options = [
         {"label": "Hiển thị", "value": "show"},
         {"label": "Ẩn", "value": "hide"},
     ]
-    grid = html.Div([
-        html.Div([
-            html.H3("Đường lưới biểu đồ"),
-            html.P("Bật đường tham chiếu để đọc và so sánh giá trị."),
-        ]),
-        dcc.RadioItems(
-            id="setting-grid",
-            options=grid_options,
-            value=preferences.get("grid", "show"),
-            className="settings-radio",
-            inline=True,
-        ),
-    ], className="setting-row")
+    grid = _setting_row(
+        "Đường lưới biểu đồ",
+        "Bật đường tham chiếu để đọc và so sánh giá trị.",
+        "setting-grid", grid_options, preferences.get("grid", "show"),
+    )
     data_info = html.Div([
         html.Div([
             html.H3("Chế độ dữ liệu"),
-            html.P("15 quốc gia · 7 mốc năm · 6 châu lục"),
+            html.P(
+                f"{DATA.iso_alpha.nunique()} quốc gia/lãnh thổ · "
+                f"{DATA.year.nunique()} năm · dữ liệu 1970–2024"
+            ),
         ]),
     ], className="setting-row")
     return html.Div([heading, density, grid, data_info], className="card settings-card")
-
 
 page_heading = html.Header([
     html.Div([
@@ -1139,7 +1180,6 @@ app.layout = html.Div([
     main_content,
 ], id="app-shell", className="app-shell")
 
-
 @app.callback(
     Output("app-shell", "className"),
     Input("collapse-sidebar", "n_clicks"),
@@ -1156,7 +1196,6 @@ def update_display(clicks, preferences):
         classes.append("hide-grid")
     return " ".join(classes)
 
-
 @app.callback(
     Output("country-filter", "options"),
     Output("country-filter", "value"),
@@ -1170,7 +1209,6 @@ def update_country_options(continent, selected):
         for row in available.itertuples()
     ]
     return options, selected if selected in available.iso_alpha.values else "all"
-
 
 @app.callback(
     Output("page-content", "children"),
@@ -1203,14 +1241,27 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
     if page == "overview" and trigger in {
         "year-range", "continent-filter", "country-filter", "metric-filter"
     }:
-        return (no_update,) * 9
+        return (
+            no_update,
+            no_update,
+            no_update,
+            [no_update] * len(MENU),
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+        )
 
     title, subtitle = PAGE_INFO[page]
 
-    pages_with_all_countries = {"overview", "earth", "comparison", "relationship"}
+    pages_with_all_countries = {"overview", "earth", "comparison", "relationship", "forecast"}
     country_filter = "all" if page in pages_with_all_countries else country
     frame = filter_data(years, continent, country_filter)
-    series = aggregate(frame)
+    series = aggregate(
+        frame,
+        use_global=country_filter == "all" and continent == "all",
+    )
     scope = scope_name(continent, country)
 
     invalid_overview_country = (
@@ -1219,10 +1270,10 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
         and country not in frame.iso_alpha.values
     )
     if frame.empty or invalid_overview_country:
-        content = html.Div([
+        content = _empty(
             html.H2("Chưa có dữ liệu trong phạm vi này"),
             html.P("Chọn quốc gia hoặc khoảng năm khác trong bộ lọc phía trên."),
-        ], className="card empty-state")
+        )
     elif page == "overview":
         content = create_overview(frame, country, scope, metric)
     elif page == "earth":
@@ -1236,7 +1287,7 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
     elif page == "relationship":
         content = create_relationship_page(frame, country)
     elif page == "forecast":
-        content = create_forecast_page(series, scope)
+        content = create_forecast_page()
     elif page == "insights":
         content = create_insights_page(frame, series, scope, country)
     elif page == "data":
@@ -1244,7 +1295,6 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
     else:
         content = create_settings_page(preferences or {})
 
-    # Tạo vùng nội dung riêng khi đổi trang để Dash không dùng lại biểu đồ cũ.
     content = html.Div(content, key=page)
     navigation_classes = [
         "nav-item" + (" active" if key == page else "")
@@ -1252,10 +1302,10 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
     ]
     country_field_class = (
         "filter-field hidden-filter"
-        if page in ("comparison", "settings")
+        if page in ("comparison", "forecast", "settings")
         else "filter-field"
     )
-    if page == "settings":
+    if page in ("forecast", "settings"):
         filter_class = "filter-bar hidden-filter"
     elif page == "comparison":
         filter_class = "filter-bar one-filter"
@@ -1266,13 +1316,12 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
     return (
         content, title, subtitle,
         navigation_classes,
-        page in ("comparison", "settings"),
+        page in ("comparison", "forecast", "settings"),
         country_field_class,
         page not in ("overview", "earth"),
         {} if page in ("overview", "earth") else {"display": "none"},
         filter_class,
     )
-
 
 @app.callback(
     Output("country-filter", "value", allow_duplicate=True),
@@ -1285,7 +1334,6 @@ def select_overview_country(click, continent, current_country):
     available = set(filter_data(continent=continent).iso_alpha)
     selected = country_from_click(click, available)
     return selected if selected and selected != current_country else no_update
-
 
 @app.callback(
     Output("overview-summary", "children"),
@@ -1340,10 +1388,7 @@ def update_overview(
     if view:
         rotation = view.get("geo.projection.rotation", rotation)
         if "geo.projection.rotation.lon" in view:
-            rotation = {
-                axis: view.get(f"geo.projection.rotation.{axis}", rotation.get(axis, 0))
-                for axis in ("lon", "lat", "roll")
-            }
+            rotation = _rotation_from_keys(view, rotation)
     if ctx.triggered_id in ("country-filter", "overview-reset"):
         lon, lat = COORDINATES.get(selected, (105, 15))
         rotation = {"lon": lon, "lat": lat}
@@ -1354,9 +1399,8 @@ def update_overview(
     )
     return (
         summary, temperature, co2, subtitle, subtitle, figure, scope,
-        years[0], years[-1], {value: str(value) for value in years}, year, str(year),
+        years[0], years[-1], slider_marks(years), year, str(year),
     )
-
 
 @app.callback(
     Output("country-panel", "children"),
@@ -1398,13 +1442,10 @@ def update_selected_country(
     if view and ctx.triggered_id != "reset-globe":
         rotation = view.get("geo.projection.rotation")
         if rotation is None and "geo.projection.rotation.lon" in view:
-            rotation = {
-                key: view.get(f"geo.projection.rotation.{key}", 0)
-                for key in ("lon", "lat", "roll")
-            }
+            rotation = _rotation_from_keys(view, {})
     if rotation is None:
         if ctx.triggered_id == "reset-globe":
-            lon, lat = COORDINATES[default]
+            lon, lat = COORDINATES.get(default, (105, 15))
             rotation = {"lon": lon, "lat": lat}
         else:
             rotation = current_figure["layout"]["geo"]["projection"]["rotation"]
@@ -1423,7 +1464,6 @@ def update_selected_country(
         selected,
     )
 
-
 @app.callback(
     Output("comparison-results", "children"),
     Input("compare-a", "value"),
@@ -1433,7 +1473,6 @@ def update_selected_country(
 )
 def update_comparison(country_a, country_b, years, continent):
     return create_comparison_results(filter_data(years, continent), country_a, country_b)
-
 
 @app.callback(
     Output("download-data", "data"),
@@ -1453,7 +1492,6 @@ def export_data(header_clicks, page_clicks, years, continent, country):
         index=False,
     )
 
-
 @app.callback(
     Output("preferences", "data"),
     Input("setting-density", "value", allow_optional=True),
@@ -1464,7 +1502,6 @@ def save_preferences(density, grid):
     if density is None or grid is None:
         return no_update
     return {"density": density, "grid": grid}
-
 
 if __name__ == "__main__":
     app.run(debug=False, host="127.0.0.1", port=int(os.environ.get("PORT", 8050)))
