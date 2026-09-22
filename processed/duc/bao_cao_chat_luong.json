@@ -1,0 +1,128 @@
+{
+  "data_dictionary": {
+    "nhiet_do_toan_cau.csv": {
+      "year": "Năm quan sát (1880–2025). Năm 2026 chưa đủ 12 tháng nên được loại bỏ.",
+      "decade": "Thập kỷ quan sát = (year // 10) * 10 (ví dụ 2020s là 2020–2025).",
+      "temperature_anomaly": "Độ lệch nhiệt độ trung bình năm toàn cầu (°C) so với thời kỳ cơ sở 1951–1980 (NASA GISTEMP v4, cột J-D)."
+    },
+    "nhiet_do_quoc_gia.csv": {
+      "country": "Tên quốc gia / lãnh thổ chuẩn hóa (theo danh mục OWID / ISO-3166).",
+      "iso_alpha": "Mã quốc gia chuẩn ISO-3166-1 alpha-3 (3 ký tự viết hoa), dùng làm khóa ghép bảng chính cùng cột year.",
+      "continent": "Châu lục theo phân loại OWID (Africa, Asia, Europe, North America, South America, Oceania; null nếu là vùng đặc thù như ATA).",
+      "year": "Năm quan sát (1961–2025; phân tích chính 1970–2024).",
+      "decade": "Thập kỷ quan sát = (year // 10) * 10.",
+      "temperature_anomaly": "Độ lệch nhiệt độ trên đất liền (°C) so với thời kỳ cơ sở 1951–1980 (FAOSTAT Temperature change on land, Meteorological year).",
+      "source_flag": "Cờ chất lượng nguồn dữ liệu từ FAO: 'E' = Estimated value, null = Giá trị quan sát trực tiếp hoặc thiếu."
+    }
+  },
+  "duc_nhiet_do_toan_cau": {
+    "rows_raw": 147,
+    "rows_output": 146,
+    "year_min": 1880,
+    "year_max": 2025,
+    "missing_rate": {
+      "year": 0.0,
+      "decade": 0.0,
+      "temperature_anomaly": 0.0
+    },
+    "temperature_mean": 0.0812,
+    "temperature_std": 0.4025
+  },
+  "duc_nhiet_do_quoc_gia": {
+    "rows_raw": 590512,
+    "rows_meteorological_year": 17368,
+    "rows_output": 14263,
+    "aggregates_separated_count": 52,
+    "aggregates_separated": [
+      "Africa",
+      "Americas",
+      "Annex I countries",
+      "Asia",
+      "Australia and New Zealand",
+      "Belgium-Luxembourg",
+      "Caribbean",
+      "Central America",
+      "Central Asia",
+      "Channel Islands",
+      "China",
+      "Czechoslovakia",
+      "Eastern Africa",
+      "Eastern Asia",
+      "Eastern Europe",
+      "Ethiopia PDR",
+      "Europe",
+      "European Union (27)",
+      "Land Locked Developing Countries (LLDCs)",
+      "Latin America and the Caribbean",
+      "Least Developed Countries (LDCs)",
+      "Low Income Food Deficit Countries (LIFDCs)",
+      "Melanesia",
+      "Micronesia",
+      "Middle Africa",
+      "Midway Island",
+      "Net Food Importing Developing Countries (NFIDCs)",
+      "Netherlands Antilles (former)",
+      "Non-Annex I countries",
+      "Northern Africa",
+      "Northern America",
+      "Northern Europe",
+      "OECD",
+      "Oceania",
+      "Pacific Islands Trust Territory",
+      "Polynesia",
+      "Serbia and Montenegro",
+      "Small Island Developing States (SIDS)",
+      "South America",
+      "South-eastern Asia",
+      "Southern Africa",
+      "Southern Asia",
+      "Southern Europe",
+      "Sub-Saharan Africa",
+      "Sudan (former)",
+      "USSR",
+      "Wake Island",
+      "Western Africa",
+      "Western Asia",
+      "Western Europe",
+      "World",
+      "Yugoslav SFR"
+    ],
+    "countries_count": 236,
+    "year_min": 1961,
+    "year_max": 2025,
+    "duplicate_keys": 0,
+    "missing_rate": {
+      "country": 0.0,
+      "iso_alpha": 0.0,
+      "continent": 0.0137,
+      "year": 0.0,
+      "decade": 0.0,
+      "temperature_anomaly": 0.0348,
+      "source_flag": 0.0
+    },
+    "continent_unmatched_iso": [
+      "ATA",
+      "ATF",
+      "SJM"
+    ],
+    "flag_distribution": {
+      "E": 13767,
+      "O": 495,
+      "L": 1
+    },
+    "distribution": {
+      "mean": 0.5847,
+      "std": 0.7085,
+      "median": 0.506,
+      "min": -3.251,
+      "max": 5.325,
+      "iqr_bounds": [
+        -1.3275,
+        2.4205
+      ],
+      "outliers_iqr_count": 199,
+      "outliers_iqr_pct": 1.45
+    },
+    "outlier_interpretation": "Các giá trị vượt ngưỡng IQR chủ yếu tập trung tại các vùng cực Bắc (Svalbard, Greenland, Canada, Nga) vào các đợt nắng nóng kỷ lục sau năm 2010. Toàn bộ các giá trị này đều có cờ FAO là E (Estimated), phản ánh hiện tượng khí hậu cực đoan thực tế (Arctic Amplification), không phải lỗi nhập liệu."
+  }
+}
