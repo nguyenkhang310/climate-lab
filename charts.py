@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 
-from climate_data import CONTINENTS, COORDINATES, COUNTRY_NAMES
+from climate_data import CONTINENTS, COUNTRY_NAMES
 
 RED, BLUE, TEXT, MUTED = "#EF4444", "#1689E8", "#16324F", "#52677D"
 FONT_FAMILY = (
@@ -177,12 +177,14 @@ def create_globe(
 ):
     field = "co2" if metric == "co2" else "temperature_anomaly"
     is_co2 = metric == "co2"
+    snapshot = snapshot.drop_duplicates("iso_alpha").copy()
+    valid = snapshot.dropna(subset=[field])
+    missing = snapshot[snapshot[field].isna()]
     colorscale = (
         [[0, "rgba(142,202,238,.38)"], [1, "rgba(17,112,190,.72)"]]
         if is_co2 else
         [[0, "rgba(42,137,225,.55)"], [.5, "rgba(238,244,239,.35)"], [1, "rgba(239,68,68,.60)"]]
     )
-    valid = snapshot.dropna(subset=[field])
     if is_co2 and not valid.empty:
         zmin, zmax = 0, max(float(valid[field].quantile(.98)), 1)
     else:
@@ -191,15 +193,36 @@ def create_globe(
         "country", "year", "temperature_anomaly", "co2",
         "co2_per_capita", "population",
     ]
-    borders = [
-        "#73d7ff" if iso == selected else "rgba(183,215,219,.72)"
-        for iso in snapshot.iso_alpha
-    ]
-    widths = [2.2 if iso == selected else .45 for iso in snapshot.iso_alpha]
-    fig = go.Figure(go.Choropleth(
-        locations=snapshot.iso_alpha, z=snapshot[field], locationmode="ISO-3",
-        customdata=snapshot[custom_columns], colorscale=colorscale,
-        zmin=zmin, zmax=zmax, marker_line_color=borders, marker_line_width=widths,
+    def border_style(rows):
+        colors = [
+            "#73d7ff" if iso == selected else "rgba(183,215,219,.72)"
+            for iso in rows.iso_alpha
+        ]
+        widths = [2.2 if iso == selected else .45 for iso in rows.iso_alpha]
+        return colors, widths
+
+    fig = go.Figure()
+    if not missing.empty:
+        colors, widths = border_style(missing)
+        fig.add_choropleth(
+            locations=missing.iso_alpha,
+            z=[0] * len(missing),
+            locationmode="ISO-3",
+            customdata=missing[custom_columns],
+            colorscale=[[0, "#49675d"], [1, "#49675d"]],
+            zmin=0,
+            zmax=1,
+            marker_line_color=colors,
+            marker_line_width=widths,
+            showscale=False,
+            name="Chưa có dữ liệu",
+            hovertemplate="<b>%{customdata[0]}</b><br>Chưa có dữ liệu chỉ số này<extra></extra>",
+        )
+    colors, widths = border_style(valid)
+    fig.add_choropleth(
+        locations=valid.iso_alpha, z=valid[field], locationmode="ISO-3",
+        customdata=valid[custom_columns], colorscale=colorscale,
+        zmin=zmin, zmax=zmax, marker_line_color=colors, marker_line_width=widths,
         colorbar={
             "title": {
                 "text": "CO₂ (Mt)" if is_co2 else "Nhiệt độ (°C)",
@@ -210,15 +233,13 @@ def create_globe(
             "bgcolor": "rgba(4,24,40,.78)", "borderwidth": 0,
             "tickfont": {"size": 11, "color": "#d7e9f2"}, "outlinewidth": 0,
         },
-        hoverinfo="none",
-    ))
-    if selected in set(snapshot.iso_alpha) and selected in COORDINATES:
-        lon, lat = COORDINATES[selected]
-        fig.add_trace(go.Scattergeo(
-            lon=[lon], lat=[lat], mode="markers",
-            marker={"size": 10, "color": "#00a6ff", "line": {"width": 2.5, "color": "white"}},
-            customdata=[selected], hoverinfo="none", showlegend=False,
-        ))
+        name="CO₂" if is_co2 else "Nhiệt độ",
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>%{customdata[1]}<br>"
+            + ("CO₂: %{z:,.2f} Mt" if is_co2 else "Nhiệt độ: %{z:+.2f} °C")
+            + "<extra></extra>"
+        ),
+    )
 
     is_flat = view_mode == "flat"
     initial_rotation = {"lon": 0, "lat": 0} if is_flat else (rotation or {"lon": 105, "lat": 15})
@@ -239,6 +260,7 @@ def create_globe(
         paper_bgcolor="rgba(0,0,0,0)", font={"family": FONT_FAMILY, "color": "#a6bfd3"},
         showlegend=False, geo_uirevision=f"{view_mode}-{reset}", clickmode="event",
         dragmode="pan", hovermode="closest", transition={"duration": 0},
+        meta={"selected": selected},
         modebar={"color": "#96b6ce", "activecolor": "white", "bgcolor": "rgba(0,0,0,0)"},
     )
     return fig

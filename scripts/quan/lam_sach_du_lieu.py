@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,7 +31,7 @@ DATA_DICTIONARY = {
         "co2": "Phát thải CO₂ Mt/năm, không gồm thay đổi sử dụng đất (GCP qua OWID); null là thiếu",
         "co2_per_capita": "Tấn CO₂/người (không gồm LUC); null là thiếu",
         "co2_growth_pct": "Tăng trưởng CO₂ so với năm trước của cùng quốc gia (%/năm); "
-                          "năm đầu tiên của mỗi chuỗi là null",
+                          "null nếu là năm đầu chuỗi, thiếu năm liền trước hoặc mẫu số bằng 0",
         "population": "Dân số (người); null là thiếu",
     },
     "co2_toan_cau.csv": {
@@ -81,7 +82,11 @@ def clean_owid(cmap):
     keep["continent"] = keep["iso_alpha"].map(cmap)
     keep["decade"] = (keep["year"] // 10 * 10).astype(int)
     keep = keep.sort_values(["iso_alpha", "year"])
-    keep["co2_growth_pct"] = keep.groupby("iso_alpha")["co2"].pct_change(fill_method=None) * 100
+    negative_co2_count = int((keep["co2"] < 0).sum())
+    keep = keep[keep["co2"].isna() | keep["co2"].ge(0)].copy()
+    keep["co2_growth_pct"] = (
+        keep.groupby("iso_alpha")["co2"].pct_change(fill_method=None) * 100
+    ).replace([np.inf, -np.inf], np.nan)
     out = keep[[
         "country", "iso_alpha", "continent", "year", "decade",
         "co2", "co2_per_capita", "co2_growth_pct", "population",
@@ -127,11 +132,15 @@ def clean_owid(cmap):
                 "O2. Quốc gia phát thải lớn không phải outlier, giữ nguyên.",
                 "O3. Biến động mạnh (|tăng trưởng| > 50% và |chênh lệch| > 1 Mt, "
                 "giai đoạn 1970–2024) thì gắn cờ kiểm tra thủ công; giữ lại vì "
-                "đều gắn với sự kiện lịch sử có thật.",
+                "không đủ cơ sở coi đây là lỗi dữ liệu.",
                 "O4. co2 == 0 là giá trị gốc trong nguồn, giữ nguyên và phân "
                 "biệt với thiếu dữ liệu (null).",
             ],
-            "co2_am": {"so_dong": int((out["co2"] < 0).sum()), "quyet_dinh": "giữ"},
+            "co2_am": {
+                "so_dong_phat_hien": negative_co2_count,
+                "so_dong_con_lai": int((out["co2"] < 0).sum()),
+                "quyet_dinh": "loại nếu phát sinh vì phát thải CO₂ không thể âm",
+            },
             "nuoc_phat_thai_lon": {
                 "quyet_dinh": "giữ toàn bộ, không coi là outlier",
                 "ghi_chu": "xem top_co2_2023",

@@ -26,7 +26,8 @@ năng lượng cuối cùng** (không phải % điện tái tạo).
 ## 4. CO₂/người và năng lượng tái tạo (2023, n = 212, r ≈ −0,49)
 - Tương quan âm vừa: quốc gia có tỷ trọng tái tạo cao thường có CO₂/người thấp hơn,
   nhưng phân tán rộng — tái tạo chỉ là một mảnh ghép (cấu trúc kinh tế, khí hậu, mức
-  sống đều ảnh hưởng). Trung bình tái tạo 2023 ~27,3%, trung vị ~18,3% (lệch phải:
+  sống đều ảnh hưởng). Trong đúng 212 quốc gia của biểu đồ, trung bình tái tạo 2023
+  ~28,8% và trung vị ~20,0% (lệch phải:
   nhiều nước nhỏ dùng sinh khối truyền thống ở mức rất cao).
 - Đây là mối liên hệ mô tả, không phải nhân–quả.
 

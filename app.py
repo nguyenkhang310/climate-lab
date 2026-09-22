@@ -1,24 +1,20 @@
 import base64
 import os
+from pathlib import Path
 
 import pandas as pd
 
 from dash import ALL, Dash, Input, Output, State, ctx, dcc, html, no_update
 from dash.exceptions import MissingCallbackContextException
+from flask import send_from_directory
 
 from charts import (
-    create_box_chart,
     create_co2_chart,
     create_comparison_chart,
-    create_composition_chart,
-    create_decade_chart,
     create_forecast_chart,
     create_globe,
-    create_heatmap,
     create_ranking_chart,
-    create_renewable_scatter_chart,
     create_scatter_chart,
-    create_sector_chart,
     create_temperature_chart,
 )
 from climate_data import (
@@ -32,7 +28,6 @@ from climate_data import (
     MODEL_METRICS,
     aggregate,
     filter_data,
-    filter_sector_data,
 )
 
 app = Dash(
@@ -43,6 +38,62 @@ app = Dash(
     update_title=None,
 )
 server = app.server
+ROOT = Path(__file__).resolve().parent
+EDA_ROOT = ROOT / "eda"
+
+
+@server.get("/eda-files/<path:filename>")
+def serve_eda_file(filename):
+    """Phục vụ đúng các sản phẩm EDA đã bàn giao, không sao chép sang assets/."""
+    return send_from_directory(EDA_ROOT, filename)
+
+
+DUC_TEMPERATURE_ARTIFACTS = [
+    ("Xu hướng nhiệt độ toàn cầu", "Bản tĩnh · NASA GISTEMP 1880–2025",
+     "duc/bieu_do_tinh/01_xu_huong_nhiet_do_toan_cau.png"),
+    ("Nhiệt độ trung bình theo thập kỷ", "Bản tĩnh · NASA GISTEMP",
+     "duc/bieu_do_tinh/02_nhiet_do_theo_thap_ky.png"),
+    ("Bản đồ nhiệt độ theo quốc gia", "Bản tĩnh · FAOSTAT",
+     "duc/bieu_do_tinh/03_ban_do_nhiet_do.png"),
+    ("Bản đồ nhiệt độ theo quốc gia", "Bản tương tác · kéo thanh năm để khám phá",
+     "duc/bieu_do_tuong_tac/03_ban_do_nhiet_do.html"),
+    ("Nhiệt độ theo châu lục và thập kỷ", "Bản tĩnh · heatmap",
+     "duc/bieu_do_tinh/04_heatmap_chau_luc_thap_ky.png"),
+    ("Phân bố nhiệt độ giữa các quốc gia", "Bản tĩnh · boxplot theo thập kỷ",
+     "duc/bieu_do_tinh/05_phan_bo_nhiet_do_quoc_gia.png"),
+]
+
+DUC_FORECAST_ARTIFACTS = [
+    ("Hồi quy tuyến tính theo năm", "Bản tĩnh tham khảo từ EDA Đức",
+     "duc/bieu_do_tinh/06_du_bao_hoi_quy_tuyen_tinh.png"),
+    ("Hồi quy tuyến tính theo năm", "Bản tương tác tham khảo từ EDA Đức",
+     "duc/bieu_do_tuong_tac/06_du_bao_hoi_quy_tuyen_tinh.html"),
+]
+
+QUAN_ARTIFACTS = [
+    ("Phát thải CO₂ toàn cầu", "Bản tĩnh · đường xu hướng 1970–2024",
+     "quan/bieu_do_tinh/01_line_co2_toan_cau.png"),
+    ("Top 15 quốc gia phát thải", "Bản tĩnh · năm 2023",
+     "quan/bieu_do_tinh/02_bar_top15_quoc_gia.png"),
+    ("Cơ cấu phát thải theo ngành", "Bản tĩnh · stacked area 1970–2024",
+     "quan/bieu_do_tinh/03_area_co_cau_nganh.png"),
+    ("CO₂/người và năng lượng tái tạo", "Bản tĩnh · năm 2023",
+     "quan/bieu_do_tinh/04_scatter_co2pc_renewable.png"),
+    ("Độ phủ dữ liệu theo năm", "Bản tĩnh · số quốc gia có dữ liệu",
+     "quan/bieu_do_tinh/05_line_do_phu_du_lieu.png"),
+    ("Phát thải CO₂ toàn cầu", "Bản tương tác · area chart 1970–2024",
+     "quan/bieu_do_tuong_tac/01_line_co2_toan_cau.html"),
+    ("Top 15 quốc gia phát thải", "Bản tương tác · năm 2023",
+     "quan/bieu_do_tuong_tac/02_bar_top15.html"),
+    ("CO₂ bình quân đầu người", "Bản đồ tương tác · năm 2023",
+     "quan/bieu_do_tuong_tac/03_choropleth_co2pc.html"),
+    ("Cơ cấu phát thải theo ngành", "Bản tương tác · 1970–2024",
+     "quan/bieu_do_tuong_tac/04_stacked_area_nganh.html"),
+    ("Tỷ trọng phát thải theo ngành", "Treemap tương tác · năm 2024",
+     "quan/bieu_do_tuong_tac/05_treemap_nganh.html"),
+    ("CO₂/người và năng lượng tái tạo", "Scatter tương tác · năm 2023",
+     "quan/bieu_do_tuong_tac/06_scatter_co2pc_renewable.html"),
+]
 
 MENU = [
     ("overview", "Tổng quan", "grid"),
@@ -61,8 +112,8 @@ PAGE_INFO = {
         "Theo dõi nhiệt độ và phát thải CO₂ theo thời gian, khu vực và quốc gia.",
     ),
     "earth": ("Bản đồ khí hậu", "Khám phá dữ liệu theo quốc gia"),
-    "temperature": ("Nhiệt độ", "Xu hướng nhiệt độ theo thời gian và khu vực"),
-    "co2": ("Khí thải CO₂", "Phát thải tổng và bình quân đầu người"),
+    "temperature": ("Nhiệt độ", "EDA do Đức thực hiện · biểu đồ tĩnh và Plotly"),
+    "co2": ("Khí thải CO₂", "EDA do Quân thực hiện · biểu đồ tĩnh và Plotly"),
     "forecast": ("Dự báo", "Kịch bản xu hướng cho các giai đoạn tiếp theo"),
     "insights": ("Nhận định", "Các tín hiệu đáng chú ý trong dữ liệu"),
     "data": ("Dữ liệu", "Bảng dữ liệu và công cụ xuất tệp"),
@@ -328,6 +379,69 @@ def create_chart_card(
         className="card chart-card",
     )
 
+
+def create_eda_artifact_card(title, subtitle, path):
+    source = f"/eda-files/{path}"
+    media = (
+        html.Iframe(
+            src=source,
+            title=f"{title} — {subtitle}",
+            className="eda-artifact-frame",
+        )
+        if path.endswith(".html") else
+        html.Img(
+            src=source,
+            alt=f"{title} — {subtitle}",
+            className="eda-artifact-image",
+        )
+    )
+    return html.Article([
+        html.Div([
+            html.H3(title),
+            html.P(subtitle),
+        ], className="eda-artifact-heading"),
+        media,
+    ], className="card eda-artifact-card")
+
+
+def create_member_eda_gallery(member, description, artifacts, gallery_id):
+    formats = [
+        (
+            "Biểu đồ tĩnh",
+            "Ảnh PNG dùng trực tiếp trong báo cáo và slide.",
+            [item for item in artifacts if not item[2].endswith(".html")],
+        ),
+        (
+            "Biểu đồ tương tác Plotly",
+            "Có thể rê chuột, thu phóng và khám phá trực tiếp trên web.",
+            [item for item in artifacts if item[2].endswith(".html")],
+        ),
+    ]
+    return html.Section([
+        html.Div([
+            html.Div([
+                html.Span("SẢN PHẨM EDA CỦA THÀNH VIÊN", className="eyebrow"),
+                html.H2(member),
+                html.P(description),
+            ]),
+            html.Span(f"{len(artifacts)} tệp", className="eda-artifact-count"),
+        ], className="eda-gallery-heading"),
+        *[
+            html.Div([
+                html.Div([
+                    html.H3(title),
+                    html.P(note),
+                    html.Span(f"{len(items)} biểu đồ"),
+                ], className="eda-format-heading"),
+                html.Div(
+                    [create_eda_artifact_card(*item) for item in items],
+                    className="eda-artifact-grid",
+                ),
+            ], className="eda-format-section")
+            for title, note, items in formats if items
+        ],
+    ], id=gallery_id, className="eda-gallery")
+
 def create_kpi_card(label, value, unit, note, symbol, tone="blue"):
     value_row = html.Div([
         html.Strong(value, className=tone),
@@ -371,6 +485,8 @@ def country_from_click(click_data, available):
 
     point = click_data["points"][0]
     country = point.get("location") or point.get("customdata")
+    if isinstance(country, (list, tuple)):
+        country = country[0] if country else None
     return country if isinstance(country, str) and country in available else None
 
 def overview_details(frame, selected, year, scope):
@@ -478,7 +594,7 @@ def create_overview(frame, selected, scope, metric):
         selection,
         graph(globe, "overview-globe", globe=True),
         timeline,
-        html.P("Vùng có màu: có dữ liệu · Mt = triệu tấn", className="overview-map-note"),
+        html.P("Có màu: có chỉ số · Xám: thiếu chỉ số · Mt = triệu tấn", className="overview-map-note"),
     ], className="overview-map-card")
     summary_card = html.Section(
         summary,
@@ -593,7 +709,7 @@ def create_earth(frame, selected, metric):
             icon("globe"),
             html.Div([
                 html.H3("Bản đồ khí hậu tương tác"),
-                html.P(f"{snapshot.iso_alpha.nunique()} quốc gia có dữ liệu"),
+                html.P(f"{snapshot.iso_alpha.nunique()} quốc gia/vùng lãnh thổ"),
             ]),
         ], className="globe-heading"),
         html.Span(str(year), className="globe-year"),
@@ -615,8 +731,8 @@ def create_earth(frame, selected, metric):
         ),
     ], className="globe-toolbar")
     globe_footer = html.Div([
-        html.Span("BẢN ĐỒ TƯƠNG TÁC", className="globe-caption"),
-        html.Span("● Quốc gia đang chọn", className="globe-selected-key"),
+        html.Span("Có màu: có chỉ số · Xám: thiếu chỉ số", className="globe-caption"),
+        html.Span("Viền xanh: quốc gia đang chọn", className="globe-selected-key"),
     ], className="globe-footer")
     globe_card = html.Section([
         globe_header,
@@ -640,150 +756,30 @@ def create_earth(frame, selected, metric):
         html.Div(create_earth_lower(frame, selected), id="earth-lower"),
     ]
 
-def create_temperature_page(frame, series, scope):
-    valid_series = series.dropna(subset=["temperature_anomaly"])
-    if valid_series.empty:
-        return _empty("Không có dữ liệu nhiệt độ trong phạm vi đã chọn.")
-    first, last = valid_series.iloc[0], valid_series.iloc[-1]
-    change = last.temperature_anomaly - first.temperature_anomaly
-    kpis = [
-        create_kpi_card(
-            "Biến đổi nhiệt độ hiện tại",
-            f"{last.temperature_anomaly:+.2f}",
-            "°C",
-            f"{scope} · Dữ liệu quan trắc",
-            "thermometer",
-            "red",
-        ),
-        create_kpi_card(
-            "Thay đổi từ đầu giai đoạn",
-            f"{change:+.2f}",
-            "°C",
-            f"So với mốc {int(first.year)} trong mẫu",
-            "trend",
-            "red",
-        ),
-        create_kpi_card(
-            "Năm mới nhất",
-            str(int(last.year)),
-            "",
-            "Mốc gần nhất có số liệu nhiệt độ",
-            "calendar",
-            "navy",
-        ),
-    ]
-    charts = [
-        create_chart_card(
-            "Nhiệt độ qua các thập kỷ",
-            f"{scope} · °C so với mốc tham chiếu",
-            create_temperature_chart(valid_series, 280),
-            "thermometer",
-        ),
-        create_chart_card(
-            "Nhiệt độ trung bình theo thập kỷ",
-            "Trung bình các năm trong từng thập kỷ",
-            create_decade_chart(valid_series),
-            "compare",
-        ),
-        create_chart_card(
-            "Phân bố nhiệt độ trong mẫu",
-            f"{frame.iso_alpha.nunique()} quốc gia trong phạm vi lọc",
-            create_box_chart(frame),
-            "scatter",
-        ),
-        create_chart_card(
-            "Châu lục × Thập kỷ",
-            "Nhiệt độ trung bình theo khu vực",
-            create_heatmap(frame),
-            "grid",
-        ),
-    ]
+def create_temperature_page():
     return [
-        html.Div(kpis, className="kpi-grid three"),
-        html.Div(charts, className="chart-grid"),
+        create_member_eda_gallery(
+            "Phân tích nhiệt độ — Đức",
+            (
+                "Toàn bộ biểu đồ nhiệt độ do Đức xử lý và bàn giao từ "
+                "dữ liệu NASA GISTEMP và FAOSTAT đã làm sạch."
+            ),
+            DUC_TEMPERATURE_ARTIFACTS,
+            "duc-eda-gallery",
+        ),
     ]
 
-def create_co2_page(frame, series, scope, selected):
-    valid_series = series.dropna(subset=["co2"])
-    if valid_series.empty:
-        return _empty("Không có dữ liệu CO₂ trong phạm vi đã chọn.")
-    first, last = valid_series.iloc[0], valid_series.iloc[-1]
-    growth = (last.co2 / first.co2 - 1) * 100 if first.co2 else float("nan")
-    snapshot = frame[frame.year == last.year]
-    sector_frame = filter_sector_data(frame)
-    renewable_years = frame.loc[frame.renewable_percent.notna(), "year"]
-    renewable_snapshot = (
-        frame[frame.year == renewable_years.max()] if not renewable_years.empty
-        else frame.iloc[0:0]
-    )
-    kpis = [
-        create_kpi_card(
-            "Tổng phát thải CO₂",
-            f"{last.co2:,.1f}",
-            "Mt",
-            f"{scope} · Tổng trong mẫu",
-            "cloud",
-        ),
-        create_kpi_card(
-            "Phát thải bình quân",
-            f"{last.co2_per_capita:.2f}",
-            "tấn/người",
-            "CO₂ chia cho dân số",
-            "leaf",
-            "green",
-        ),
-        create_kpi_card(
-            "Tăng trưởng trong giai đoạn",
-            format_number(growth, "+.1f"),
-            "%",
-            f"Từ {int(first.year)} đến {int(last.year)}",
-            "trend",
-        ),
-    ]
-    charts = [
-        create_chart_card(
-            "Xu hướng phát thải",
-            f"{scope} · Mt CO₂",
-            create_co2_chart(valid_series, 310),
-            "cloud",
-        ),
-        create_chart_card(
-            "Xếp hạng tổng phát thải",
-            f"Top 10 năm {int(last.year)}",
-            create_ranking_chart(snapshot, selected, limit=10, height=310),
-            "compare",
-        ),
-        create_chart_card(
-            "Phát thải theo châu lục",
-            "Tỷ trọng CO₂ trong mẫu",
-            create_composition_chart(snapshot),
-            "grid",
-        ),
-        create_chart_card(
-            "Bình quân đầu người",
-            "Đơn vị: tấn/người",
-            create_ranking_chart(snapshot, selected, "co2_per_capita", 10, 310),
-            "compare",
-        ),
-        create_chart_card(
-            "Cơ cấu phát thải theo ngành",
-            "8 nhóm ngành · EDGAR · Mt CO₂",
-            create_sector_chart(sector_frame, 330),
-            "grid",
-        ),
-        create_chart_card(
-            "Năng lượng tái tạo và CO₂/người",
-            (
-                "Tỷ trọng trong tiêu thụ năng lượng cuối cùng"
-                + (f" · {int(renewable_snapshot.year.max())}" if not renewable_snapshot.empty else "")
-            ),
-            create_renewable_scatter_chart(renewable_snapshot, selected, 330),
-            "scatter",
-        ),
-    ]
+def create_co2_page():
     return [
-        html.Div(kpis, className="kpi-grid three"),
-        html.Div(charts, className="chart-grid"),
+        create_member_eda_gallery(
+            "Phân tích phát thải CO₂ — Quân",
+            (
+                "Toàn bộ biểu đồ CO₂, cơ cấu phát thải và năng lượng tái tạo "
+                "do Quân xử lý và bàn giao từ dữ liệu đã làm sạch."
+            ),
+            QUAN_ARTIFACTS,
+            "quan-eda-gallery",
+        ),
     ]
 
 def create_comparison_results(frame, country_a, country_b):
@@ -957,7 +953,17 @@ def create_forecast_page():
             html.Tbody(scenario_rows),
         ], className="data-table comparison-table"),
     ], className="card table-wrap")
-    return [notice, kpis, chart, scenario_table]
+    duc_reference = create_member_eda_gallery(
+        "Đức — hồi quy tham khảo",
+        (
+            "Hai tệp này là phân tích khám phá theo năm do Đức bàn giao. "
+            "Mô hình chính, phép chia train/test và ba kịch bản phía trên "
+            "thuộc phần Nguyên Khang."
+        ),
+        DUC_FORECAST_ARTIFACTS,
+        "duc-forecast-gallery",
+    )
+    return [notice, kpis, chart, scenario_table, duc_reference]
 
 def create_insights_page(frame, series, scope, selected):
     first, last = series.iloc[0], series.iloc[-1]
@@ -1254,6 +1260,7 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
         )
 
     title, subtitle = PAGE_INFO[page]
+    filterless = page in ("temperature", "co2", "forecast", "settings")
 
     pages_with_all_countries = {"overview", "earth", "comparison", "relationship", "forecast"}
     country_filter = "all" if page in pages_with_all_countries else country
@@ -1269,7 +1276,15 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
         and country != "all"
         and country not in frame.iso_alpha.values
     )
-    if frame.empty or invalid_overview_country:
+    if page == "temperature":
+        content = create_temperature_page()
+    elif page == "co2":
+        content = create_co2_page()
+    elif page == "forecast":
+        content = create_forecast_page()
+    elif page == "settings":
+        content = create_settings_page(preferences or {})
+    elif frame.empty or invalid_overview_country:
         content = _empty(
             html.H2("Chưa có dữ liệu trong phạm vi này"),
             html.P("Chọn quốc gia hoặc khoảng năm khác trong bộ lọc phía trên."),
@@ -1278,22 +1293,14 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
         content = create_overview(frame, country, scope, metric)
     elif page == "earth":
         content = create_earth(frame, country if country != "all" else previous_country, metric)
-    elif page == "temperature":
-        content = create_temperature_page(frame, series, scope)
-    elif page == "co2":
-        content = create_co2_page(frame, series, scope, country)
     elif page == "comparison":
         content = create_comparison_page(frame)
     elif page == "relationship":
         content = create_relationship_page(frame, country)
-    elif page == "forecast":
-        content = create_forecast_page()
     elif page == "insights":
         content = create_insights_page(frame, series, scope, country)
-    elif page == "data":
-        content = create_data_page(frame)
     else:
-        content = create_settings_page(preferences or {})
+        content = create_data_page(frame)
 
     content = html.Div(content, key=page)
     navigation_classes = [
@@ -1302,10 +1309,9 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
     ]
     country_field_class = (
         "filter-field hidden-filter"
-        if page in ("comparison", "forecast", "settings")
-        else "filter-field"
+        if filterless or page == "comparison" else "filter-field"
     )
-    if page in ("forecast", "settings"):
+    if filterless:
         filter_class = "filter-bar hidden-filter"
     elif page == "comparison":
         filter_class = "filter-bar one-filter"
@@ -1316,7 +1322,7 @@ def render_page(route, years, continent, country, metric, preferences=None, prev
     return (
         content, title, subtitle,
         navigation_classes,
-        page in ("comparison", "forecast", "settings"),
+        filterless or page == "comparison",
         country_field_class,
         page not in ("overview", "earth"),
         {} if page in ("overview", "earth") else {"display": "none"},
@@ -1414,20 +1420,20 @@ def update_overview(
     State("year-range", "value"),
     State("continent-filter", "value"),
     State("country-filter", "value"),
+    State("selected-country", "data"),
     State("globe", "relayoutData"),
     State("globe", "figure"),
     prevent_initial_call=True,
 )
 def update_selected_country(
-    click, resets, map_view, metric, years, continent, country, view, current_figure
+    click, resets, map_view, metric, years, continent, country,
+    selected, view, current_figure,
 ):
     frame = filter_data(years, continent)
     available = set(frame.iso_alpha.unique())
     default = choose_country(frame, country)
-
-    figure_data = current_figure.get("data", []) if current_figure else []
-    marker_data = figure_data[-1].get("customdata", [default]) if figure_data else [default]
-    selected = marker_data[0] if marker_data else default
+    shown = (current_figure or {}).get("layout", {}).get("meta", {}).get("selected")
+    selected = shown if shown in available else selected
     if selected not in available:
         selected = default
 

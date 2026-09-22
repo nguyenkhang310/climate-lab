@@ -858,6 +858,120 @@ h1, h2, h3, h4, p {
   grid-template-columns: 1fr;
 }
 
+.eda-gallery {
+  margin: 24px 0 16px;
+}
+
+.eda-gallery-heading {
+  margin-bottom: 14px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid #D8E7F2;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #FFFFFF, #F3F9FD);
+}
+
+.eda-gallery-heading h2 {
+  margin-top: 4px;
+  color: #153A72;
+  font-size: 20px;
+}
+
+.eda-gallery-heading p {
+  max-width: 760px;
+  margin-top: 6px;
+  color: var(--secondary);
+  font-size: 13px;
+}
+
+.eda-artifact-count {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #E9F4FC;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.eda-format-section+.eda-format-section {
+  margin-top: 26px;
+}
+
+.eda-format-heading {
+  margin: 0 2px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.eda-format-heading h3 {
+  color: #153A72;
+  font-size: 16px;
+}
+
+.eda-format-heading p,
+.eda-format-heading span {
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.eda-format-heading p {
+  flex: 1 1 260px;
+}
+
+.eda-format-heading span {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.eda-artifact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.eda-artifact-card {
+  overflow: hidden;
+}
+
+.eda-artifact-heading {
+  padding: 15px 18px 12px;
+  border-bottom: 1px solid #E7EEF5;
+}
+
+.eda-artifact-heading h3 {
+  color: #153A72;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.eda-artifact-heading p {
+  margin-top: 4px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.eda-artifact-image,
+.eda-artifact-frame {
+  width: 100%;
+  display: block;
+  border: 0;
+  background: #fff;
+}
+
+.eda-artifact-image {
+  height: auto;
+}
+
+.eda-artifact-frame {
+  height: 500px;
+}
+
 /* Tổng quan: một bản đồ lớn và hai biểu đồ cùng phạm vi dữ liệu. */
 .overview-grid {
   display: grid;
@@ -1008,7 +1122,8 @@ h1, h2, h3, h4, p {
   cursor: grabbing;
 }
 
-#overview-globe .choroplethlocation {
+#overview-globe .choroplethlocation,
+#globe .choroplethlocation {
   cursor: pointer;
 }
 
@@ -1511,7 +1626,7 @@ h1, h2, h3, h4, p {
     grid-template-columns: 1fr;
   }
 
-  .chart-grid, .relationship-grid, .stories {
+  .chart-grid, .eda-artifact-grid, .relationship-grid, .stories {
     grid-template-columns: 1fr;
   }
 
@@ -1695,6 +1810,14 @@ h1, h2, h3, h4, p {
     padding: 16px 14px 8px;
   }
 
+  .eda-gallery-heading {
+    padding: 16px 14px;
+  }
+
+  .eda-artifact-frame {
+    height: 390px;
+  }
+
   .chart-title h3 {
     font-size: 15px;
   }
@@ -1748,6 +1871,15 @@ h1, h2, h3, h4, p {
 
   .header-export span {
     display: none;
+  }
+
+  .eda-gallery-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .eda-artifact-frame {
+    height: 300px;
   }
 
   .overview-map-header>.map-view-switch,

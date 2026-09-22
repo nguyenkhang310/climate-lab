@@ -28,18 +28,18 @@ OWID_CONTINENT = RAW / "04_dung_chung_danh_muc_quoc_gia" / "owid_quoc_gia_chau_l
 
 DATA_DICTIONARY = {
     "nhiet_do_toan_cau.csv": {
-        "year": "Năm quan sát (1880–2025). Năm 2026 chưa đủ 12 tháng nên loại bỏ.",
-        "decade": "Thập kỷ quan sát = (year // 10) * 10.",
-        "temperature_anomaly": "Độ lệch nhiệt độ năm toàn cầu (°C) so với baseline 1951–1980 (NASA GISTEMP v4, J-D)."
+        "year": "Năm quan sát (1880–2025). Năm 2026 chưa đủ 12 tháng nên được loại bỏ.",
+        "decade": "Thập kỷ quan sát = (year // 10) * 10 (ví dụ 2020s là 2020–2025).",
+        "temperature_anomaly": "Độ lệch nhiệt độ trung bình năm toàn cầu (°C) so với thời kỳ cơ sở 1951–1980 (NASA GISTEMP v4, cột J-D)."
     },
     "nhiet_do_quoc_gia.csv": {
-        "country": "Tên quốc gia / lãnh thổ chuẩn hóa.",
-        "iso_alpha": "Mã quốc gia chuẩn ISO-3166-1 alpha-3, khóa ghép cùng year.",
-        "continent": "Châu lục theo OWID (null nếu là vùng đặc thù: ATA, ATF, SJM).",
-        "year": "Năm quan sát (1961–2025).",
+        "country": "Tên quốc gia / lãnh thổ chuẩn hóa (theo danh mục OWID / ISO-3166).",
+        "iso_alpha": "Mã quốc gia chuẩn ISO-3166-1 alpha-3 (3 ký tự viết hoa), dùng làm khóa ghép bảng chính cùng cột year.",
+        "continent": "Châu lục theo phân loại OWID (Africa, Asia, Europe, North America, South America, Oceania; null nếu là vùng đặc thù như ATA).",
+        "year": "Năm quan sát (1961–2025; phân tích chính 1970–2024).",
         "decade": "Thập kỷ quan sát = (year // 10) * 10.",
-        "temperature_anomaly": "Độ lệch nhiệt độ đất liền (°C) so với baseline 1951–1980 (FAOSTAT Meteorological year).",
-        "source_flag": "Cờ nguồn FAO: 'E' = Estimated value, null = Quan sát trực tiếp hoặc thiếu."
+        "temperature_anomaly": "Độ lệch nhiệt độ trên đất liền (°C) so với thời kỳ cơ sở 1951–1980 (FAOSTAT Temperature change on land, Meteorological year).",
+        "source_flag": "Cờ chất lượng nguồn dữ liệu từ FAO: 'E' = Estimated value, null = Giá trị quan sát trực tiếp hoặc thiếu."
     }
 }
 
@@ -149,7 +149,7 @@ def clean_faostat() -> tuple[pd.DataFrame, dict]:
         },
         "top_positive_extremes": out.nlargest(5, "temperature_anomaly")[["country", "iso_alpha", "year", "temperature_anomaly", "source_flag"]].to_dict("records"),
         "top_negative_extremes": out.nsmallest(5, "temperature_anomaly")[["country", "iso_alpha", "year", "temperature_anomaly", "source_flag"]].to_dict("records"),
-        "outlier_interpretation": "Trong 199 quan sát ngoại lai theo ngưỡng IQR ([-1.33°C, 2.42°C]), có 178 điểm ngoại lai nóng (> 2.42°C) tập trung tại các vùng cực Bắc (Svalbard, Greenland, Nga, Canada) sau năm 2010. Có 21 điểm ngoại lai lạnh (< -1.33°C) chủ yếu xảy ra ở các thập niên trước (Greenland 1983, Canada 1972). Toàn bộ ngoại lai nóng đều mang cờ FAO 'E' (Estimated), phản ánh hiện tượng Khuếch đại Bắc Cực (Arctic Amplification) có thật, không phải lỗi nhập liệu."
+        "outlier_interpretation": "Trong 199 quan sát ngoại lai theo ngưỡng IQR ([-1.33°C, 2.42°C]), có 178 điểm ngoại lai nóng (> 2.42°C) tập trung nhiều tại các vùng vĩ độ cao sau năm 2010 và 21 điểm ngoại lai lạnh (< -1.33°C) chủ yếu ở các thập niên trước. Tất cả các điểm này mang cờ FAO 'E' (Estimated), vì vậy được giữ nguyên nhưng phải diễn giải thận trọng; cờ 'E' không tự chứng minh giá trị là quan sát trực tiếp hay không có sai số."
     }
     return out, stats
 

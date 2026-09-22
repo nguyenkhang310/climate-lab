@@ -54,6 +54,14 @@ def main() -> None:
             "map_view": "flat",
         }
 
+        page.locator('a[href="#earth"]').first.click()
+        page.get_by_text("Bản đồ khí hậu theo quốc gia", exact=True).wait_for()
+        page.locator("#earth-map-view label").filter(has_text="Bản đồ ngang").click()
+        page.wait_for_function(
+            "() => [...document.querySelectorAll('#earth-map-view input')].some(input => input.checked && input.parentElement.textContent.includes('Bản đồ ngang'))"
+        )
+        page.locator("#reset-globe").click()
+
         for route, expected_title in PAGES.items():
             page.locator(f'a[href="#{route}"]').first.click()
             page.wait_for_function(
@@ -80,12 +88,37 @@ def main() -> None:
         checked["export"] = {"filename": download.suggested_filename}
 
         page.locator('a[href="#co2"]').first.click()
-        page.get_by_text("Cơ cấu phát thải theo ngành", exact=True).wait_for()
-        page.get_by_text("Năng lượng tái tạo và CO₂/người", exact=True).wait_for()
+        quan_gallery = page.locator("#quan-eda-gallery")
+        quan_gallery.wait_for()
+        quan_gallery.get_by_text("Biểu đồ tĩnh", exact=True).wait_for()
+        quan_gallery.get_by_text("Biểu đồ tương tác Plotly", exact=True).wait_for()
+        if quan_gallery.locator("img").count() != 5:
+            raise AssertionError("Trang CO₂ chưa hiển thị đủ 5 biểu đồ tĩnh của Quân")
+        if quan_gallery.locator("iframe").count() != 6:
+            raise AssertionError("Trang CO₂ chưa hiển thị đủ 6 biểu đồ tương tác của Quân")
+        if page.locator("#page-content .js-plotly-plot").count() != 0:
+            raise AssertionError("Trang CO₂ còn biểu đồ dashboard không thuộc phần Quân")
+
+        page.locator('a[href="#temperature"]').first.click()
+        duc_gallery = page.locator("#duc-eda-gallery")
+        duc_gallery.wait_for()
+        duc_gallery.get_by_text("Biểu đồ tĩnh", exact=True).wait_for()
+        duc_gallery.get_by_text("Biểu đồ tương tác Plotly", exact=True).wait_for()
+        if duc_gallery.locator("img").count() != 5:
+            raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 5 biểu đồ tĩnh của Đức")
+        if duc_gallery.locator("iframe").count() != 1:
+            raise AssertionError("Trang Nhiệt độ chưa hiển thị bản đồ tương tác của Đức")
+        if page.locator("#page-content .js-plotly-plot").count() != 0:
+            raise AssertionError("Trang Nhiệt độ còn biểu đồ dashboard không thuộc phần Đức")
 
         page.locator('a[href="#forecast"]').first.click()
         page.get_by_text("R² kiểm tra", exact=True).wait_for()
         page.get_by_text("Kết quả tại năm 2050", exact=True).wait_for()
+        page.locator("#duc-forecast-gallery").wait_for()
+        if page.locator("#duc-forecast-gallery img").count() != 1:
+            raise AssertionError("Trang Dự báo thiếu biểu đồ hồi quy tĩnh tham khảo của Đức")
+        if page.locator("#duc-forecast-gallery iframe").count() != 1:
+            raise AssertionError("Trang Dự báo thiếu biểu đồ hồi quy tương tác tham khảo của Đức")
         page.screenshot(path="/tmp/climate_dashboard_desktop.png", full_page=True)
 
         page.set_viewport_size({"width": 390, "height": 844})

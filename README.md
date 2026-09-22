@@ -10,6 +10,7 @@ quốc gia (1970–2024), kèm mô hình mô phỏng nhiệt độ toàn cầu �
 pip install -r requirements.txt
 
 # 1. Làm sạch (Đức/Quân) → 2. Ghép bảng (Khang) → 3. Mô hình → 4. Dashboard
+python scripts/duc/lam_sach_du_lieu.py
 python scripts/quan/lam_sach_du_lieu.py
 python scripts/nguyen_khang/chuan_bi_du_lieu_dashboard.py
 python models/nguyen_khang/mo_hinh_nhiet_do.py
@@ -49,7 +50,7 @@ scripts/nguyen_khang/                   # Pipeline ghép bảng dashboard (Khang
 processed/{duc,quan,nguyen_khang}/      # Bảng sạch theo chủ sở hữu
 eda/{duc,quan}/bieu_do_tinh/            # Biểu đồ PNG theo chủ sở hữu
 eda/{duc,quan}/bieu_do_tuong_tac/       # Biểu đồ HTML tương tác theo chủ sở hữu
-reports/quan/                           # Insight và diễn giải kết quả của Quân
+reports/{duc,quan}/                     # Insight và diễn giải kết quả theo thành viên
 models/nguyen_khang/                    # Mô hình hồi quy
 outputs/nguyen_khang/                   # Chỉ số đánh giá + dự báo đến 2050
 tests/                                  # Unit test + browser smoke test
@@ -59,6 +60,12 @@ tests/                                  # Unit test + browser smoke test
 
 Tổng quan · Bản đồ khí hậu · Nhiệt độ · Khí thải CO₂ · So sánh quốc gia ·
 Tương quan dữ liệu · Dự báo · Nhận định · Dữ liệu (bảng + tải CSV) · Cài đặt.
+
+Trang **Nhiệt độ** chỉ hiển thị EDA của Đức; trang **Khí thải CO₂** chỉ hiển thị EDA
+của Quân. Mỗi trang chia rõ **Biểu đồ tĩnh** và **Biểu đồ tương tác Plotly** để dùng khi
+báo cáo. Trang **Dự báo** chỉ giữ thêm hai biểu đồ hồi quy tham khảo của Đức, tách biệt
+với mô hình chính của Nguyên Khang. Bản đồ khí hậu đọc trực tiếp bảng hợp nhất từ dữ liệu
+đã làm sạch của Đức và Quân, giữ nguyên giá trị thiếu thay vì tự điền số.
 
 ## Mô hình (trang Dự báo)
 

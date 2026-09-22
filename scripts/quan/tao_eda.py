@@ -11,7 +11,11 @@ OUT = ROOT / "eda" / "quan" / "bieu_do_tinh"
 PROC = ROOT / "processed" / "quan"
 
 sns.set_theme(style="whitegrid")
-plt.rcParams.update({"figure.dpi": 150, "font.size": 10})
+plt.rcParams.update({
+    "figure.dpi": 150,
+    "font.family": "DejaVu Sans",
+    "font.size": 10,
+})
 OUT.mkdir(parents=True, exist_ok=True)
 
 def main():

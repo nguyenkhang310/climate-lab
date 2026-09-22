@@ -3,8 +3,8 @@
     1970,
     2024
   ],
-  "rows": 13131,
-  "countries_or_territories": 241,
+  "rows": 13296,
+  "countries_or_territories": 244,
   "continents": [
     "Africa",
     "Antarctica",
@@ -16,14 +16,14 @@
   ],
   "duplicate_keys": 0,
   "coverage_non_null": {
-    "temperature_anomaly": 0.8735,
-    "co2": 0.8782,
-    "co2_per_capita": 0.8718,
-    "population": 0.9047,
-    "renewable_percent": 0.5843
+    "temperature_anomaly": 0.8832,
+    "co2": 0.8673,
+    "co2_per_capita": 0.861,
+    "population": 0.8935,
+    "renewable_percent": 0.5771
   },
   "countries_with_data": {
-    "temperature_anomaly": 231,
+    "temperature_anomaly": 236,
     "co2": 215,
     "co2_per_capita": 213,
     "population": 216,

@@ -23,7 +23,7 @@ Dựa trên biểu đồ đường (`01_xu_huong_nhiet_do_toan_cau.png`) và bi�
   - Thập niên 2010s: Trung bình **+0.81°C** (0.807°C).
   - Thập niên 2020s (2020–2025): Trung bình vọt lên **+1.07°C** (1.067°C).
 - **Kỷ lục lịch sử quan sát được:**
-  - **Top 1:** Năm **2024 (+1.29°C)** — năm nóng nhất trong lịch sử nhân loại kể từ khi có dữ liệu đo đạc (1880).
+  - **Top 1:** Năm **2024 (+1.29°C)** — giá trị cao nhất trong chuỗi NASA GISTEMP đang dùng (1880–2025).
   - **Top 2:** Năm **2025 (+1.19°C)** — tiếp tục duy trì mức nhiệt cao chưa từng thấy.
   - **Top 3:** Năm **2023 (+1.17°C)** — năm khởi đầu chuỗi phá kỷ lục nhiệt độ cực đoan.
   - **Top 4:** Năm **2016** và **2020** (cùng đạt **+1.01°C**).
@@ -69,13 +69,17 @@ Dựa trên biểu đồ hộp (`05_phan_bo_nhiet_do_quoc_gia.png`):
   - Khoảng tứ phân vị (IQR) tăng từ **0.41°C** (1960s) lên **0.84°C** (2020s) — tăng hơn gấp đôi. Điều này phản ánh sự phân hóa sâu sắc và bất bình đẳng khí hậu ngày càng trầm trọng giữa các khu vực địa lý.
 - **3. Phân tích Outliers (Ngưỡng IQR tổng thể: [-1.33°C, +2.42°C]):**
   - Trong tổng số 199 quan sát ngoại lai:
-    * **178 ngoại lai nóng (High outliers > +2.42°C)**: Tập trung cao độ ở Bắc Cực (Svalbard, Nga, Estonia, Canada...) vào các năm sau 2010. Toàn bộ đều mang cờ FAO `'E'` (Estimated), chứng minh đây là các đợt sốc nhiệt cực đoan có thật chứ không phải lỗi dữ liệu.
+    * **178 ngoại lai nóng (High outliers > +2.42°C)**: Tập trung nhiều ở các vùng vĩ độ cao (Svalbard, Nga, Estonia, Canada...) vào các năm sau 2010. Toàn bộ đều mang cờ FAO `'E'` (Estimated), vì vậy được giữ nguyên nhưng cần diễn giải thận trọng; cờ `'E'` không phải bằng chứng tự thân rằng giá trị không có sai số.
     * **21 ngoại lai lạnh (Low outliers < -1.33°C)**: Xuất hiện chủ yếu ở các thập niên trước (ví dụ: Greenland 1983: -2.43°C, Canada 1972: -1.78°C, Phần Lan 1966: -1.80°C).
-    * Ở thập niên 2020s, phần lớn các nước đều nóng lên, chỉ còn 2 ngoại lai lạnh cục bộ hiếm hoi là Nam Cực (2021: -0.59°C) và Botswana (2021: -0.32°C).
+    * Ở thập niên 2020s, hai quan sát thấp nhất là Nam Cực (2021: -0.59°C) và Botswana (2021: -0.32°C). Đây là các giá trị âm, **không phải ngoại lai lạnh theo ngưỡng IQR tổng thể -1.33°C**.
 
 ---
 
-## 4. Mô hình Hồi quy Tuyến tính & Dự báo Xu hướng đến năm 2050
+## 4. Biểu đồ hồi quy tham khảo — không phải mô hình chính của phần Đức
+
+Biểu đồ `06_du_bao_hoi_quy_tuyen_tinh.png / html` được giữ như một phân tích khám phá
+tuyến tính theo năm. Phần xây dựng, so sánh và lựa chọn mô hình dự báo chính của đồ án
+thuộc phạm vi **Nguyên Khang** và được trình bày trên trang Dự báo của dashboard.
 
 Dựa trên mô hình OLS và biểu đồ dự báo (`06_du_bao_hoi_quy_tuyen_tinh.png / html`):
 
@@ -93,11 +97,11 @@ $$\widehat{\text{temperature\_anomaly}} = -39.739 + 0.0202 \times \text{year}$$
 Khi thực hiện kiểm định ngoài mẫu (Out-of-sample test):
 - Huấn luyện trên tập Train (1970–2014): tốc độ tăng là **+0.173°C / thập kỷ**.
 - Áp dụng mô hình này cho tập Test (2015–2025): toàn bộ các điểm quan sát thực tế (đặc biệt là 2023–2025) đều nằm **cao hơn đáng kể** so với đường hồi quy dự báo ($\text{RMSE}_{\text{test}} = 0.2016^\circ\text{C}$).
-- Điều này chứng minh tốc độ biến đổi khí hậu đang có xu hướng **gia tốc (acceleration)** trong thập kỷ gần nhất do các vòng phản hồi khí hậu tích cực (băng tan giảm albedo, giải phóng khí nhà kính từ tầng đất đóng băng vĩnh cửu permafrost).
+- Sai số ngoài mẫu lớn hơn và các quan sát gần đây nằm cao hơn đường xu hướng **gợi ý** mô hình tuyến tính theo năm đang đánh giá thấp giai đoạn gần đây. Kết quả này không đủ để tự chứng minh gia tốc hay xác định nguyên nhân khí hậu.
 
 ### 4.3. Dự báo Xu hướng đến năm 2050
 - Nếu xu hướng tuyến tính hiện tại tiếp diễn, đến năm **2050**, độ lệch nhiệt độ toàn cầu dự báo đạt **+1.54°C** so với thời kỳ 1951–1980 (dải tin cậy 95%: **[+1.33°C, +1.76°C]**).
-- So với thời kỳ tiền công nghiệp (1850–1900, cao hơn mốc 1951–1980 khoảng 0.3°C), mức tăng toàn cầu sẽ vượt quá **+1.84°C**, chính thức vượt qua ngưỡng trần 1.5°C của Hiệp định Paris.
+- Không dùng phép cộng xấp xỉ giữa hai baseline để kết luận chính thức về ngưỡng 1.5°C của Hiệp định Paris; mô hình này chỉ là ngoại suy thống kê theo năm và không phải dự báo khí hậu chính thức.
 
 ---
 
@@ -112,4 +116,4 @@ Khi thực hiện kiểm định ngoài mẫu (Out-of-sample test):
 4. **Giá trị khuyết:** Tỷ lệ khuyết cột `temperature_anomaly` ở bảng quốc gia là **3.48%** (các đảo nhỏ hoặc năm gần nhất chưa đủ số liệu), tuân thủ nguyên tắc **giữ null**, không thay bằng 0.
 5. **Trực quan hóa chuẩn:**
    - Cả bản đồ Choropleth và Heatmap đều đã được cố định tâm thang màu tại đúng mốc **0.00°C** (`color_continuous_midpoint=0` và `center=0`).
-   - Bản đồ tương tác Plotly [`03_ban_do_nhiet_do.html`](file:///d:/HCMUTE/IDV/climate-lab/eda/duc/bieu_do_tuong_tac/03_ban_do_nhiet_do.html) đã tích hợp thanh trượt chọn năm (Year Slider) từ 1961 đến 2025.
+   - Bản đồ tương tác Plotly [`03_ban_do_nhiet_do.html`](../../eda/duc/bieu_do_tuong_tac/03_ban_do_nhiet_do.html) đã tích hợp thanh trượt chọn năm (Year Slider) từ 1961 đến 2025.
