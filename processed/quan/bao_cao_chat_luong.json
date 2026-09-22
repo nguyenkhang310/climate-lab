@@ -1,28 +1,37 @@
 {
   "data_dictionary": {
     "co2_quoc_gia.csv": {
-      "country": "Ten quoc gia/lanh tho (OWID)",
-      "iso_alpha": "Ma ISO3, khoa ghep cung year",
-      "continent": "Chau luc theo OWID (null neu khong ghep duoc: ATA)",
-      "year": "Nam (1750-2024; phan tich chinh 1970-2024)",
-      "decade": "Thap ky = floor(year/10)*10 (2020-2024 la giai doan chua du 10 nam)",
-      "co2": "Phat thai CO2 Mt/nam, khong gom thay doi su dung dat (GCP via OWID); null=thieu",
-      "co2_per_capita": "tan CO2/nguoi (khong LUC); null=thieu",
-      "population": "Dan so (nguoi); null=thieu"
+      "country": "Tên quốc gia/lãnh thổ (OWID)",
+      "iso_alpha": "Mã ISO3, khóa ghép cùng year",
+      "continent": "Châu lục theo OWID (null nếu không ghép được: ATA)",
+      "year": "Năm (1750–2024; phân tích chính 1970–2024)",
+      "decade": "Thập kỷ = floor(year/10)*10 (2020–2024 là giai đoạn chưa đủ 10 năm)",
+      "co2": "Phát thải CO₂ Mt/năm, không gồm thay đổi sử dụng đất (GCP qua OWID); null là thiếu",
+      "co2_per_capita": "Tấn CO₂/người (không gồm LUC); null là thiếu",
+      "co2_growth_pct": "Tăng trưởng CO₂ so với năm trước của cùng quốc gia (%/năm); năm đầu tiên của mỗi chuỗi là null",
+      "population": "Dân số (người); null là thiếu"
+    },
+    "co2_toan_cau.csv": {
+      "year": "Năm (dòng World của OWID, 1750–2024)",
+      "decade": "Thập kỷ = floor(year/10)*10",
+      "co2": "Phát thải CO₂ toàn cầu Mt/năm (dòng World trực tiếp, không tự cộng)",
+      "co2_per_capita": "Tấn CO₂/người toàn cầu",
+      "population": "Dân số toàn cầu (người)",
+      "cumulative_co2": "CO₂ tích lũy từ 1750 (Mt)"
     },
     "co2_theo_nganh.csv": {
-      "country": "Ten quoc gia (EDGAR)",
-      "iso_alpha": "Ma quoc gia EDGAR (tuong duong ISO3), khoa ghep cung year",
-      "year": "Nam (1970-2025, dang long)",
-      "sector": "Nganh EDGAR: Power Industry, Industrial Combustion, Transport, Buildings, Fuel Production, Agriculture, Processes, Waste",
-      "co2": "Phat thai CO2 Mt/nam cua nganh (Substance=CO2 da loc)",
-      "sector_share_percent": "Ty trong nganh trong tong CO2 quoc gia-nam (%)"
+      "country": "Tên quốc gia (EDGAR)",
+      "iso_alpha": "Mã quốc gia EDGAR (tương đương ISO3), khóa ghép cùng year",
+      "year": "Năm (1970–2025 dạng long; phân tích chính 1970–2024, 2025 là số sơ bộ)",
+      "sector": "Ngành EDGAR: Power Industry, Industrial Combustion, Transport, Buildings, Fuel Production, Agriculture, Processes, Waste",
+      "co2": "Phát thải CO₂ Mt/năm của ngành (đã lọc Substance = CO2)",
+      "sector_share_percent": "Tỷ trọng ngành trong tổng CO₂ quốc gia–năm (%)"
     },
     "nang_luong_tai_tao.csv": {
-      "country": "Ten quoc gia",
-      "iso_alpha": "Ma ISO3, khoa ghep cung year",
-      "year": "Nam (1990-2024; phan tich chinh 1990-2023 vi 2024 chi 84 nuoc)",
-      "renewable_percent": "% nang luong tai tao trong tong tieu thu nang luong cuoi cung (khong phai % dien tai tao)"
+      "country": "Tên quốc gia",
+      "iso_alpha": "Mã ISO3, khóa ghép cùng year",
+      "year": "Năm (1990–2024; phân tích chính 1990–2023 vì 2024 chỉ có 84 nước)",
+      "renewable_percent": "% năng lượng tái tạo trong tổng tiêu thụ năng lượng cuối cùng (không phải % điện tái tạo)"
     }
   },
   "quan_co2_quoc_gia": {
@@ -78,6 +87,7 @@
       "decade": 0.0,
       "co2": 0.449,
       "co2_per_capita": 0.4599,
+      "co2_growth_pct": 0.4749,
       "population": 0.0976
     },
     "continent_unmatched_iso": [
@@ -111,7 +121,599 @@
         "iso_alpha": "JPN",
         "co2": 986.91
       }
-    ]
+    ],
+    "outlier": {
+      "quy_tac": [
+        "O1. co2 < 0 là lỗi dữ liệu, loại khỏi phân tích.",
+        "O2. Quốc gia phát thải lớn không phải outlier, giữ nguyên.",
+        "O3. Biến động mạnh (|tăng trưởng| > 50% và |chênh lệch| > 1 Mt, giai đoạn 1970–2024) thì gắn cờ kiểm tra thủ công; giữ lại vì đều gắn với sự kiện lịch sử có thật.",
+        "O4. co2 == 0 là giá trị gốc trong nguồn, giữ nguyên và phân biệt với thiếu dữ liệu (null)."
+      ],
+      "co2_am": {
+        "so_dong": 0,
+        "quyet_dinh": "giữ"
+      },
+      "nuoc_phat_thai_lon": {
+        "quyet_dinh": "giữ toàn bộ, không coi là outlier",
+        "ghi_chu": "xem top_co2_2023"
+      },
+      "bien_dong_manh": {
+        "tieu_chi": "|tăng trưởng| > 50% và |chênh lệch| > 1 Mt (1970–2024)",
+        "so_dong": 70,
+        "quyet_dinh": "giữ toàn bộ",
+        "vi_du_dien_hinh": "Kuwait 1991 (+1202%, chiến tranh vùng Vịnh và cháy giếng dầu) rồi rơi về 1992; Libya 2020–2021 (nội chiến, phong tỏa dầu mỏ rồi phục hồi)",
+        "danh_sach": [
+          {
+            "country": "Kuwait",
+            "iso_alpha": "KWT",
+            "year": 1992,
+            "co2_mt": 29.683,
+            "tang_truong_pct": -94.0,
+            "chenh_lech_mt": -463.3
+          },
+          {
+            "country": "Kuwait",
+            "iso_alpha": "KWT",
+            "year": 1991,
+            "co2_mt": 492.979,
+            "tang_truong_pct": 1202.0,
+            "chenh_lech_mt": 455.1
+          },
+          {
+            "country": "Libya",
+            "iso_alpha": "LBY",
+            "year": 2020,
+            "co2_mt": 36.111,
+            "tang_truong_pct": -51.1,
+            "chenh_lech_mt": -37.7
+          },
+          {
+            "country": "Nigeria",
+            "iso_alpha": "NGA",
+            "year": 1994,
+            "co2_mt": 80.36,
+            "tang_truong_pct": 79.8,
+            "chenh_lech_mt": 35.7
+          },
+          {
+            "country": "North Korea",
+            "iso_alpha": "PRK",
+            "year": 2017,
+            "co2_mt": 69.708,
+            "tang_truong_pct": 103.6,
+            "chenh_lech_mt": 35.5
+          },
+          {
+            "country": "Iraq",
+            "iso_alpha": "IRQ",
+            "year": 2008,
+            "co2_mt": 94.335,
+            "tang_truong_pct": 53.7,
+            "chenh_lech_mt": 33.0
+          },
+          {
+            "country": "Libya",
+            "iso_alpha": "LBY",
+            "year": 2021,
+            "co2_mt": 56.312,
+            "tang_truong_pct": 55.9,
+            "chenh_lech_mt": 20.2
+          },
+          {
+            "country": "Kuwait",
+            "iso_alpha": "KWT",
+            "year": 1993,
+            "co2_mt": 49.163,
+            "tang_truong_pct": 65.6,
+            "chenh_lech_mt": 19.5
+          },
+          {
+            "country": "Mongolia",
+            "iso_alpha": "MNG",
+            "year": 2012,
+            "co2_mt": 34.996,
+            "tang_truong_pct": 63.8,
+            "chenh_lech_mt": 13.6
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 1986,
+            "co2_mt": 2.688,
+            "tang_truong_pct": -80.8,
+            "chenh_lech_mt": -11.3
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 1976,
+            "co2_mt": 18.254,
+            "tang_truong_pct": 113.6,
+            "chenh_lech_mt": 9.7
+          },
+          {
+            "country": "Algeria",
+            "iso_alpha": "DZA",
+            "year": 1972,
+            "co2_mt": 28.308,
+            "tang_truong_pct": 51.9,
+            "chenh_lech_mt": 9.7
+          },
+          {
+            "country": "Qatar",
+            "iso_alpha": "QAT",
+            "year": 1992,
+            "co2_mt": 26.816,
+            "tang_truong_pct": 54.0,
+            "chenh_lech_mt": 9.4
+          },
+          {
+            "country": "Bosnia and Herzegovina",
+            "iso_alpha": "BIH",
+            "year": 1994,
+            "co2_mt": 3.205,
+            "tang_truong_pct": -74.5,
+            "chenh_lech_mt": -9.4
+          },
+          {
+            "country": "Ecuador",
+            "iso_alpha": "ECU",
+            "year": 1995,
+            "co2_mt": 23.534,
+            "tang_truong_pct": 64.1,
+            "chenh_lech_mt": 9.2
+          },
+          {
+            "country": "Mongolia",
+            "iso_alpha": "MNG",
+            "year": 2011,
+            "co2_mt": 21.368,
+            "tang_truong_pct": 55.2,
+            "chenh_lech_mt": 7.6
+          },
+          {
+            "country": "Laos",
+            "iso_alpha": "LAO",
+            "year": 2016,
+            "co2_mt": 16.407,
+            "tang_truong_pct": 78.6,
+            "chenh_lech_mt": 7.2
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 1984,
+            "co2_mt": 11.98,
+            "tang_truong_pct": 149.7,
+            "chenh_lech_mt": 7.2
+          },
+          {
+            "country": "Bahrain",
+            "iso_alpha": "BHR",
+            "year": 1993,
+            "co2_mt": 16.748,
+            "tang_truong_pct": 61.0,
+            "chenh_lech_mt": 6.3
+          },
+          {
+            "country": "Libya",
+            "iso_alpha": "LBY",
+            "year": 1976,
+            "co2_mt": 17.888,
+            "tang_truong_pct": 54.6,
+            "chenh_lech_mt": 6.3
+          },
+          {
+            "country": "Trinidad and Tobago",
+            "iso_alpha": "TTO",
+            "year": 1976,
+            "co2_mt": 15.911,
+            "tang_truong_pct": 65.5,
+            "chenh_lech_mt": 6.3
+          },
+          {
+            "country": "Qatar",
+            "iso_alpha": "QAT",
+            "year": 1991,
+            "co2_mt": 17.414,
+            "tang_truong_pct": 52.4,
+            "chenh_lech_mt": 6.0
+          },
+          {
+            "country": "Angola",
+            "iso_alpha": "AGO",
+            "year": 1994,
+            "co2_mt": 11.353,
+            "tang_truong_pct": 97.5,
+            "chenh_lech_mt": 5.6
+          },
+          {
+            "country": "Cameroon",
+            "iso_alpha": "CMR",
+            "year": 1989,
+            "co2_mt": 7.578,
+            "tang_truong_pct": 251.8,
+            "chenh_lech_mt": 5.4
+          },
+          {
+            "country": "Bahamas",
+            "iso_alpha": "BHS",
+            "year": 1981,
+            "co2_mt": 2.798,
+            "tang_truong_pct": -64.9,
+            "chenh_lech_mt": -5.2
+          },
+          {
+            "country": "Bolivia",
+            "iso_alpha": "BOL",
+            "year": 1990,
+            "co2_mt": 10.018,
+            "tang_truong_pct": 101.3,
+            "chenh_lech_mt": 5.0
+          },
+          {
+            "country": "Cameroon",
+            "iso_alpha": "CMR",
+            "year": 1990,
+            "co2_mt": 2.605,
+            "tang_truong_pct": -65.6,
+            "chenh_lech_mt": -5.0
+          },
+          {
+            "country": "Oman",
+            "iso_alpha": "OMN",
+            "year": 1975,
+            "co2_mt": 7.251,
+            "tang_truong_pct": 210.7,
+            "chenh_lech_mt": 4.9
+          },
+          {
+            "country": "Brunei",
+            "iso_alpha": "BRN",
+            "year": 1981,
+            "co2_mt": 2.059,
+            "tang_truong_pct": -70.1,
+            "chenh_lech_mt": -4.8
+          },
+          {
+            "country": "Laos",
+            "iso_alpha": "LAO",
+            "year": 2015,
+            "co2_mt": 9.185,
+            "tang_truong_pct": 109.6,
+            "chenh_lech_mt": 4.8
+          },
+          {
+            "country": "Mozambique",
+            "iso_alpha": "MOZ",
+            "year": 2014,
+            "co2_mt": 8.118,
+            "tang_truong_pct": 126.8,
+            "chenh_lech_mt": 4.5
+          },
+          {
+            "country": "Cameroon",
+            "iso_alpha": "CMR",
+            "year": 1986,
+            "co2_mt": 1.993,
+            "tang_truong_pct": -69.2,
+            "chenh_lech_mt": -4.5
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 1998,
+            "co2_mt": 0.25,
+            "tang_truong_pct": -94.5,
+            "chenh_lech_mt": -4.3
+          },
+          {
+            "country": "Bahamas",
+            "iso_alpha": "BHS",
+            "year": 1971,
+            "co2_mt": 6.724,
+            "tang_truong_pct": 161.7,
+            "chenh_lech_mt": 4.2
+          },
+          {
+            "country": "Bosnia and Herzegovina",
+            "iso_alpha": "BIH",
+            "year": 1997,
+            "co2_mt": 8.366,
+            "tang_truong_pct": 97.3,
+            "chenh_lech_mt": 4.1
+          },
+          {
+            "country": "Georgia",
+            "iso_alpha": "GEO",
+            "year": 1995,
+            "co2_mt": 2.266,
+            "tang_truong_pct": -61.6,
+            "chenh_lech_mt": -3.6
+          },
+          {
+            "country": "Panama",
+            "iso_alpha": "PAN",
+            "year": 2021,
+            "co2_mt": 10.145,
+            "tang_truong_pct": 54.7,
+            "chenh_lech_mt": 3.6
+          },
+          {
+            "country": "Bahamas",
+            "iso_alpha": "BHS",
+            "year": 1977,
+            "co2_mt": 9.709,
+            "tang_truong_pct": 50.4,
+            "chenh_lech_mt": 3.3
+          },
+          {
+            "country": "Armenia",
+            "iso_alpha": "ARM",
+            "year": 1993,
+            "co2_mt": 2.51,
+            "tang_truong_pct": -56.1,
+            "chenh_lech_mt": -3.2
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 2000,
+            "co2_mt": 4.964,
+            "tang_truong_pct": 165.3,
+            "chenh_lech_mt": 3.1
+          },
+          {
+            "country": "Equatorial Guinea",
+            "iso_alpha": "GNQ",
+            "year": 2004,
+            "co2_mt": 6.137,
+            "tang_truong_pct": 96.1,
+            "chenh_lech_mt": 3.0
+          },
+          {
+            "country": "Mauritania",
+            "iso_alpha": "MRT",
+            "year": 1987,
+            "co2_mt": 3.243,
+            "tang_truong_pct": 767.1,
+            "chenh_lech_mt": 2.9
+          },
+          {
+            "country": "Tajikistan",
+            "iso_alpha": "TJK",
+            "year": 1994,
+            "co2_mt": 2.345,
+            "tang_truong_pct": -54.5,
+            "chenh_lech_mt": -2.8
+          },
+          {
+            "country": "Gabon",
+            "iso_alpha": "GAB",
+            "year": 1973,
+            "co2_mt": 5.309,
+            "tang_truong_pct": 94.0,
+            "chenh_lech_mt": 2.6
+          },
+          {
+            "country": "Brunei",
+            "iso_alpha": "BRN",
+            "year": 1988,
+            "co2_mt": 5.712,
+            "tang_truong_pct": 72.3,
+            "chenh_lech_mt": 2.4
+          },
+          {
+            "country": "Congo",
+            "iso_alpha": "COG",
+            "year": 1994,
+            "co2_mt": 3.384,
+            "tang_truong_pct": 191.7,
+            "chenh_lech_mt": 2.2
+          },
+          {
+            "country": "Guinea",
+            "iso_alpha": "GIN",
+            "year": 2017,
+            "co2_mt": 4.847,
+            "tang_truong_pct": 79.5,
+            "chenh_lech_mt": 2.1
+          },
+          {
+            "country": "Afghanistan",
+            "iso_alpha": "AFG",
+            "year": 2009,
+            "co2_mt": 6.388,
+            "tang_truong_pct": 50.2,
+            "chenh_lech_mt": 2.1
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 1989,
+            "co2_mt": 4.481,
+            "tang_truong_pct": 90.4,
+            "chenh_lech_mt": 2.1
+          },
+          {
+            "country": "Cote d'Ivoire",
+            "iso_alpha": "CIV",
+            "year": 1995,
+            "co2_mt": 6.225,
+            "tang_truong_pct": 50.6,
+            "chenh_lech_mt": 2.1
+          },
+          {
+            "country": "Cameroon",
+            "iso_alpha": "CMR",
+            "year": 1980,
+            "co2_mt": 3.886,
+            "tang_truong_pct": 114.1,
+            "chenh_lech_mt": 2.1
+          },
+          {
+            "country": "Cameroon",
+            "iso_alpha": "CMR",
+            "year": 1994,
+            "co2_mt": 4.88,
+            "tang_truong_pct": 70.3,
+            "chenh_lech_mt": 2.0
+          },
+          {
+            "country": "Mauritania",
+            "iso_alpha": "MRT",
+            "year": 1990,
+            "co2_mt": 0.854,
+            "tang_truong_pct": -69.5,
+            "chenh_lech_mt": -1.9
+          },
+          {
+            "country": "Angola",
+            "iso_alpha": "AGO",
+            "year": 1978,
+            "co2_mt": 5.4,
+            "tang_truong_pct": 53.1,
+            "chenh_lech_mt": 1.9
+          },
+          {
+            "country": "Oman",
+            "iso_alpha": "OMN",
+            "year": 1971,
+            "co2_mt": 2.092,
+            "tang_truong_pct": 794.0,
+            "chenh_lech_mt": 1.9
+          },
+          {
+            "country": "Georgia",
+            "iso_alpha": "GEO",
+            "year": 1996,
+            "co2_mt": 4.046,
+            "tang_truong_pct": 78.6,
+            "chenh_lech_mt": 1.8
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 1993,
+            "co2_mt": 4.87,
+            "tang_truong_pct": 54.4,
+            "chenh_lech_mt": 1.7
+          },
+          {
+            "country": "Tajikistan",
+            "iso_alpha": "TJK",
+            "year": 2014,
+            "co2_mt": 4.606,
+            "tang_truong_pct": 58.4,
+            "chenh_lech_mt": 1.7
+          },
+          {
+            "country": "Curacao",
+            "iso_alpha": "CUW",
+            "year": 1999,
+            "co2_mt": 1.871,
+            "tang_truong_pct": 648.4,
+            "chenh_lech_mt": 1.6
+          },
+          {
+            "country": "Aruba",
+            "iso_alpha": "ABW",
+            "year": 2000,
+            "co2_mt": 2.378,
+            "tang_truong_pct": 193.6,
+            "chenh_lech_mt": 1.6
+          },
+          {
+            "country": "Afghanistan",
+            "iso_alpha": "AFG",
+            "year": 2008,
+            "co2_mt": 4.254,
+            "tang_truong_pct": 51.9,
+            "chenh_lech_mt": 1.5
+          },
+          {
+            "country": "Liberia",
+            "iso_alpha": "LBR",
+            "year": 1982,
+            "co2_mt": 0.597,
+            "tang_truong_pct": -69.1,
+            "chenh_lech_mt": -1.3
+          },
+          {
+            "country": "Sint Maarten (Dutch part)",
+            "iso_alpha": "SXM",
+            "year": 1986,
+            "co2_mt": 0.299,
+            "tang_truong_pct": -80.8,
+            "chenh_lech_mt": -1.3
+          },
+          {
+            "country": "Yemen",
+            "iso_alpha": "YEM",
+            "year": 1973,
+            "co2_mt": 2.73,
+            "tang_truong_pct": 82.6,
+            "chenh_lech_mt": 1.2
+          },
+          {
+            "country": "Albania",
+            "iso_alpha": "ALB",
+            "year": 1999,
+            "co2_mt": 2.986,
+            "tang_truong_pct": 70.1,
+            "chenh_lech_mt": 1.2
+          },
+          {
+            "country": "Lesotho",
+            "iso_alpha": "LSO",
+            "year": 2021,
+            "co2_mt": 3.096,
+            "tang_truong_pct": 55.9,
+            "chenh_lech_mt": 1.1
+          },
+          {
+            "country": "Sint Maarten (Dutch part)",
+            "iso_alpha": "SXM",
+            "year": 1976,
+            "co2_mt": 2.032,
+            "tang_truong_pct": 113.7,
+            "chenh_lech_mt": 1.1
+          },
+          {
+            "country": "Equatorial Guinea",
+            "iso_alpha": "GNQ",
+            "year": 1994,
+            "co2_mt": 1.149,
+            "tang_truong_pct": 1541.4,
+            "chenh_lech_mt": 1.1
+          },
+          {
+            "country": "Togo",
+            "iso_alpha": "TGO",
+            "year": 1979,
+            "co2_mt": 1.381,
+            "tang_truong_pct": 289.0,
+            "chenh_lech_mt": 1.0
+          },
+          {
+            "country": "Togo",
+            "iso_alpha": "TGO",
+            "year": 2009,
+            "co2_mt": 2.536,
+            "tang_truong_pct": 66.5,
+            "chenh_lech_mt": 1.0
+          }
+        ]
+      },
+      "co2_bang_0": {
+        "quoc_gia_giai_doan_1970_2024": [
+          "Antarctica",
+          "Christmas Island",
+          "East Timor"
+        ],
+        "quyet_dinh": "giữ nguyên giá trị gốc, không thay bằng null"
+      }
+    }
   },
   "quan_co2_theo_nganh": {
     "rows_raw_wide": 4858,
@@ -225,9 +827,9 @@
     "continent_unmatched_iso": []
   },
   "notes": [
-    "co2 OWID don vi Mt/nam (khong gom thay doi su dung dat); co2_per_capita tan/nguoi; EDGAR Substance=CO2 don vi Mt CO2.",
-    "renewable_percent la ty le nang luong tai tao trong tong tieu thu nang luong cuoi cung (%), khong phai ty le dien tai tao.",
-    "Giai doan phan tich chinh 1970-2024; co nang luong tai tao thi 1990-2023 (2024 chi 84 quoc gia).",
-    "Quoc gia phat thai cao KHONG bi xoa; SCG (Serbia and Montenegro) giu continent=null va bao cao unmatched de Khang quyet dinh khi join."
+    "co2 OWID đơn vị Mt/năm (không gồm thay đổi sử dụng đất); co2_per_capita tính bằng tấn/người; EDGAR Substance = CO2 đơn vị Mt CO₂.",
+    "renewable_percent là tỷ lệ năng lượng tái tạo trong tổng tiêu thụ năng lượng cuối cùng (%), không phải tỷ lệ điện tái tạo.",
+    "Giai đoạn phân tích chính 1970–2024; có năng lượng tái tạo thì 1990–2023 (năm 2024 chỉ có 84 quốc gia). Năm 2025 của EDGAR là số sơ bộ, biểu đồ chốt ở 2024.",
+    "Quốc gia phát thải cao không bị xóa; SCG (Serbia and Montenegro) giữ continent = null và báo unmatched để quyết định khi ghép bảng."
   ]
 }

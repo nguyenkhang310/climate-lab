@@ -18,29 +18,29 @@ def main():
     figs = {}
     figs["01_line_co2_toan_cau"] = px.area(
         world, x="year", y="co2",
-        title="Phat thai CO2 toan cau 1970-2024 (Mt/nam, OWID/GCP - dong World)",
-        labels={"year": "Nam", "co2": "Mt CO2"})
+        title="Phát thải CO₂ toàn cầu 1970–2024 (Mt/năm, OWID/GCP – dòng World)",
+        labels={"year": "Năm", "co2": "Mt CO₂"})
     top = nat[nat["year"] == 2023].nlargest(15, "co2").sort_values("co2")
     figs["02_bar_top15"] = px.bar(
         top, x="co2", y="country", orientation="h", color="continent",
-        title="Top 15 quoc gia phat thai CO2 nam 2023 (Mt)",
-        labels={"co2": "Mt CO2", "country": "", "continent": "Chau luc"})
+        title="Top 15 quốc gia phát thải CO₂ năm 2023 (Mt)",
+        labels={"co2": "Mt CO₂", "country": "", "continent": "Châu lục"})
     snap = nat[nat["year"] == 2023]
     figs["03_choropleth_co2pc"] = px.choropleth(
         snap, locations="iso_alpha", color="co2_per_capita", hover_name="country",
-        title="CO2 binh quan dau nguoi nam 2023 (tan/nguoi)",
-        labels={"co2_per_capita": "tan/nguoi"},
+        title="CO₂ bình quân đầu người năm 2023 (tấn/người)",
+        labels={"co2_per_capita": "tấn/người"},
         color_continuous_scale="YlOrRd")
-    piv = sec.groupby(["year", "sector"])["co2"].sum().reset_index()
+    sec_main = sec[(sec["year"] >= 1970) & (sec["year"] <= 2024)]
+    piv = sec_main.groupby(["year", "sector"])["co2"].sum().reset_index()
     figs["04_stacked_area_nganh"] = px.area(
         piv, x="year", y="co2", color="sector",
-        title="Co cau phat thai CO2 theo nganh 1970-2025 (EDGAR, Mt)",
-        labels={"year": "Nam", "co2": "Mt CO2", "sector": "Nganh"})
-    y_last = int(sec["year"].max())
-    tree = sec[sec["year"] == y_last].groupby("sector")["co2"].sum().reset_index()
+        title="Cơ cấu phát thải CO₂ theo ngành 1970–2024 (EDGAR, Mt)",
+        labels={"year": "Năm", "co2": "Mt CO₂", "sector": "Ngành"})
+    tree = sec_main[sec_main["year"] == 2024].groupby("sector")["co2"].sum().reset_index()
     figs["05_treemap_nganh"] = px.treemap(
         tree, path=["sector"], values="co2",
-        title=f"Ty trong phat thai CO2 theo nganh nam {y_last} (EDGAR)")
+        title="Tỷ trọng phát thải CO₂ theo ngành năm 2024 (EDGAR)")
     j = nat[nat["year"] == 2023][["iso_alpha", "country", "continent",
                                   "co2_per_capita"]].merge(
         ren[ren["year"] == 2023][["iso_alpha", "renewable_percent"]],
@@ -48,9 +48,9 @@ def main():
     figs["06_scatter_co2pc_renewable"] = px.scatter(
         j, x="renewable_percent", y="co2_per_capita", color="continent",
         hover_name="country", size_max=10,
-        title="CO2/nguoi vs ty trong nang luong tai tao 2023",
-        labels={"renewable_percent": "% tai tao (tieu thu cuoi cung)",
-                "co2_per_capita": "tan CO2/nguoi", "continent": "Chau luc"})
+        title="CO₂/người và tỷ trọng năng lượng tái tạo 2023",
+        labels={"renewable_percent": "% tái tạo (tiêu thụ cuối cùng)",
+                "co2_per_capita": "tấn CO₂/người", "continent": "Châu lục"})
 
     for name, fig in figs.items():
         fig.write_html(OUT / f"{name}.html", include_plotlyjs="cdn")
