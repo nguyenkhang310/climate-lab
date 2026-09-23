@@ -8,6 +8,10 @@ PROC = ROOT / "processed" / "quan"
 OUT = ROOT / "eda" / "quan" / "bieu_do_tuong_tac"
 OUT.mkdir(parents=True, exist_ok=True)
 
+# Tắt zoom bằng lăn chuột để không "cướp" thao tác cuộn trang web.
+# Người xem vẫn zoom được bằng các nút trên thanh công cụ của biểu đồ.
+PLOTLY_CONFIG = {"scrollZoom": False}
+
 def main():
     nat = pd.read_csv(PROC / "co2_quoc_gia.csv")
     sec = pd.read_csv(PROC / "co2_theo_nganh.csv")
@@ -53,7 +57,7 @@ def main():
                 "co2_per_capita": "tấn CO₂/người", "continent": "Châu lục"})
 
     for name, fig in figs.items():
-        fig.write_html(OUT / f"{name}.html", include_plotlyjs="cdn")
+        fig.write_html(OUT / f"{name}.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
     print("Plotly OK:", sorted(p.name for p in OUT.glob("*.html")))
 
 if __name__ == "__main__":

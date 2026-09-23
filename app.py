@@ -49,49 +49,57 @@ def serve_eda_file(filename):
 
 
 DUC_TEMPERATURE_ARTIFACTS = [
-    ("Xu hướng nhiệt độ toàn cầu", "Bản tĩnh · NASA GISTEMP 1880–2025",
+    ("Xu hướng nhiệt độ toàn cầu", "1880–2025",
      "duc/bieu_do_tinh/01_xu_huong_nhiet_do_toan_cau.png"),
-    ("Nhiệt độ trung bình theo thập kỷ", "Bản tĩnh · NASA GISTEMP",
+    ("Xu hướng nhiệt độ toàn cầu", "1880–2025",
+     "duc/bieu_do_tuong_tac/01_xu_huong_nhiet_do_toan_cau.html"),
+    ("Nhiệt độ trung bình theo thập kỷ", "",
      "duc/bieu_do_tinh/02_nhiet_do_theo_thap_ky.png"),
-    ("Bản đồ nhiệt độ theo quốc gia", "Bản tĩnh · FAOSTAT",
+    ("Nhiệt độ trung bình theo thập kỷ", "",
+     "duc/bieu_do_tuong_tac/02_nhiet_do_theo_thap_ky.html"),
+    ("Bản đồ nhiệt độ theo quốc gia", "",
      "duc/bieu_do_tinh/03_ban_do_nhiet_do.png"),
-    ("Bản đồ nhiệt độ theo quốc gia", "Bản tương tác · kéo thanh năm để khám phá",
+    ("Bản đồ nhiệt độ theo quốc gia", "",
      "duc/bieu_do_tuong_tac/03_ban_do_nhiet_do.html"),
-    ("Nhiệt độ theo châu lục và thập kỷ", "Bản tĩnh · heatmap",
+    ("Nhiệt độ theo châu lục và thập kỷ", "",
      "duc/bieu_do_tinh/04_heatmap_chau_luc_thap_ky.png"),
-    ("Phân bố nhiệt độ giữa các quốc gia", "Bản tĩnh · boxplot theo thập kỷ",
+    ("Nhiệt độ theo châu lục và thập kỷ", "",
+     "duc/bieu_do_tuong_tac/04_heatmap_chau_luc_thap_ky.html"),
+    ("Phân bố nhiệt độ giữa các quốc gia", "Theo thập kỷ",
      "duc/bieu_do_tinh/05_phan_bo_nhiet_do_quoc_gia.png"),
+    ("Phân bố nhiệt độ giữa các quốc gia", "Theo thập kỷ",
+     "duc/bieu_do_tuong_tac/05_phan_bo_nhiet_do_quoc_gia.html"),
 ]
 
 DUC_FORECAST_ARTIFACTS = [
-    ("Hồi quy tuyến tính theo năm", "Bản tĩnh tham khảo từ EDA Đức",
+    ("Hồi quy tuyến tính theo năm", "",
      "duc/bieu_do_tinh/06_du_bao_hoi_quy_tuyen_tinh.png"),
-    ("Hồi quy tuyến tính theo năm", "Bản tương tác tham khảo từ EDA Đức",
+    ("Hồi quy tuyến tính theo năm", "",
      "duc/bieu_do_tuong_tac/06_du_bao_hoi_quy_tuyen_tinh.html"),
 ]
 
 QUAN_ARTIFACTS = [
-    ("Phát thải CO₂ toàn cầu", "Bản tĩnh · đường xu hướng 1970–2024",
+    ("Phát thải CO₂ toàn cầu", "1970–2024",
      "quan/bieu_do_tinh/01_line_co2_toan_cau.png"),
-    ("Top 15 quốc gia phát thải", "Bản tĩnh · năm 2023",
+    ("Top 15 quốc gia phát thải", "2023",
      "quan/bieu_do_tinh/02_bar_top15_quoc_gia.png"),
-    ("Cơ cấu phát thải theo ngành", "Bản tĩnh · stacked area 1970–2024",
+    ("Cơ cấu phát thải theo ngành", "1970–2024",
      "quan/bieu_do_tinh/03_area_co_cau_nganh.png"),
-    ("CO₂/người và năng lượng tái tạo", "Bản tĩnh · năm 2023",
+    ("CO₂/người và năng lượng tái tạo", "2023",
      "quan/bieu_do_tinh/04_scatter_co2pc_renewable.png"),
-    ("Độ phủ dữ liệu theo năm", "Bản tĩnh · số quốc gia có dữ liệu",
+    ("Độ phủ dữ liệu theo năm", "",
      "quan/bieu_do_tinh/05_line_do_phu_du_lieu.png"),
-    ("Phát thải CO₂ toàn cầu", "Bản tương tác · area chart 1970–2024",
+    ("Phát thải CO₂ toàn cầu", "1970–2024",
      "quan/bieu_do_tuong_tac/01_line_co2_toan_cau.html"),
-    ("Top 15 quốc gia phát thải", "Bản tương tác · năm 2023",
+    ("Top 15 quốc gia phát thải", "2023",
      "quan/bieu_do_tuong_tac/02_bar_top15.html"),
-    ("CO₂ bình quân đầu người", "Bản đồ tương tác · năm 2023",
+    ("CO₂ bình quân đầu người", "2023",
      "quan/bieu_do_tuong_tac/03_choropleth_co2pc.html"),
-    ("Cơ cấu phát thải theo ngành", "Bản tương tác · 1970–2024",
+    ("Cơ cấu phát thải theo ngành", "1970–2024",
      "quan/bieu_do_tuong_tac/04_stacked_area_nganh.html"),
-    ("Tỷ trọng phát thải theo ngành", "Treemap tương tác · năm 2024",
+    ("Tỷ trọng phát thải theo ngành", "2024",
      "quan/bieu_do_tuong_tac/05_treemap_nganh.html"),
-    ("CO₂/người và năng lượng tái tạo", "Scatter tương tác · năm 2023",
+    ("CO₂/người và năng lượng tái tạo", "2023",
      "quan/bieu_do_tuong_tac/06_scatter_co2pc_renewable.html"),
 ]
 
@@ -99,7 +107,7 @@ MENU = [
     ("overview", "Tổng quan", "grid"),
     ("earth", "Bản đồ khí hậu", "globe"),
     ("temperature", "Nhiệt độ", "thermometer"),
-    ("co2", "Khí thải CO₂", "cloud"),
+    ("co2", "Phát thải CO₂", "cloud"),
     ("forecast", "Dự báo", "trend"),
     ("insights", "Nhận định", "bulb"),
     ("data", "Dữ liệu", "database"),
@@ -109,17 +117,17 @@ MENU = [
 PAGE_INFO = {
     "overview": (
         "Tổng quan khí hậu",
-        "Theo dõi nhiệt độ và phát thải CO₂ theo thời gian, khu vực và quốc gia.",
+        "Nhiệt độ và CO₂ theo thời gian, khu vực và quốc gia.",
     ),
-    "earth": ("Bản đồ khí hậu", "Khám phá dữ liệu theo quốc gia"),
-    "temperature": ("Nhiệt độ", "EDA do Đức thực hiện · biểu đồ tĩnh và Plotly"),
-    "co2": ("Khí thải CO₂", "EDA do Quân thực hiện · biểu đồ tĩnh và Plotly"),
-    "forecast": ("Dự báo", "Kịch bản xu hướng cho các giai đoạn tiếp theo"),
-    "insights": ("Nhận định", "Các tín hiệu đáng chú ý trong dữ liệu"),
-    "data": ("Dữ liệu", "Bảng dữ liệu và công cụ xuất tệp"),
-    "settings": ("Cài đặt", "Tùy chỉnh trải nghiệm dashboard"),
-    "comparison": ("So sánh quốc gia", "Đối chiếu hai quốc gia trên cùng thước đo"),
-    "relationship": ("Tương quan dữ liệu", "Mối liên hệ giữa phát thải và nhiệt độ"),
+    "earth": ("Bản đồ khí hậu", "Dữ liệu theo quốc gia"),
+    "temperature": ("Nhiệt độ", "1880–2025 · theo năm, thập kỷ, châu lục"),
+    "co2": ("Phát thải CO₂", "1970–2024 · theo quốc gia, ngành"),
+    "forecast": ("Dự báo", "Xu hướng đến năm 2050"),
+    "insights": ("Nhận định", "Điểm nổi bật trong dữ liệu"),
+    "data": ("Dữ liệu", "Bảng dữ liệu và xuất CSV"),
+    "settings": ("Cài đặt", "Tùy chỉnh hiển thị"),
+    "comparison": ("So sánh quốc gia", "Đối chiếu hai quốc gia"),
+    "relationship": ("Tương quan dữ liệu", "Phát thải và nhiệt độ"),
 }
 MAP_VIEW_OPTIONS = [
     {"label": "Địa cầu", "value": "globe"},
@@ -177,8 +185,11 @@ def _select_field(label, dropdown_id, options, value, symbol=None,
     ], **wrapper)
 
 def _setting_row(title, desc, control_id, options, value):
+    copy = [html.H3(title)]
+    if desc:
+        copy.append(html.P(desc))
     return html.Div([
-        html.Div([html.H3(title), html.P(desc)]),
+        html.Div(copy),
         dcc.RadioItems(
             id=control_id, options=options, value=value,
             className="settings-radio", inline=True,
@@ -312,7 +323,7 @@ def create_filters():
     ]
     metric_options = [
         {"label": "Nhiệt độ", "value": "temperature"},
-        {"label": "Khí thải CO₂", "value": "co2"},
+        {"label": "Phát thải CO₂", "value": "co2"},
     ]
 
     year_filter = _select_field(
@@ -324,11 +335,11 @@ def create_filters():
         field_class="filter-field hidden-filter",
     )
     country_filter = _select_field(
-        "Phạm vi / Quốc gia", "country-filter", country_options, "all",
+        "Quốc gia", "country-filter", country_options, "all",
         symbol="globe", field_id="country-field", placeholder="Tìm quốc gia…",
     )
     metric_filter = _select_field(
-        "Chỉ số hiển thị", "metric-filter", metric_options, "temperature",
+        "Chỉ số", "metric-filter", metric_options, "temperature",
         symbol="chart", field_id="metric-field", searchable=False,
     )
 
@@ -380,65 +391,60 @@ def create_chart_card(
     )
 
 
-def create_eda_artifact_card(title, subtitle, path):
+def create_eda_media(title, subtitle, path, large=False):
     source = f"/eda-files/{path}"
-    media = (
-        html.Iframe(
+    label = title if not subtitle else f"{title} — {subtitle}"
+    size = "modal" if large else "artifact"
+    if path.endswith(".html"):
+        return html.Iframe(
             src=source,
-            title=f"{title} — {subtitle}",
-            className="eda-artifact-frame",
+            title=label,
+            className=f"eda-{size}-frame",
         )
-        if path.endswith(".html") else
-        html.Img(
-            src=source,
-            alt=f"{title} — {subtitle}",
-            className="eda-artifact-image",
-        )
+    return html.Img(
+        src=source,
+        alt=label,
+        className=f"eda-{size}-image",
     )
+
+
+def create_eda_artifact_card(title, subtitle, path):
+    heading = [html.H3(title)]
+    if subtitle:
+        heading.append(html.P(subtitle, className="small-meta"))
     return html.Article([
         html.Div([
-            html.H3(title),
-            html.P(subtitle),
+            html.Div(heading),
+            html.Button(
+                "Mở rộng",
+                id={"type": "expand-eda", "path": path},
+                n_clicks=0,
+                className="eda-expand-button",
+                title=f"Mở rộng {title}",
+            ),
         ], className="eda-artifact-heading"),
-        media,
+        create_eda_media(title, subtitle, path),
     ], className="card eda-artifact-card")
 
 
-def create_member_eda_gallery(member, description, artifacts, gallery_id):
+def create_member_eda_gallery(artifacts, gallery_id):
+    # Tương tác xếp trước để người xem khám phá trước, ảnh tĩnh để sau.
     formats = [
-        (
-            "Biểu đồ tĩnh",
-            "Ảnh PNG dùng trực tiếp trong báo cáo và slide.",
-            [item for item in artifacts if not item[2].endswith(".html")],
-        ),
-        (
-            "Biểu đồ tương tác Plotly",
-            "Có thể rê chuột, thu phóng và khám phá trực tiếp trên web.",
-            [item for item in artifacts if item[2].endswith(".html")],
-        ),
+        ("Biểu đồ tương tác", "interactive",
+         [item for item in artifacts if item[2].endswith(".html")]),
+        ("Biểu đồ tĩnh", "static",
+         [item for item in artifacts if not item[2].endswith(".html")]),
     ]
     return html.Section([
-        html.Div([
-            html.Div([
-                html.Span("SẢN PHẨM EDA CỦA THÀNH VIÊN", className="eyebrow"),
-                html.H2(member),
-                html.P(description),
-            ]),
-            html.Span(f"{len(artifacts)} tệp", className="eda-artifact-count"),
-        ], className="eda-gallery-heading"),
         *[
             html.Div([
-                html.Div([
-                    html.H3(title),
-                    html.P(note),
-                    html.Span(f"{len(items)} biểu đồ"),
-                ], className="eda-format-heading"),
+                html.Div(html.H3(title), className="eda-format-heading"),
                 html.Div(
                     [create_eda_artifact_card(*item) for item in items],
-                    className="eda-artifact-grid",
+                    className=f"eda-artifact-grid {kind}",
                 ),
-            ], className="eda-format-section")
-            for title, note, items in formats if items
+            ], className=f"eda-format-section {kind}")
+            for title, kind, items in formats if items
         ],
     ], id=gallery_id, className="eda-gallery")
 
@@ -498,7 +504,7 @@ def overview_details(frame, selected, year, scope):
     row = series[series.year == year].iloc[0]
     period = f"{int(series.year.min())} – {int(series.year.max())}"
     if selected == "all":
-        region = f"{chosen.iso_alpha.nunique()} quốc gia trong mẫu"
+        region = f"{chosen.iso_alpha.nunique()} quốc gia"
     else:
         region = chosen.iloc[0].continent
     metrics = [
@@ -509,7 +515,6 @@ def overview_details(frame, selected, year, scope):
     summary = [
         html.Div([
             html.Div([
-                html.Span("ĐANG XEM", className="selection-eyebrow"),
                 html.H2(scope),
                 html.P(region),
             ]),
@@ -571,7 +576,6 @@ def create_overview(frame, selected, scope, metric):
     selection = html.Div([
         html.Span(className="selection-dot"),
         html.Span(scope, id="overview-map-selection"),
-        html.Span("Dữ liệu quan trắc", className="overview-demo-label"),
     ], className="overview-map-selection", **{"aria-live": "polite"})
     timeline = html.Div([
         html.Div([
@@ -594,7 +598,6 @@ def create_overview(frame, selected, scope, metric):
         selection,
         graph(globe, "overview-globe", globe=True),
         timeline,
-        html.P("Có màu: có chỉ số · Xám: thiếu chỉ số · Mt = triệu tấn", className="overview-map-note"),
     ], className="overview-map-card")
     summary_card = html.Section(
         summary,
@@ -623,8 +626,7 @@ def create_country_panel(frame, selected):
     latest = series.iloc[-1]
     country_name = COUNTRY_NAMES[selected]
     heading = html.Div([
-        html.Span("VỊ TRÍ ĐANG CHỌN", className="eyebrow"),
-        html.Span(f"{int(latest.year)} · Dữ liệu quan trắc", className="small-meta"),
+        html.Span(f"{int(latest.year)}", className="small-meta"),
     ], className="country-eyebrow")
     metrics = html.Div([
         _stat_row("Nhiệt độ", f"{format_number(latest.temperature_anomaly, '+.2f')} °C", "red"),
@@ -655,7 +657,7 @@ def create_earth_lower(frame, selected):
     row = snapshot[snapshot.iso_alpha == selected].iloc[0]
     scatter_card = create_chart_card(
         "CO₂ và nhiệt độ",
-        f"Các quốc gia trong mẫu · {year}",
+        f"{len(snapshot)} quốc gia · {year}",
         create_scatter_chart(snapshot, selected, 310),
         "scatter",
     )
@@ -671,9 +673,7 @@ def create_earth_lower(frame, selected):
     co2_share = row.co2 / co2_total * 100 if pd.notna(row.co2) and co2_total else float("nan")
     summary = html.Section([
         html.Div([
-            html.Div("HỒ SƠ QUỐC GIA", className="eyebrow"),
-            html.H2(row.country),
-            html.P(f"{row.continent} · {year} · Dữ liệu quan trắc"),
+            html.P(f"{row.continent} · {year}", className="small-meta"),
         ]),
         _stat_row(
             "Dân số",
@@ -685,7 +685,7 @@ def create_earth_lower(frame, selected):
             "green",
         ),
         _stat_row(
-            "Tỷ trọng CO₂ trong mẫu",
+            "Tỷ trọng CO₂",
             "—" if pd.isna(co2_share) else f"{co2_share:.1f}%",
         ),
     ], className="card country-summary")
@@ -709,7 +709,6 @@ def create_earth(frame, selected, metric):
             icon("globe"),
             html.Div([
                 html.H3("Bản đồ khí hậu tương tác"),
-                html.P(f"{snapshot.iso_alpha.nunique()} quốc gia/vùng lãnh thổ"),
             ]),
         ], className="globe-heading"),
         html.Span(str(year), className="globe-year"),
@@ -730,15 +729,10 @@ def create_earth(frame, selected, metric):
             className="globe-reset",
         ),
     ], className="globe-toolbar")
-    globe_footer = html.Div([
-        html.Span("Có màu: có chỉ số · Xám: thiếu chỉ số", className="globe-caption"),
-        html.Span("Viền xanh: quốc gia đang chọn", className="globe-selected-key"),
-    ], className="globe-footer")
     globe_card = html.Section([
         globe_header,
         globe_toolbar,
         graph(figure, "globe", globe=True),
-        globe_footer,
     ], className="globe-card")
     country_panel = html.Div(
         create_country_panel(frame, selected),
@@ -748,10 +742,6 @@ def create_earth(frame, selected, metric):
     )
 
     return [
-        html.Div([
-            html.H2("Bản đồ khí hậu theo quốc gia"),
-            html.Span("Kéo để xoay · Bấm quốc gia để xem dữ liệu"),
-        ], className="section-heading"),
         html.Div([globe_card, country_panel], className="earth-grid"),
         html.Div(create_earth_lower(frame, selected), id="earth-lower"),
     ]
@@ -759,24 +749,15 @@ def create_earth(frame, selected, metric):
 def create_temperature_page():
     return [
         create_member_eda_gallery(
-            "Phân tích nhiệt độ — Đức",
-            (
-                "Toàn bộ biểu đồ nhiệt độ do Đức xử lý và bàn giao từ "
-                "dữ liệu NASA GISTEMP và FAOSTAT đã làm sạch."
-            ),
             DUC_TEMPERATURE_ARTIFACTS,
             "duc-eda-gallery",
         ),
     ]
 
+
 def create_co2_page():
     return [
         create_member_eda_gallery(
-            "Phân tích phát thải CO₂ — Quân",
-            (
-                "Toàn bộ biểu đồ CO₂, cơ cấu phát thải và năng lượng tái tạo "
-                "do Quân xử lý và bàn giao từ dữ liệu đã làm sạch."
-            ),
             QUAN_ARTIFACTS,
             "quan-eda-gallery",
         ),
@@ -818,14 +799,14 @@ def create_comparison_results(frame, country_a, country_b):
 
     charts = [
         create_chart_card(
-            "So sánh biến đổi nhiệt độ",
-            "Đối chiếu cùng giai đoạn · °C",
+            "Biến đổi nhiệt độ",
+            "°C",
             create_comparison_chart(frame, country_a, country_b, "temperature_anomaly"),
             "thermometer",
         ),
         create_chart_card(
-            "So sánh lượng khí thải CO₂",
-            "Đối chiếu cùng giai đoạn · Mt CO₂",
+            "Phát thải CO₂",
+            "Mt CO₂",
             create_comparison_chart(frame, country_a, country_b, "co2"),
             "cloud",
         ),
@@ -858,7 +839,6 @@ def create_comparison_page(frame):
             html.Label("Quốc gia B", htmlFor="compare-b"),
             dcc.Dropdown(options, country_b, id="compare-b", clearable=False),
         ]),
-        html.P("Chọn hai quốc gia để so sánh."),
     ], className="card compare-controls")
     results = html.Div(
         create_comparison_results(frame, country_a, country_b),
@@ -876,31 +856,26 @@ def create_relationship_page(frame, selected):
     correlation = snapshot.co2_per_capita.corr(snapshot.temperature_anomaly) if valid else None
     correlation_text = f"{correlation:.2f}" if valid else "—"
     r_squared_text = f"{correlation ** 2:.2f}" if valid else "—"
-    if valid:
-        explanation = (
-            "Các hệ số được tính từ dữ liệu đang hiển thị. "
-            "Tương quan không thể hiện quan hệ nhân quả."
+    # Chỉ hiện câu hướng dẫn khi không đủ dữ liệu để tính.
+    note = None
+    if not valid:
+        note = html.P(
+            "Cần ít nhất 3 quốc gia có giá trị khác nhau để tính tương quan.",
+            className="body-copy",
         )
-    else:
-        explanation = "Cần ít nhất 3 quốc gia có giá trị khác nhau để tính tương quan."
 
     stats = html.Section([
-        html.Div("ĐỌC BIỂU ĐỒ", className="eyebrow"),
-        html.H2("Mối liên hệ trong mẫu"),
+        html.H2("Hệ số tương quan"),
         html.P(f"{len(snapshot)} quốc gia · Năm {frame.year.max()}", className="small-meta"),
         html.Div([
             html.Div([html.Span("Pearson R"), html.Strong(correlation_text)]),
             html.Div([html.Span("R²"), html.Strong(r_squared_text)]),
         ], className="correlation-values"),
-        html.P(explanation, className="body-copy"),
-        html.P(
-            "Mỗi điểm là một quốc gia. Màu thể hiện châu lục.",
-            className="body-copy",
-        ),
+        note,
     ], className="card research-note")
     chart = create_chart_card(
         "CO₂ bình quân và biến đổi nhiệt độ",
-        "So sánh giữa các quốc gia",
+        f"Năm {frame.year.max()}",
         create_scatter_chart(snapshot, selected, 420),
         "scatter",
     )
@@ -913,17 +888,13 @@ def create_forecast_page():
         "temperature_prediction", ascending=False
     )
     notice = html.Div(
-        (
-            "Mô hình hồi quy dùng CO₂ tích lũy, huấn luyện 1970–2014 và kiểm tra "
-            "2015–2024. Ba đường sau 2024 là mô phỏng thống kê theo giả định phát "
-            "thải, không phải kịch bản khí hậu chính thức của IPCC."
-        ),
+        "Mô phỏng sau 2024 theo giả định phát thải, không phải kịch bản IPCC chính thức.",
         className="demo-notice",
     )
     kpi_specs = [
-        ("R² kiểm tra", f"{metrics['r2']:.3f}", "", "Tập 2015–2024", "scatter", "blue"),
-        ("MAE kiểm tra", f"{metrics['mae']:.3f}", "°C", "Sai số tuyệt đối trung bình", "compare", "blue"),
-        ("RMSE kiểm tra", f"{metrics['rmse']:.3f}", "°C", "Dùng để chọn mô hình", "trend", "blue"),
+        ("R² kiểm tra", f"{metrics['r2']:.3f}", "", "2015–2024", "scatter", "blue"),
+        ("MAE kiểm tra", f"{metrics['mae']:.3f}", "°C", "2015–2024", "compare", "blue"),
+        ("RMSE kiểm tra", f"{metrics['rmse']:.3f}", "°C", "2015–2024", "trend", "blue"),
     ]
     kpis = html.Div([
         create_kpi_card(label, value, unit, note, symbol, tone)
@@ -931,7 +902,7 @@ def create_forecast_page():
     ], className="kpi-grid three")
     chart = create_chart_card(
         "Kịch bản nhiệt độ toàn cầu đến 2050",
-        "Nét liền: quan trắc · Nét chấm: kiểm tra · Nét đứt: kịch bản",
+        "Quan trắc và kịch bản",
         create_forecast_chart(GLOBAL_DATA, FORECAST_DATA, HISTORICAL_PREDICTIONS),
         "trend",
     )
@@ -944,95 +915,76 @@ def create_forecast_page():
         for row in scenario_2050.itertuples()
     ]
     scenario_table = html.Div([
-        html.H3("Kết quả tại năm 2050"),
+        html.H3("Kết quả năm 2050"),
         html.Table([
             html.Thead(html.Tr([
-                html.Th("Giả định phát thải"), html.Th("CO₂ năm 2050"),
+                html.Th("Giả định"), html.Th("CO₂ năm 2050"),
                 html.Th("Nhiệt độ dự báo"),
             ])),
             html.Tbody(scenario_rows),
         ], className="data-table comparison-table"),
     ], className="card table-wrap")
-    duc_reference = create_member_eda_gallery(
-        "Đức — hồi quy tham khảo",
-        (
-            "Hai tệp này là phân tích khám phá theo năm do Đức bàn giao. "
-            "Mô hình chính, phép chia train/test và ba kịch bản phía trên "
-            "thuộc phần Nguyên Khang."
-        ),
+    reference = create_member_eda_gallery(
         DUC_FORECAST_ARTIFACTS,
         "duc-forecast-gallery",
     )
-    return [notice, kpis, chart, scenario_table, duc_reference]
+    return [notice, kpis, chart, scenario_table, reference]
 
 def create_insights_page(frame, series, scope, selected):
     first, last = series.iloc[0], series.iloc[-1]
     snapshot = frame[frame.year == last.year]
     temperature_change = last.temperature_anomaly - first.temperature_anomaly
+    top_pc = snapshot.sort_values("co2_per_capita", ascending=False).iloc[0] if len(snapshot) else None
+    if top_pc is not None and pd.notna(top_pc.co2_per_capita):
+        top_text = f"{top_pc.country} cao nhất: {top_pc.co2_per_capita:.2f} tấn/người ({int(last.year)})."
+    else:
+        top_text = f"Số liệu năm {int(last.year)}."
+    valid = (
+        len(snapshot) > 2
+        and snapshot.co2_per_capita.nunique() > 1
+        and snapshot.temperature_anomaly.nunique() > 1
+    )
+    corr = snapshot.co2_per_capita.corr(snapshot.temperature_anomaly) if valid else None
+    corr_text = f"R = {corr:.2f} trên {len(snapshot)} quốc gia ({int(last.year)})." if corr is not None and pd.notna(corr) else f"{len(snapshot)} quốc gia ({int(last.year)})."
     stories = [
         (
-            "01",
             "Nhiệt độ qua thời gian",
-            "XU HƯỚNG NHIỆT ĐỘ",
-            f"Trong phạm vi {scope}, mức thay đổi là {temperature_change:+.2f} °C "
-            f"từ {int(first.year)} đến {int(last.year)}.",
+            f"{scope}: {temperature_change:+.2f} °C từ {int(first.year)} đến {int(last.year)}.",
             create_temperature_chart(series, 200),
-            "temperature",
             "red",
         ),
         (
-            "02",
             "Quy mô phát thải",
-            "PHÁT THẢI CO₂",
-            f"Tổng CO₂ đang hiển thị là {last.co2:,.1f} Mt "
-            f"tại mốc {int(last.year)}.",
+            f"Tổng CO₂ năm {int(last.year)}: {last.co2:,.1f} Mt.",
             create_co2_chart(series, 200),
-            "co2",
             "blue",
         ),
         (
-            "03",
-            "Khác biệt giữa các quốc gia",
-            "SO SÁNH QUỐC GIA",
-            "Tổng phát thải và phát thải bình quân có thể cho thứ hạng khác nhau.",
+            "CO₂ bình quân cao nhất",
+            top_text,
             create_ranking_chart(snapshot, selected, "co2_per_capita", 5, 200),
-            "comparison",
             "green",
         ),
         (
-            "04",
             "CO₂ và nhiệt độ",
-            "TƯƠNG QUAN DỮ LIỆU",
-            "Biểu đồ phân tán cho thấy vị trí của từng quốc gia trong mẫu.",
+            corr_text,
             create_scatter_chart(snapshot, selected, 240, compact=True),
-            "relationship",
             "blue",
         ),
     ]
 
     articles = []
-    for number, title, eyebrow, text, figure, target, tone in stories:
+    for title, text, figure, tone in stories:
         story_text = html.Div([
-            html.Span(number, className=f"story-number {tone}"),
-            html.Div(eyebrow, className="eyebrow"),
             html.H2(title),
             html.P(text),
-            html.A(
-                ["Khám phá dữ liệu", icon("arrow")],
-                href="#" + target,
-                className="text-link story-link",
-            ),
         ], className="story-copy")
         articles.append(html.Article(
             [story_text, graph(figure)],
             className="card story-card",
         ))
 
-    notice = html.Div(
-        "Nội dung được tổng hợp từ phạm vi dữ liệu đang chọn.",
-        className="demo-notice",
-    )
-    return [notice, html.Div(articles, className="stories")]
+    return [html.Div(articles, className="stories")]
 
 def format_table_value(row, key):
     decimal_columns = {
@@ -1080,7 +1032,6 @@ def create_data_page(frame):
     )
     heading = html.Div([
         html.Div([
-            html.H2("Bộ dữ liệu khí hậu đã làm sạch"),
             html.Span(record_count, className="small-meta"),
         ]),
         html.Button(
@@ -1091,30 +1042,23 @@ def create_data_page(frame):
         ),
     ], className="section-heading")
     notice = html.Div(
-        (
-            f"Đang hiển thị {len(visible):,}/{len(ordered):,} dòng gần nhất để trang tải nhanh. "
-            "Nút Tải CSV xuất toàn bộ dữ liệu trong phạm vi đang lọc."
-        ),
+        f"Hiển thị {len(visible):,}/{len(ordered):,} dòng gần nhất. Tải CSV để lấy toàn bộ.",
         className="demo-notice",
     )
-    guide = html.Div([
-        html.H3("Cách đọc dữ liệu"),
-        html.P("CO₂ dùng đơn vị Mt; dân số tính theo người; CO₂ bình quân tính theo tấn/người."),
-        html.P("Nhiệt độ là độ lệch °C so với trung bình 1951–1980."),
-        html.P("Nguồn: NASA GISTEMP, FAOSTAT, OWID/GCP, EDGAR và UN Statistics."),
-    ], className="card data-note")
+    source = html.Div(
+        "Nguồn: NASA GISTEMP, FAOSTAT, OWID/GCP, EDGAR và UN Statistics.",
+        className="card data-note",
+    )
     return [
         heading,
         notice,
         html.Div(table, className="card table-wrap scroll-table"),
-        guide,
+        source,
     ]
 
 def create_settings_page(preferences):
     heading = html.Div([
-        html.Div("KHÔNG GIAN LÀM VIỆC", className="eyebrow"),
-        html.H2("Tùy chỉnh hiển thị"),
-        html.P("Các lựa chọn được lưu trên trình duyệt này.", className="body-copy"),
+        html.H2("Hiển thị"),
     ])
     density_options = [
         {"label": "Thoáng", "value": "comfortable"},
@@ -1122,7 +1066,7 @@ def create_settings_page(preferences):
     ]
     density = _setting_row(
         "Mật độ giao diện",
-        "Điều chỉnh khoảng cách trong các thẻ dữ liệu.",
+        "",
         "setting-density", density_options, preferences.get("density", "comfortable"),
     )
     grid_options = [
@@ -1131,26 +1075,16 @@ def create_settings_page(preferences):
     ]
     grid = _setting_row(
         "Đường lưới biểu đồ",
-        "Bật đường tham chiếu để đọc và so sánh giá trị.",
+        "",
         "setting-grid", grid_options, preferences.get("grid", "show"),
     )
-    data_info = html.Div([
-        html.Div([
-            html.H3("Chế độ dữ liệu"),
-            html.P(
-                f"{DATA.iso_alpha.nunique()} quốc gia/lãnh thổ · "
-                f"{DATA.year.nunique()} năm · dữ liệu 1970–2024"
-            ),
-        ]),
-    ], className="setting-row")
-    return html.Div([heading, density, grid, data_info], className="card settings-card")
+    return html.Div([heading, density, grid], className="card settings-card")
 
 page_heading = html.Header([
     html.Div([
-        html.Div("Phân tích dữ liệu", className="page-eyebrow"),
         html.H1("Tổng quan khí hậu", id="page-title"),
         html.P(
-            "Theo dõi nhiệt độ và phát thải CO₂ theo thời gian, khu vực và quốc gia.",
+            "Nhiệt độ và CO₂ theo thời gian, khu vực và quốc gia.",
             id="page-subtitle",
         ),
     ], className="page-heading-copy"),
@@ -1172,6 +1106,21 @@ main_content = html.Main([
     page_content,
 ], id="main", className="main")
 
+eda_modal = html.Div(
+    html.Div([
+        html.Button(
+            "×", id="close-eda-modal", n_clicks=0,
+            className="eda-modal-close", title="Đóng",
+            **{"aria-label": "Đóng biểu đồ mở rộng"},
+        ),
+        html.Div(id="eda-modal-content", className="eda-modal-content"),
+    ], className="eda-modal-box"),
+    id="eda-modal",
+    className="eda-modal",
+    role="dialog",
+    **{"aria-modal": "true", "aria-label": "Biểu đồ mở rộng"},
+)
+
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
     dcc.Store(id="selected-country", data="VNM"),
@@ -1184,6 +1133,7 @@ app.layout = html.Div([
     create_header(),
     html.Aside(create_sidebar(), id="sidebar", className="sidebar"),
     main_content,
+    eda_modal,
 ], id="app-shell", className="app-shell")
 
 @app.callback(
@@ -1201,6 +1151,32 @@ def update_display(clicks, preferences):
     if preferences.get("grid") == "hide":
         classes.append("hide-grid")
     return " ".join(classes)
+
+@app.callback(
+    Output("eda-modal", "className"),
+    Output("eda-modal-content", "children"),
+    Input({"type": "expand-eda", "path": ALL}, "n_clicks"),
+    Input("close-eda-modal", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_eda_modal(open_clicks, _):
+    # Bấm "Mở rộng" thì mở popup với đúng biểu đồ đó, bấm × thì đóng.
+    trigger = ctx.triggered_id
+    if trigger == "close-eda-modal":
+        return "eda-modal", None
+    if not isinstance(trigger, dict) or not any(open_clicks or []):
+        return no_update, no_update
+
+    path = trigger["path"]
+    artifacts = DUC_TEMPERATURE_ARTIFACTS + DUC_FORECAST_ARTIFACTS + QUAN_ARTIFACTS
+    title, subtitle, _ = next(item for item in artifacts if item[2] == path)
+    heading = [html.H2(title)]
+    if subtitle:
+        heading.append(html.P(subtitle))
+    return "eda-modal open", [
+        html.Div(heading, className="eda-modal-heading"),
+        create_eda_media(title, subtitle, path, large=True),
+    ]
 
 @app.callback(
     Output("country-filter", "options"),

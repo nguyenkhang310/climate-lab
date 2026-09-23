@@ -911,7 +911,7 @@ h1, h2, h3, h4, p {
 
 .eda-format-heading h3 {
   color: #153A72;
-  font-size: 16px;
+  font-size: 19px;
 }
 
 .eda-format-heading p,
@@ -935,13 +935,41 @@ h1, h2, h3, h4, p {
   gap: 16px;
 }
 
+.eda-artifact-grid.interactive {
+  grid-template-columns: 1fr;
+  gap: 22px;
+}
+
+.eda-format-section.interactive .eda-artifact-heading {
+  padding: 18px 20px;
+  border-left: 4px solid var(--primary);
+  background: linear-gradient(90deg, #F2F9FE, #FFFFFF);
+}
+
+.eda-format-section.interactive .eda-artifact-heading h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.eda-format-section.interactive .eda-artifact-frame {
+  height: 640px;
+}
+
 .eda-artifact-card {
   overflow: hidden;
 }
 
 .eda-artifact-heading {
   padding: 15px 18px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid #E7EEF5;
+}
+
+.eda-artifact-heading>div {
+  min-width: 0;
 }
 
 .eda-artifact-heading h3 {
@@ -970,6 +998,96 @@ h1, h2, h3, h4, p {
 
 .eda-artifact-frame {
   height: 500px;
+}
+
+.eda-expand-button {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #BBD8EA;
+  border-radius: 7px;
+  background: #F2F8FC;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.eda-expand-button:hover {
+  background: #E3F1FA;
+}
+
+.eda-modal {
+  display: none;
+}
+
+.eda-modal.open {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 25, 42, .78);
+}
+
+.eda-modal-box {
+  position: relative;
+  width: min(1400px, 96vw);
+  height: min(900px, 92vh);
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .35);
+}
+
+.eda-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.eda-modal-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.eda-modal-heading {
+  flex: 0 0 auto;
+  padding: 18px 64px 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.eda-modal-heading h2 {
+  font-size: 19px;
+}
+
+.eda-modal-heading p {
+  margin-top: 3px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.eda-modal-frame,
+.eda-modal-image {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+.eda-modal-image {
+  height: calc(92vh - 74px);
+  object-fit: contain;
 }
 
 /* Tổng quan: một bản đồ lớn và hai biểu đồ cùng phạm vi dữ liệu. */
@@ -1630,6 +1748,10 @@ h1, h2, h3, h4, p {
     grid-template-columns: 1fr;
   }
 
+  .eda-format-section.interactive .eda-artifact-frame {
+    height: 540px;
+  }
+
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -1880,6 +2002,23 @@ h1, h2, h3, h4, p {
 
   .eda-artifact-frame {
     height: 300px;
+  }
+
+  .eda-format-section.interactive .eda-artifact-frame {
+    height: 360px;
+  }
+
+  .eda-modal.open {
+    padding: 8px;
+  }
+
+  .eda-modal-box {
+    width: 100%;
+    height: 96vh;
+  }
+
+  .eda-modal-image {
+    height: calc(96vh - 74px);
   }
 
   .overview-map-header>.map-view-switch,

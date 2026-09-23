@@ -10,7 +10,7 @@ PAGES = {
     "overview": "Tổng quan khí hậu",
     "earth": "Bản đồ khí hậu",
     "temperature": "Nhiệt độ",
-    "co2": "Khí thải CO₂",
+    "co2": "Phát thải CO₂",
     "forecast": "Dự báo",
     "insights": "Nhận định",
     "data": "Dữ liệu",
@@ -55,7 +55,7 @@ def main() -> None:
         }
 
         page.locator('a[href="#earth"]').first.click()
-        page.get_by_text("Bản đồ khí hậu theo quốc gia", exact=True).wait_for()
+        page.get_by_text("Bản đồ khí hậu tương tác", exact=True).wait_for()
         page.locator("#earth-map-view label").filter(has_text="Bản đồ ngang").click()
         page.wait_for_function(
             "() => [...document.querySelectorAll('#earth-map-view input')].some(input => input.checked && input.parentElement.textContent.includes('Bản đồ ngang'))"
@@ -77,7 +77,7 @@ def main() -> None:
             }
 
         page.locator('a[href="#data"]').first.click()
-        page.get_by_text("Bộ dữ liệu khí hậu đã làm sạch", exact=True).wait_for()
+        page.locator("#export-data").wait_for()
         with page.expect_download() as download_info:
             page.locator("#export-data").click()
         download = download_info.value
@@ -91,7 +91,7 @@ def main() -> None:
         quan_gallery = page.locator("#quan-eda-gallery")
         quan_gallery.wait_for()
         quan_gallery.get_by_text("Biểu đồ tĩnh", exact=True).wait_for()
-        quan_gallery.get_by_text("Biểu đồ tương tác Plotly", exact=True).wait_for()
+        quan_gallery.get_by_text("Biểu đồ tương tác", exact=True).wait_for()
         if quan_gallery.locator("img").count() != 5:
             raise AssertionError("Trang CO₂ chưa hiển thị đủ 5 biểu đồ tĩnh của Quân")
         if quan_gallery.locator("iframe").count() != 6:
@@ -103,17 +103,34 @@ def main() -> None:
         duc_gallery = page.locator("#duc-eda-gallery")
         duc_gallery.wait_for()
         duc_gallery.get_by_text("Biểu đồ tĩnh", exact=True).wait_for()
-        duc_gallery.get_by_text("Biểu đồ tương tác Plotly", exact=True).wait_for()
+        duc_gallery.get_by_text("Biểu đồ tương tác", exact=True).wait_for()
+        section_titles = duc_gallery.locator(".eda-format-heading h3").all_inner_texts()
+        if section_titles != ["Biểu đồ tương tác", "Biểu đồ tĩnh"]:
+            raise AssertionError(f"Sai thứ tự nhóm biểu đồ: {section_titles}")
+        interactive_card = duc_gallery.locator(".eda-artifact-grid.interactive .eda-artifact-card").first
+        card_box = interactive_card.bounding_box()
+        gallery_box = duc_gallery.bounding_box()
+        frame_box = interactive_card.locator("iframe").bounding_box()
+        if card_box["width"] < gallery_box["width"] * .9 or frame_box["height"] < 600:
+            raise AssertionError("Biểu đồ tương tác vẫn bị thu nhỏ")
+        if not interactive_card.locator(".eda-artifact-heading h3").inner_text().strip():
+            raise AssertionError("Biểu đồ tương tác bị mất tiêu đề")
         if duc_gallery.locator("img").count() != 5:
             raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 5 biểu đồ tĩnh của Đức")
-        if duc_gallery.locator("iframe").count() != 1:
-            raise AssertionError("Trang Nhiệt độ chưa hiển thị bản đồ tương tác của Đức")
+        if duc_gallery.locator("iframe").count() != 5:
+            raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 5 biểu đồ tương tác của Đức")
         if page.locator("#page-content .js-plotly-plot").count() != 0:
             raise AssertionError("Trang Nhiệt độ còn biểu đồ dashboard không thuộc phần Đức")
+        duc_gallery.locator(".eda-expand-button").first.click()
+        page.locator("#eda-modal.open .eda-modal-frame").wait_for()
+        page.locator("#close-eda-modal").click()
+        page.wait_for_function(
+            "() => !document.querySelector('#eda-modal').classList.contains('open')"
+        )
 
         page.locator('a[href="#forecast"]').first.click()
         page.get_by_text("R² kiểm tra", exact=True).wait_for()
-        page.get_by_text("Kết quả tại năm 2050", exact=True).wait_for()
+        page.get_by_text("Kết quả năm 2050", exact=True).wait_for()
         page.locator("#duc-forecast-gallery").wait_for()
         if page.locator("#duc-forecast-gallery img").count() != 1:
             raise AssertionError("Trang Dự báo thiếu biểu đồ hồi quy tĩnh tham khảo của Đức")

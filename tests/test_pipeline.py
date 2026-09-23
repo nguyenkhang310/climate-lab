@@ -107,7 +107,15 @@ class DashboardSmokeTests(unittest.TestCase):
                 self.assertEqual(self._component_types(content).count("Graph"), 0)
                 text = self._component_text(content)
                 self.assertIn("Biểu đồ tĩnh", text)
-                self.assertIn("Biểu đồ tương tác Plotly", text)
+                self.assertIn("Biểu đồ tương tác", text)
+                self.assertLess(text.index("Biểu đồ tương tác"), text.index("Biểu đồ tĩnh"))
+
+        gallery = app.create_member_eda_gallery(
+            app.DUC_TEMPERATURE_ARTIFACTS, "layout-check"
+        )
+        interactive_section = gallery.children[0]
+        self.assertIn("interactive", interactive_section.className)
+        self.assertIn("interactive", interactive_section.children[1].className)
 
     @staticmethod
     def _component_ids(component):
@@ -117,7 +125,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 ids.update(DashboardSmokeTests._component_ids(child))
             return ids
         component_id = getattr(component, "id", None)
-        if component_id:
+        if isinstance(component_id, str):
             ids.add(component_id)
         children = getattr(component, "children", None)
         if children is not None:
@@ -147,6 +155,17 @@ class DashboardSmokeTests(unittest.TestCase):
 
 
 class MemberEdaTests(unittest.TestCase):
+    def test_new_duc_plotly_files_are_listed(self):
+        interactive = [
+            path for _, _, path in app.DUC_TEMPERATURE_ARTIFACTS
+            if path.endswith(".html")
+        ]
+        self.assertEqual(len(interactive), 5)
+        self.assertEqual(
+            [Path(path).name[:2] for path in interactive],
+            ["01", "02", "03", "04", "05"],
+        )
+
     def test_all_declared_eda_files_exist_and_are_served(self):
         artifacts = (
             app.DUC_TEMPERATURE_ARTIFACTS
@@ -171,6 +190,49 @@ class MemberEdaTests(unittest.TestCase):
         finite = frame["co2_growth_pct"].dropna().map(math.isfinite)
         self.assertTrue(finite.all())
         self.assertEqual(int((frame["co2"] < 0).sum()), 0)
+
+    def test_expand_and_close_eda_modal(self):
+        cases = [
+            ("duc/bieu_do_tuong_tac/01_xu_huong_nhiet_do_toan_cau.html", "Iframe"),
+            ("duc/bieu_do_tinh/01_xu_huong_nhiet_do_toan_cau.png", "Img"),
+        ]
+        for path, component_type in cases:
+            with self.subTest(path=path):
+                opened = self._modal_callback(path)
+                self.assertEqual(opened["eda-modal"]["className"], "eda-modal open")
+                modal_children = opened["eda-modal-content"]["children"]
+                self.assertEqual(modal_children[1]["type"], component_type)
+                self.assertEqual(modal_children[1]["props"]["src"], f"/eda-files/{path}")
+
+        closed = self._modal_callback(cases[0][0], close=True)
+        self.assertEqual(closed["eda-modal"]["className"], "eda-modal")
+        self.assertIsNone(closed["eda-modal-content"]["children"])
+
+    @staticmethod
+    def _modal_callback(path, close=False):
+        output = next(key for key in app.app.callback_map if "eda-modal.className" in key)
+        pattern = app.app.callback_map[output]["inputs"][0]["id"]
+        trigger = "close-eda-modal.n_clicks" if close else (
+            json.dumps({"path": path, "type": "expand-eda"}, separators=(",", ":"), sort_keys=True)
+            + ".n_clicks"
+        )
+        payload = {
+            "output": output,
+            "outputs": [
+                {"id": "eda-modal", "property": "className"},
+                {"id": "eda-modal-content", "property": "children"},
+            ],
+            "inputs": [
+                {"id": pattern, "property": "n_clicks", "value": [1]},
+                {"id": "close-eda-modal", "property": "n_clicks", "value": int(close)},
+            ],
+            "state": [],
+            "changedPropIds": [trigger],
+        }
+        response = app.server.test_client().post("/_dash-update-component", json=payload)
+        if response.status_code != 200:
+            raise AssertionError(response.get_data(as_text=True))
+        return response.get_json()["response"]
 
 
 class EarthInteractionTests(unittest.TestCase):

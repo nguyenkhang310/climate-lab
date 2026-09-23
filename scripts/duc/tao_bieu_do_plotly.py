@@ -19,6 +19,10 @@ PROC = ROOT / "processed" / "duc"
 OUT = ROOT / "eda" / "duc" / "bieu_do_tuong_tac"
 OUT.mkdir(parents=True, exist_ok=True)
 
+# Tắt zoom bằng lăn chuột để không "cướp" thao tác cuộn trang web.
+# Người xem vẫn zoom được bằng các nút trên thanh công cụ của biểu đồ.
+PLOTLY_CONFIG = {"scrollZoom": False}
+
 
 def main() -> None:
     df_nasa = pd.read_csv(PROC / "nhiet_do_toan_cau.csv")
@@ -51,7 +55,7 @@ def main() -> None:
         template="plotly_white", hovermode="x unified",
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(255,255,255,0.8)")
     )
-    fig1.write_html(OUT / "01_xu_huong_nhiet_do_toan_cau.html", include_plotlyjs="cdn")
+    fig1.write_html(OUT / "01_xu_huong_nhiet_do_toan_cau.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
 
     # 2. Bar chart: Nhiệt độ trung bình theo thập kỷ (1880s–2020s)
     df_dec = df_nasa.groupby("decade")["temperature_anomaly"].mean().reset_index()
@@ -73,7 +77,7 @@ def main() -> None:
         xaxis_title="Thập kỷ", yaxis_title="Độ lệch nhiệt độ trung bình (°C)",
         template="plotly_white"
     )
-    fig2.write_html(OUT / "02_nhiet_do_theo_thap_ky.html", include_plotlyjs="cdn")
+    fig2.write_html(OUT / "02_nhiet_do_theo_thap_ky.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
 
     # 3. Choropleth Map: Bản đồ nhiệt độ thế giới kèm thanh trượt chọn năm (1961–2025)
     df_map_all = df_fao.dropna(subset=["temperature_anomaly"]).sort_values("year").copy()
@@ -94,7 +98,7 @@ def main() -> None:
         coloraxis_colorbar=dict(title="Độ lệch (°C)"),
         margin=dict(l=0, r=0, t=50, b=0)
     )
-    fig3.write_html(OUT / "03_ban_do_nhiet_do.html", include_plotlyjs="cdn")
+    fig3.write_html(OUT / "03_ban_do_nhiet_do.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
 
     # 4. Heatmap: Nhiệt độ theo Châu lục x Thập kỷ (Đặt tâm tại 0°C)
     piv = df_fao.pivot_table(index="continent", columns="decade", values="temperature_anomaly", aggfunc="mean")
@@ -109,7 +113,7 @@ def main() -> None:
         template="plotly_white"
     )
     fig4.update_layout(xaxis_title="Thập kỷ", yaxis_title="Châu lục", coloraxis_colorbar=dict(title="Độ lệch (°C)"))
-    fig4.write_html(OUT / "04_heatmap_chau_luc_thap_ky.html", include_plotlyjs="cdn")
+    fig4.write_html(OUT / "04_heatmap_chau_luc_thap_ky.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
 
     # 5. Boxplot: Phân bố nhiệt độ giữa các quốc gia qua từng thập kỷ
     df_box = df_fao.copy()
@@ -123,7 +127,7 @@ def main() -> None:
     )
     fig5.add_hline(y=0, line_dash="dash", line_color="blue", annotation_text="Baseline 1951–1980 (0°C)")
     fig5.update_layout(xaxis_title="Thập kỷ", yaxis_title="Độ lệch nhiệt độ (°C)", showlegend=False)
-    fig5.write_html(OUT / "05_phan_bo_nhiet_do_quoc_gia.html", include_plotlyjs="cdn")
+    fig5.write_html(OUT / "05_phan_bo_nhiet_do_quoc_gia.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
 
     # 6. Biểu đồ Dự báo Hồi quy Tuyến tính (Linear Regression) đến năm 2050
     df_mod = df_nasa[df_nasa["year"] >= 1970].copy()
@@ -203,7 +207,7 @@ def main() -> None:
             bgcolor="#ffebee", bordercolor="#d32f2f"
         )]
     )
-    fig6.write_html(OUT / "06_du_bao_hoi_quy_tuyen_tinh.html", include_plotlyjs="cdn")
+    fig6.write_html(OUT / "06_du_bao_hoi_quy_tuyen_tinh.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
 
     print("Plotly OK:", sorted(p.name for p in OUT.glob("*.html")))
 
