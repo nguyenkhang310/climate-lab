@@ -1,67 +1,82 @@
-# Climate Lab — Dashboard khí hậu
+# Climate Lab
 
-Đồ án Thu thập và Xử lý Dữ liệu · HCMUTE · Nhóm 18.
-Phân tích nhiệt độ, CO₂ và mô hình dự đoán trên dữ liệu 1970–2024.
+Dashboard khám phá dữ liệu khí hậu và mô phỏng xu hướng nhiệt độ toàn cầu. Đồ án môn **Tương tác dữ liệu trực quan** của **Nhóm 18 · HCMUTE**.
 
-## Chạy dashboard
+Hệ thống kết hợp dữ liệu nhiệt độ, lượng CO₂ và năng lượng tái tạo để trả lời ba câu hỏi: khí hậu đã thay đổi thế nào, sự khác biệt giữa các quốc gia ra sao, và xu hướng nhiệt độ có thể thay đổi thế nào dưới những giả định về lượng CO₂ trong tương lai.
+
+## Chạy dự án
+
+Yêu cầu **Python 3.11**. Từ thư mục gốc:
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
 
-Mở http://127.0.0.1:8050. Nếu dùng môi trường ảo: `source .venv/bin/activate` trước.
-Dữ liệu sạch và kết quả mô hình đã có sẵn, không cần train mỗi lần mở dashboard.
+Mở **http://127.0.0.1:8050**. Trên Windows, dùng `.venv\Scripts\activate` để kích hoạt môi trường. Có thể đổi cổng qua biến môi trường `PORT`. Dữ liệu đã làm sạch và kết quả mô hình được lưu sẵn; không cần chạy lại pipeline để xem dashboard.
 
-## Thư mục theo nhiệm vụ → thành viên
+## Khám phá dashboard
 
-Tên thư mục dùng tiếng Việt không dấu để dễ nhập lệnh và import Python.
-Notebook, code và nhận định của một người nằm cạnh nhau, không chia riêng theo loại file.
+| Trang | Nội dung chính |
+| --- | --- |
+| **Tổng quan** | Các chỉ số và biểu đồ chính trong một màn hình. |
+| **Bản đồ khí hậu** | Xem nhiệt độ hoặc CO₂ theo quốc gia; chuyển giữa địa cầu và bản đồ phẳng, chọn năm và quốc gia. |
+| **Nhiệt độ** | Biểu đồ phân tích xu hướng theo thời gian và khu vực. |
+| **Khí thải CO₂** | Xu hướng, xếp hạng quốc gia, cơ cấu ngành và mối liên hệ với năng lượng tái tạo. |
+| **Mô hình dự đoán** | So sánh các giả định về lượng CO₂ và đường nhiệt độ đến năm 2050. |
+| **Nhận định** | Những điểm đáng chú ý được tính theo phạm vi dữ liệu đang xem. |
+| **Dữ liệu** | Xem bảng và tải CSV theo bộ lọc. |
 
-```text
-climatelab/
-├── app.py                           # Lệnh chạy chung
-├── requirements.txt
-├── README.md
-├── phan_tich_nhiet_do/
-│   └── duc/
-│       ├── 01_lam_sach_va_eda.ipynb
-│       ├── lam_sach_du_lieu.py
-│       ├── tao_bieu_do_plotly.py
-│       ├── NHAN_DINH.md
-│       ├── du_lieu_goc/              # NASA, FAOSTAT
-│       ├── du_lieu_sach/             # 2 CSV + báo cáo chất lượng
-│       └── bieu_do/                  # tinh/ và tuong_tac/
-├── phan_tich_co2/
-│   └── quan/
-│       ├── lam_sach_du_lieu.py
-│       ├── tao_eda.py
-│       ├── tao_bieu_do_plotly.py
-│       ├── NHAN_DINH.md
-│       ├── du_lieu_goc/              # OWID, EDGAR, năng lượng tái tạo
-│       ├── du_lieu_sach/             # 4 CSV + báo cáo chất lượng
-│       └── bieu_do/                  # tinh/ và tuong_tac/
-├── mo_hinh_du_doan/
-│   └── nguyen_khang/
-│       ├── ghep_du_lieu.py
-│       ├── mo_hinh_nhiet_do.py
-│       ├── GIAI_THICH.md
-│       ├── du_lieu/                  # Bảng quốc gia/năm, chuỗi toàn cầu
-│       └── ket_qua/                  # Kiểm định, kịch bản, thông số mô hình
-├── bang_dieu_khien/
-│   └── nguyen_khang/
-│       ├── ung_dung.py               # Bố cục và tương tác Dash
-│       ├── bieu_do.py                # Các hàm vẽ Plotly dùng chung
-│       ├── du_lieu.py                # Nạp và lọc dữ liệu
-│       ├── tai_nguyen/               # CSS, logo, bản đồ nền cục bộ
-│       └── kiem_thu/                 # Kiểm tra dữ liệu và trình duyệt
-└── tai_lieu/
-    └── dung_chung/                   # Barem, nguồn, danh mục quốc gia
+Bộ lọc năm, khu vực và quốc gia áp dụng cho các phần tổng hợp của dashboard. Các biểu đồ phân tích chuyên sâu ghi rõ phạm vi dữ liệu riêng để tránh hiểu nhầm.
+
+## Dữ liệu và phương pháp
+
+Dữ liệu được làm sạch theo từng chủ đề rồi ghép bằng khóa **mã quốc gia ISO3 + năm**. Bảng dùng cho dashboard bao phủ **1970–2024**, gồm **13.296 dòng và 244 mã quốc gia/vùng lãnh thổ**; không có khóa trùng theo [báo cáo ghép dữ liệu](mo_hinh_du_doan/nguyen_khang/du_lieu/bao_cao_ghep_du_lieu.json). Giá trị thiếu được giữ nguyên, không tự thay bằng 0.
+
+| Chủ đề | Nguồn | Cách sử dụng |
+| --- | --- | --- |
+| Nhiệt độ toàn cầu | [NASA GISTEMP v4](https://data.giss.nasa.gov/gistemp/) | Độ lệch nhiệt độ so với trung bình 1951–1980. |
+| Nhiệt độ theo quốc gia | [FAOSTAT](https://www.fao.org/faostat/en/#data/ET) | So sánh theo quốc gia, khu vực và thời gian. |
+| CO₂, dân số | [Our World in Data / Global Carbon Project](https://github.com/owid/co2-data) | Tổng lượng CO₂ và CO₂ bình quân đầu người. |
+| CO₂ theo ngành | [EDGAR](https://edgar.jrc.ec.europa.eu/report_2026) | Chỉ lấy **CO₂**, không trộn với tổng khí nhà kính quy đổi CO₂. |
+| Năng lượng tái tạo | [UNSD, IEA, IRENA qua OWID](https://ourworldindata.org/grapher/share-of-final-energy-consumption-from-renewable-sources) | Đối chiếu với CO₂ bình quân; độ phủ giữa các nước không đồng đều. |
+
+Chi tiết về tệp gốc, đơn vị và cột dữ liệu nằm trong [tài liệu nguồn dữ liệu](tai_lieu/dung_chung/NGUON_DU_LIEU.md). Các chuỗi có phạm vi năm khác nhau: **1970–2024 là khoảng phân tích chung của dashboard**, không phải khoảng đầy đủ của mọi nguồn.
+
+```mermaid
+flowchart LR
+    A["NASA · FAOSTAT · OWID · EDGAR"] --> B["Làm sạch theo chủ đề"]
+    B --> C["Ghép quốc gia + năm"]
+    C --> D["Dashboard"]
+    A --> E["Chuỗi toàn cầu"]
+    E --> F["Hồi quy tuyến tính"]
+    F --> D
 ```
 
-## Chạy lại xử lý dữ liệu
+### Mô hình dự đoán
 
-Chạy từ thư mục `climatelab`, theo thứ tự:
+Mô hình **hồi quy tuyến tính** liên hệ lượng CO₂ tích lũy toàn cầu với độ lệch nhiệt độ trung bình trượt 5 năm. Dữ liệu **1974–2014** dùng để huấn luyện, **2015–2024** để kiểm tra theo thời gian; sau đó mô hình được huấn luyện lại trên **1974–2024** để tạo kịch bản **2025–2050**. Kết quả kiểm tra lưu trong [thông số mô hình](mo_hinh_du_doan/nguyen_khang/ket_qua/thong_tin_mo_hinh.json): **R² = 0,835**, **MAE = 0,031 °C**.
+
+Dashboard cho phép so sánh mức CO₂ tiếp diễn xu hướng, giữ nguyên, giảm 5% mỗi năm hoặc tốc độ do người dùng chọn. Đây là **mô phỏng thống kê theo giả định**, không phải dự báo khí hậu chính thức. Dải 90% trên biểu đồ chỉ phản ánh bất định của mô hình hồi quy theo các giả định thống kê, chưa bao gồm bất định của kịch bản hay toàn bộ yếu tố vật lý khí hậu. Xem [giải thích mô hình](mo_hinh_du_doan/nguyen_khang/GIAI_THICH.md).
+
+## Cấu trúc dự án
+
+```text
+app.py                         Điểm chạy dashboard
+bang_dieu_khien/nguyen_khang/  Giao diện, biểu đồ, dữ liệu và kiểm thử
+phan_tich_nhiet_do/duc/        Làm sạch, phân tích và biểu đồ nhiệt độ
+phan_tich_co2/quan/            Làm sạch, phân tích và biểu đồ CO₂
+mo_hinh_du_doan/nguyen_khang/  Ghép dữ liệu, hồi quy và kịch bản
+tai_lieu/dung_chung/           Nguồn dữ liệu và tài liệu dùng chung
+```
+
+Mỗi phần chứa mã nguồn, dữ liệu hoặc sản phẩm tương ứng của thành viên phụ trách. Phần nhận định chi tiết nằm ở [nhiệt độ](phan_tich_nhiet_do/duc/NHAN_DINH.md) và [CO₂](phan_tich_co2/quan/NHAN_DINH.md).
+
+## Tái tạo kết quả và kiểm thử
+
+Chạy lại pipeline theo đúng thứ tự sau, từ thư mục gốc:
 
 ```bash
 python phan_tich_nhiet_do/duc/lam_sach_du_lieu.py
@@ -70,31 +85,18 @@ python mo_hinh_du_doan/nguyen_khang/ghep_du_lieu.py
 python mo_hinh_du_doan/nguyen_khang/mo_hinh_nhiet_do.py
 ```
 
-Đức dùng notebook để xem các bước làm sạch và EDA; notebook gọi lại hàm làm sạch và vẽ HTML
-trong `.py` cùng thư mục, không duy trì hai bản code. Chạy `tao_bieu_do_plotly.py` để xuất lại HTML;
-Quân dùng thêm `tao_eda.py` để xuất PNG. Hình EDA và báo cáo không phải file rác.
-
-Giữ các bảng CSV sạch riêng để tái lập bước ghép, không thay dữ liệu thiếu bằng 0.
-Chi tiết đơn vị, nguồn tải và quy tắc dữ liệu: [Nguồn dữ liệu](tai_lieu/dung_chung/NGUON_DU_LIEU.md).
-
-## Kiểm thử
+Chạy kiểm thử tự động:
 
 ```bash
 python -m unittest discover -s bang_dieu_khien/nguyen_khang/kiem_thu -v
 ```
 
-Kiểm tra trình duyệt cần Playwright, Chrome và dashboard đang chạy:
+Các trang phân tích còn có tệp biểu đồ tĩnh và tương tác trong thư mục `bieu_do/` của từng thành viên. Dữ liệu đầu ra và thông số mô hình được lưu trong dự án để đối chiếu với dashboard.
 
-```bash
-python bang_dieu_khien/nguyen_khang/kiem_thu/browser_smoke.py
-```
+## Nhóm thực hiện
 
-Dashboard có 7 mục: Tổng quan, Bản đồ khí hậu, Nhiệt độ, Khí thải CO₂,
-Mô hình dự đoán, Nhận định và Dữ liệu. Mô hình dùng hồi quy tuyến tính giữa
-CO₂ tích lũy và nhiệt độ trung bình trượt 5 năm, kiểm định theo thời gian.
-Kết quả là mô phỏng theo giả định, không phải dự báo khí hậu chính thức.
-
-Bộ lọc áp dụng cho Tổng quan, Bản đồ khí hậu, Nhận định và Dữ liệu. Hai tab EDA giữ phạm vi
-ghi trên từng biểu đồ; tab mô hình luôn dùng chuỗi toàn cầu 1970–2024. Nhiệt độ toàn cầu lấy
-từ NASA, nhiệt độ quốc gia từ FAOSTAT. Tổng CO₂ dùng OWID/GCP; cơ cấu ngành dùng EDGAR,
-không gồm vận tải quốc tế nên không dùng tổng ngành để thay thế tổng OWID.
+| Thành viên | Phụ trách |
+| --- | --- |
+| Huỳnh Cao Trung Đức | Dữ liệu và phân tích nhiệt độ |
+| Quân | Dữ liệu và phân tích CO₂ |
+| Nguyên Khang | Ghép dữ liệu, mô hình dự đoán và dashboard |
