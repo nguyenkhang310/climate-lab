@@ -1,0 +1,31 @@
+{
+  "model": "Linear Regression",
+  "formula": "temperature_trend_5y = intercept + coefficient × cumulative_co2_gt",
+  "train_period": [
+    1974,
+    2014
+  ],
+  "test_period": [
+    2015,
+    2024
+  ],
+  "full_period": [
+    1974,
+    2024
+  ],
+  "r2_train": 0.9560768145070376,
+  "r2_test": 0.8345060479837751,
+  "mae_test": 0.030610030094162875,
+  "rmse_test": 0.03576038123426221,
+  "intercept": -0.31119307582793654,
+  "coefficient": 0.0007194061320250679,
+  "sample_size": 51,
+  "critical_90": 1.6765508926168533,
+  "residual_std": 0.04350552666063841,
+  "x_mean": 1075.2018461960783,
+  "sxx": 8103600.049157937,
+  "last_co2": 38598.578,
+  "last_cumulative_co2": 1849123.875,
+  "recent_annual_rate": 0.014070519037494567,
+  "interval": "Dải OLS 90% xấp xỉ, giả định phần dư độc lập; chưa gồm bất định kịch bản"
+}
