@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: climate-lab
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT app:server
+    healthCheckPath: /
+    autoDeployTrigger: commit
