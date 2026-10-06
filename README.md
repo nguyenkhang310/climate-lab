@@ -6,7 +6,7 @@ Hệ thống kết hợp dữ liệu nhiệt độ, lượng CO₂ và năng lư
 
 ## Chạy dự án
 
-Yêu cầu **Python 3.11**. Từ thư mục gốc:
+Khuyến nghị **Python 3.12** để đồng bộ với bản deploy; môi trường local Python 3.11 vẫn dùng được. Từ thư mục gốc:
 
 ```bash
 python -m venv .venv
@@ -16,6 +16,14 @@ python app.py
 ```
 
 Mở **http://127.0.0.1:8050**. Trên Windows, dùng `.venv\Scripts\activate` để kích hoạt môi trường. Có thể đổi cổng qua biến môi trường `PORT`. Dữ liệu đã làm sạch và kết quả mô hình được lưu sẵn; không cần chạy lại pipeline để xem dashboard.
+
+## Triển khai trên Vercel
+
+1. Trong Vercel, chọn **Add New → Project**, import repository `climate-lab` từ GitHub.
+2. Chọn nhánh `main`, giữ **Root Directory** ở thư mục gốc và **Framework Preset: Flask**.
+3. Giữ mặc định các lệnh build/install và thư mục đầu ra, chọn **Deploy**. Không cần nhập biến môi trường hay khóa API.
+
+`vercel.json` đặt máy chủ tại Singapore và loại dữ liệu gốc, SQLite, notebook, tài liệu, kiểm thử khỏi gói chạy; các file này vẫn được giữ trong repo. Bản Vercel tải thư viện Dash/Plotly từ CDN để tránh giới hạn kích thước phản hồi; bản local và Render vẫn dùng tài nguyên cục bộ. Những lần push lên `main` sau đó sẽ tự triển khai lại khi đã kết nối GitHub. `render.yaml` được giữ để dùng Render khi cần.
 
 ## Khám phá dashboard
 
@@ -79,9 +87,10 @@ Mã nguồn được chia theo nhiệm vụ và thành viên; toàn bộ tệp d
 
 ## Tái tạo kết quả và kiểm thử
 
-Chạy lại pipeline theo đúng thứ tự sau, từ thư mục gốc:
+`requirements.txt` chỉ chứa thư viện chạy dashboard. Để làm sạch dữ liệu, train model, tạo biểu đồ tĩnh và chạy kiểm thử, cài thêm thư viện trong `requirements-dev.txt`, rồi chạy pipeline theo thứ tự:
 
 ```bash
+pip install -r requirements-dev.txt
 python phan_tich_nhiet_do/duc/lam_sach_du_lieu.py
 python phan_tich_co2/quan/lam_sach_du_lieu.py
 python mo_hinh_du_doan/nguyen_khang/ghep_du_lieu.py

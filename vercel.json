@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "flask",
+  "regions": ["sin1"],
+  "functions": {
+    "app.py": {
+      "excludeFiles": "{.venv/**,**/__pycache__/**,data/du_lieu_goc/**,**/*.db,**/*.ipynb,tai_lieu/**,**/kiem_thu/**}"
+    }
+  }
+}

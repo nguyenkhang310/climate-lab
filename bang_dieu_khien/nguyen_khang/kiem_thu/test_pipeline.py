@@ -179,6 +179,13 @@ class ScenarioModelTests(unittest.TestCase):
         json.dumps(result, cls=PlotlyJSONEncoder)
 
 class DashboardSmokeTests(unittest.TestCase):
+    def test_wsgi_entrypoint(self):
+        from app import app as wsgi_app, server
+
+        self.assertIs(wsgi_app, app.server)
+        self.assertIs(server, wsgi_app)
+        self.assertEqual(wsgi_app.test_client().get("/").status_code, 200)
+
     def test_filter_change_during_navigation_builds_current_country(self):
         with patch.object(app, "ctx") as context:
             context.triggered_id = "country-filter"

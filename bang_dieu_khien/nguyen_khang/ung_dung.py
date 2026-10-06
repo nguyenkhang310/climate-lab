@@ -1,4 +1,5 @@
 import base64
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -43,6 +44,7 @@ from .du_lieu import (
 
 app = Dash(
     __name__,
+    serve_locally=not os.environ.get("VERCEL"),
     assets_folder=str(Path(__file__).with_name("tai_nguyen")),
     assets_ignore=r".*\.json",
     suppress_callback_exceptions=True,
