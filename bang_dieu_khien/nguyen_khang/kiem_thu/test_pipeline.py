@@ -180,10 +180,9 @@ class ScenarioModelTests(unittest.TestCase):
 
 class DashboardSmokeTests(unittest.TestCase):
     def test_wsgi_entrypoint(self):
-        from app import app as wsgi_app, server
+        from app import app as wsgi_app
 
         self.assertIs(wsgi_app, app.server)
-        self.assertIs(server, wsgi_app)
         self.assertEqual(wsgi_app.test_client().get("/").status_code, 200)
 
     def test_filter_change_during_navigation_builds_current_country(self):
