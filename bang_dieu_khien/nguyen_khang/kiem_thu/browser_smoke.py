@@ -31,6 +31,43 @@ def check_eda_layout(page, gallery):
         else:
             assert second["y"] >= first["y"] + first["height"], "Màn hình nhỏ phải dùng một cột"
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Trang bị tràn ngang"
+        check_eda_modal(page, gallery)
+
+def check_eda_modal(page, gallery):
+    read_data = "e => JSON.stringify(e._fullData.map(t => [t.x, t.y, t.z, t.locations, t.values, t.labels, t.parents]))"
+
+    def geometry():
+        return gallery.evaluate("""g => [scrollX, scrollY, document.body.clientWidth,
+            ...[...g.querySelectorAll('.interactive .js-plotly-plot')].flatMap(e => {
+                const b = e.getBoundingClientRect(), svg = e.querySelector('.main-svg').getBoundingClientRect();
+                return [b.x, b.y, b.width, b.height, svg.x, svg.y, svg.width, svg.height,
+                        ...Object.values(e._fullLayout._size)];
+            })]""")
+
+    cards = gallery.locator(".interactive .eda-artifact-card")
+    for index in range(cards.count()):
+        close = ("button", "escape", "backdrop")[index % 3]
+        card = cards.nth(index)
+        button = card.get_by_role("button", name="Mở rộng")
+        button.scroll_into_view_if_needed()
+        before = geometry()
+        original = card.locator(".js-plotly-plot").evaluate(read_data)
+        button.click()
+        modal = page.locator("#eda-modal.open .js-plotly-plot")
+        modal.wait_for()
+        assert modal.evaluate(read_data) == original, "Mở rộng làm đổi số liệu"
+        assert modal.bounding_box()["width"] > card.bounding_box()["width"]
+        for state in ("open", "closed"):
+            if state == "closed":
+                if close == "button":
+                    page.locator("#close-eda-modal").click()
+                elif close == "escape":
+                    page.keyboard.press("Escape")
+                else:
+                    page.locator("#eda-modal").click(position={"x": 2, "y": 2})
+                page.locator("#eda-modal.open").wait_for(state="hidden")
+            after = geometry()
+            assert all(abs(a - b) < 1 for a, b in zip(before, after)), (index, state, before, after)
 
 def check_year_slider(page):
     globe = page.locator("#overview-globe .js-plotly-plot")
@@ -138,6 +175,7 @@ def main() -> None:
         browser = playwright.chromium.launch(
             executable_path=CHROME,
             headless=True,
+            ignore_default_args=["--hide-scrollbars"],
             args=["--no-sandbox", "--disable-gpu"],
         )
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
@@ -148,6 +186,7 @@ def main() -> None:
         )
         page.on("pageerror", lambda error: page_errors.append(str(error)))
         page.goto(BASE_URL, wait_until="networkidle")
+        page.add_style_tag(content="::-webkit-scrollbar { width: 15px; height: 15px; }")
         page.locator("#page-title").wait_for(state="visible")
 
         check_map(page, "overview-globe", "overview-map-view", "overview-reset")
@@ -234,17 +273,6 @@ def main() -> None:
         if duc_gallery.locator(".js-plotly-plot").count() != 6:
             raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 6 biểu đồ tương tác của Đức")
         assert page.locator("#filter-bar").is_visible()
-        duc_gallery.locator(".eda-expand-button").first.click()
-        page.locator("#eda-modal.open .js-plotly-plot").wait_for()
-        assert page.locator(".eda-modal-chart").bounding_box()["width"] > interactive_card.bounding_box()["width"]
-        original = interactive_card.locator(".js-plotly-plot").evaluate("p=>Array.from(p._fullData[0].y)")
-        expanded = page.locator(".eda-modal-chart .js-plotly-plot").evaluate("p=>Array.from(p._fullData[0].y)")
-        assert original == expanded, "Mở rộng phải giữ nguyên số liệu đang lọc"
-        page.keyboard.press("Escape")
-        page.wait_for_function(
-            "() => !document.querySelector('#eda-modal').classList.contains('open')"
-        )
-
         page.locator('a[href="#insights"]').first.click()
         page.locator(".insight-grid").wait_for()
         for width in (1440, 390):
