@@ -100,6 +100,8 @@ MAP_VIEW_OPTIONS = [
     {"label": "Địa cầu", "value": "globe"},
     {"label": "Bản đồ phẳng", "value": "flat"},
 ]
+SCENARIO_LABELS = {"trend": "Tiếp diễn", "stable": "Giữ mức 2024",
+                   "decline": "Giảm 5%/năm", "custom": "Tùy chỉnh"}
 PATHS = {
     "grid": '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     "globe": '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/>',
@@ -130,14 +132,13 @@ def icon(name, class_name="icon"):
         alt="",
     )
 
-def _select_field(label, dropdown_id, options, value, symbol=None,
+def _select_field(label, dropdown_id, options, value, symbol,
                   field_id=None, field_class="filter-field", **dropdown_props):
-    text = [icon(symbol), label] if symbol else label
     wrapper = {"className": field_class}
     if field_id is not None:
         wrapper["id"] = field_id
     return html.Div([
-        html.Label(text, htmlFor=dropdown_id),
+        html.Label([icon(symbol), label], htmlFor=dropdown_id),
         dcc.Dropdown(options, value, id=dropdown_id, clearable=False, **dropdown_props),
     ], **wrapper)
 
@@ -163,144 +164,81 @@ def map_header(view_id, reset_id):
     ], className="overview-map-header")
 
 def create_header():
-    logo = html.Img(
-        src=app.get_asset_url("hcmute-logo.png"),
-        className="school-logo",
-        alt="Logo HCMUTE",
-    )
-    school_name = html.Div([
-        html.Span("TRƯỜNG ĐẠI HỌC", className="school-top"),
-        html.Strong("CÔNG NGHỆ KỸ THUẬT TP. HỒ CHÍ MINH"),
-    ], className="school-name")
-    brand = html.A(
-        [logo, school_name],
-        href="#overview",
-        className="school-brand",
-        **{"aria-label": "Về trang tổng quan"},
-    )
-    product_brand = html.Div([
-        html.Strong("CLIMATE LAB"),
-        html.Span("Phân tích dữ liệu khí hậu"),
-    ], className="product-brand")
     identity = html.Div([
-        brand,
+        html.A([
+            html.Img(src=app.get_asset_url("hcmute-logo.png"), className="school-logo", alt="Logo HCMUTE"),
+            html.Div([
+                html.Span("TRƯỜNG ĐẠI HỌC", className="school-top"),
+                html.Strong("CÔNG NGHỆ KỸ THUẬT TP. HỒ CHÍ MINH"),
+            ], className="school-name"),
+        ], href="#overview", className="school-brand", **{"aria-label": "Về trang tổng quan"}),
         html.Span(className="header-divider"),
-        product_brand,
-    ], className="header-identity")
-    data_range = html.Div([
-        icon("calendar"),
         html.Div([
-            html.Span("Dữ liệu tổng hợp"),
-            html.Strong(f"{int(DATA.year.min())}–{int(DATA.year.max())}"),
-        ]),
-    ], className="header-data-range")
-    export_button = html.Button(
-        [icon("download"), html.Span("Tải CSV")],
-        id="header-export",
-        className="header-export",
-        title="Tải bảng quốc gia–năm đang lọc",
-        n_clicks=0,
-    )
-    actions = html.Div([data_range, export_button], className="header-actions")
+            html.Strong("CLIMATE LAB"),
+            html.Span("Phân tích dữ liệu khí hậu"),
+        ], className="product-brand"),
+    ], className="header-identity")
+    actions = html.Div([
+        html.Div([
+            icon("calendar"),
+            html.Div([
+                html.Span("Dữ liệu tổng hợp"),
+                html.Strong(f"{int(DATA.year.min())}–{int(DATA.year.max())}"),
+            ]),
+        ], className="header-data-range"),
+        html.Button([icon("download"), html.Span("Tải CSV")], id="header-export",
+                    className="header-export", title="Tải bảng quốc gia–năm đang lọc", n_clicks=0),
+    ], className="header-actions")
     return html.Header([identity, actions], className="header")
 
 def create_sidebar():
-    links = []
-    for key, label, symbol in MENU:
-        link_class = "nav-item" + (" active" if key == "overview" else "")
-        link_content = [
-            icon(symbol),
-            html.Span(label, className="nav-label"),
-        ]
-        links.append(html.A(
-            link_content,
-            href=f"#{key}",
-            className=link_class,
-            title=label,
-            id={"type": "nav", "index": key},
-        ))
-
-    sidebar_title = html.Div([
-        html.Strong("CLIMATE", className="sidebar-brand"),
-        html.Span("DASHBOARD", className="sidebar-caption"),
-    ], className="nav-label")
-    menu_button = html.Button(
-        icon("menu"),
-        id="collapse-sidebar",
-        className="icon-button",
-        title="Thu gọn / mở rộng thanh điều hướng",
-        n_clicks=0,
-    )
-    sidebar_top = html.Div([sidebar_title, menu_button], className="sidebar-top")
-    navigation = html.Nav(
-        [html.Div("Khám phá dữ liệu", className="nav-section")] + links,
-        **{"aria-label": "Điều hướng chính"},
-    )
-    credit = html.Footer(
-        [
-            html.Div(
-                html.Img(
-                    src=app.get_asset_url("shipcode-logo.png"),
-                    alt="Logo Team Shipcode",
-                    className="sidebar-user-logo",
-                ),
-                className="sidebar-user-avatar",
-            ),
+    links = [
+        html.A([icon(symbol), html.Span(label, className="nav-label")],
+               href=f"#{key}", title=label, id={"type": "nav", "index": key},
+               className="nav-item" + (" active" if key == "overview" else ""))
+        for key, label, symbol in MENU
+    ]
+    return [
+        html.Div([
+            html.Div([
+                html.Strong("CLIMATE", className="sidebar-brand"),
+                html.Span("DASHBOARD", className="sidebar-caption"),
+            ], className="nav-label"),
+            html.Button(icon("menu"), id="collapse-sidebar", className="icon-button",
+                        title="Thu gọn / mở rộng thanh điều hướng", n_clicks=0),
+        ], className="sidebar-top"),
+        html.Nav([html.Div("Khám phá dữ liệu", className="nav-section"), *links],
+                 **{"aria-label": "Điều hướng chính"}),
+        html.Footer([
+            html.Div(html.Img(src=app.get_asset_url("shipcode-logo.png"), alt="Logo Team Shipcode",
+                             className="sidebar-user-logo"), className="sidebar-user-avatar"),
             html.Div([
                 html.Span("Phát triển bởi"),
                 html.Strong("Nhóm 18"),
                 html.Small("TEAM SHIPCODE"),
             ], className="sidebar-user-copy nav-label"),
-        ],
-        className="sidebar-credit",
-    )
-    return [sidebar_top, navigation, credit]
+        ], className="sidebar-credit"),
+    ]
 
 def create_filters():
-    year_options = [
-        {"label": "1970 – 2024", "value": "1970-2024"},
-        {"label": "1990 – 2023", "value": "1990-2023"},
-        {"label": "2000 – 2024", "value": "2000-2024"},
-        {"label": "2015 – 2024", "value": "2015-2024"},
-    ]
-    continent_options = [
-        {"label": "Tất cả châu lục", "value": "all"},
-        *[{"label": CONTINENT_NAMES[name], "value": name} for name in CONTINENTS],
-    ]
-    country_options = [
-        {"label": "Tất cả quốc gia", "value": "all"},
-        *[
-            {"label": name, "value": iso}
-            for iso, name in COUNTRY_NAMES.items()
-        ],
-    ]
-    metric_options = [
-        {"label": "Nhiệt độ", "value": "temperature"},
-        {"label": "Khí thải CO₂", "value": "co2"},
-    ]
-
-    year_filter = _select_field(
-        "Khoảng năm", "year-range", year_options, "1970-2024",
-        symbol="calendar", field_class="filter-years", searchable=False,
-    )
-    continent_filter = _select_field(
-        "Châu lục", "continent-filter", continent_options, "all",
-        symbol="globe", searchable=False,
-    )
-    country_filter = _select_field(
-        "Quốc gia", "country-filter", country_options, "all",
-        symbol="globe", field_id="country-field", placeholder="Tìm quốc gia…",
-    )
-    metric_filter = _select_field(
-        "Màu bản đồ", "metric-filter", metric_options, "temperature",
-        symbol="chart", field_id="metric-field", searchable=False,
-    )
-
-    return html.Div(
-        [year_filter, continent_filter, country_filter, metric_filter],
-        id="filter-bar",
-        className="filter-bar",
-    )
+    return html.Div([
+        _select_field("Khoảng năm", "year-range", [
+            {"label": years.replace("-", " – "), "value": years}
+            for years in ("1970-2024", "1990-2023", "2000-2024", "2015-2024")
+        ], "1970-2024", symbol="calendar", field_class="filter-years", searchable=False),
+        _select_field("Châu lục", "continent-filter", [
+            {"label": "Tất cả châu lục", "value": "all"},
+            *[{"label": CONTINENT_NAMES[name], "value": name} for name in CONTINENTS],
+        ], "all", symbol="globe", searchable=False),
+        _select_field("Quốc gia", "country-filter", [
+            {"label": "Tất cả quốc gia", "value": "all"},
+            *[{"label": name, "value": iso} for iso, name in COUNTRY_NAMES.items()],
+        ], "all", symbol="globe", field_id="country-field", placeholder="Tìm quốc gia…"),
+        _select_field("Màu bản đồ", "metric-filter", [
+            {"label": "Nhiệt độ", "value": "temperature"},
+            {"label": "Khí thải CO₂", "value": "co2"},
+        ], "temperature", symbol="chart", field_id="metric-field", searchable=False),
+    ], id="filter-bar", className="filter-bar")
 
 def graph(figure, graph_id=None, globe=False):
     config = {
@@ -327,22 +265,14 @@ def graph(figure, graph_id=None, globe=False):
         options["id"] = graph_id
     return dcc.Graph(**options)
 
-def create_chart_card(
-    title,
-    subtitle,
-    figure,
-    symbol="trend",
-    graph_id=None,
-):
+def create_chart_card(title, subtitle, figure, symbol="trend", graph_id=None):
     heading = html.Div([
         html.Div([icon(symbol), html.H3(title)], className="chart-title"),
         html.P(subtitle),
     ], className="chart-heading")
-    header = html.Div(heading, className="card-header")
-    return html.Section(
-        [header, graph(figure, graph_id)],
-        className="card chart-card",
-    )
+    return html.Section([
+        html.Div(heading, className="card-header"), graph(figure, graph_id),
+    ], className="card chart-card")
 
 
 def create_eda_media(title, subtitle, path, large=False):
@@ -600,10 +530,8 @@ def create_earth(frame, selected, metric, scope):
 
 
 def scenario_legend():
-    labels = {"trend": "Tiếp diễn", "stable": "Giữ mức 2024",
-              "decline": "Giảm 5%/năm", "custom": "Tùy chỉnh"}
     return html.Div([
-        html.Span([html.I(style={"background": color}), labels[key]],
+        html.Span([html.I(style={"background": color}), SCENARIO_LABELS[key]],
                   id=f"legend-{key}", hidden=key == "custom")
         for key, color in SCENARIO_COLORS.items()
     ], className="forecast-legend")
@@ -622,10 +550,7 @@ def create_scenario_page():
             html.Label("Lượng CO₂ hằng năm"),
             dcc.RadioItems(
                 id="scenario-choice", value="trend", className="forecast-options",
-                options=[{"label": label, "value": key} for key, label in (
-                    ("trend", "Tiếp diễn"), ("stable", "Giữ mức 2024"),
-                    ("decline", "Giảm 5%/năm"), ("custom", "Tùy chỉnh"),
-                )],
+                options=[{"label": label, "value": key} for key, label in SCENARIO_LABELS.items()],
             ),
         ]),
         html.Div([
@@ -741,37 +666,27 @@ def create_insights_page(frame, series, scope):
                  className="insight-source"),
     ]
 
-def format_table_value(row, key):
-    value = getattr(row, key)
-    if pd.isna(value):
-        return "—"
-    if key in {"temperature_anomaly", "co2", "co2_per_capita", "renewable_percent"}:
-        return f"{value:,.2f}"
-    if key == "population":
-        return f"{value:,.0f}"
-    return str(value)
-
 def create_data_page(frame):
     columns = [
-        ("country", "Quốc gia"),
-        ("iso_alpha", "Mã quốc gia"),
-        ("continent", "Châu lục"),
-        ("year", "Năm"),
-        ("temperature_anomaly", "Chênh nhiệt độ (°C)"),
-        ("co2", "CO₂ (triệu tấn)"),
-        ("co2_per_capita", "CO₂/người (tấn)"),
-        ("population", "Dân số (người)"),
-        ("renewable_percent", "Năng lượng tái tạo (%)"),
+        ("country", "Quốc gia", ""),
+        ("iso_alpha", "Mã quốc gia", ""),
+        ("continent", "Châu lục", ""),
+        ("year", "Năm", ""),
+        ("temperature_anomaly", "Chênh nhiệt độ (°C)", ",.2f"),
+        ("co2", "CO₂ (triệu tấn)", ",.2f"),
+        ("co2_per_capita", "CO₂/người (tấn)", ",.2f"),
+        ("population", "Dân số (người)", ",.0f"),
+        ("renewable_percent", "Năng lượng tái tạo (%)", ",.2f"),
     ]
     ordered = frame.sort_values(["year", "country"], ascending=[False, True])
     visible = ordered.head(500)
     table_rows = [
-        html.Tr([html.Td(format_table_value(row, key)) for key, _ in columns])
+        html.Tr([html.Td(format_number(getattr(row, key), pattern)) for key, _, pattern in columns])
         for row in visible.itertuples()
     ]
 
     table = html.Table([
-        html.Thead(html.Tr([html.Th(label) for _, label in columns])),
+        html.Thead(html.Tr([html.Th(label) for _, label, _ in columns])),
         html.Tbody(table_rows),
     ], className="data-table")
 
@@ -939,6 +854,7 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     page = (route or "#overview").lstrip("#")
     if page not in PAGE_INFO:
         page = "overview"
+    is_map = page in ("overview", "earth")
     scope = scope_name(continent, country)
     subtitle = ("Toàn cầu · Kiểm tra 2015–2024 · Dự đoán đến 2050" if page == "scenario"
                 else f"{scope} · {years.replace('-', '–')}")
@@ -949,7 +865,7 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
         trigger = None
 
     map_ready = overview_id if page == "overview" else earth_id
-    if map_ready and page in ("overview", "earth") and trigger in {
+    if map_ready and is_map and trigger in {
         "year-range", "continent-filter", "country-filter", "metric-filter"
     }:
         return (no_update, no_update, subtitle, [no_update] * len(MENU)) + (no_update,) * 5
@@ -957,18 +873,14 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     title = PAGE_INFO[page]
     filterless = page == "scenario"
 
-    country_filter = "all" if page in ("overview", "earth") else country
+    country_filter = "all" if is_map else country
     frame = filter_data(years, continent, country_filter)
     series = aggregate(
         frame,
         use_global=country_filter == "all" and continent == "all",
     )
 
-    invalid_country = (
-        page in ("overview", "earth")
-        and country != "all"
-        and country not in frame.iso_alpha.values
-    )
+    invalid_country = is_map and country != "all" and country not in frame.iso_alpha.values
     if page == "scenario":
         content = create_scenario_page()
     elif frame.empty or invalid_country:
@@ -1008,13 +920,10 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
         "nav-item" + (" active" if key == page else "")
         for key, _, _ in MENU
     ]
-    country_field_class = (
-        "filter-field hidden-filter"
-        if filterless else "filter-field"
-    )
+    country_field_class = "filter-field hidden-filter" if filterless else "filter-field"
     if filterless:
         filter_class = "filter-bar hidden-filter"
-    elif page in ("overview", "earth"):
+    elif is_map:
         filter_class = "filter-bar"
     else:
         filter_class = "filter-bar three-filters"
@@ -1023,8 +932,8 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
         navigation_classes,
         filterless,
         country_field_class,
-        page not in ("overview", "earth"),
-        {} if page in ("overview", "earth") else {"display": "none"},
+        not is_map,
+        {} if is_map else {"display": "none"},
         filter_class,
     )
 
@@ -1067,17 +976,7 @@ def select_map_country(overview_click, earth_click, continent, current_country):
     State("overview-globe", "figure", allow_optional=True),
     prevent_initial_call=True,
 )
-def update_overview(
-    year_range,
-    continent,
-    selected,
-    metric,
-    map_view,
-    year,
-    resets,
-    route,
-    current_figure,
-):
+def update_overview(year_range, continent, selected, metric, map_view, year, resets, route, current_figure):
     if route not in (None, "", "#overview") or current_figure is None:
         return (no_update,) * 13
     frame = filter_data(year_range, continent)

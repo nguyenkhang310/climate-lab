@@ -111,6 +111,23 @@ class ClimateDataTests(unittest.TestCase):
             actual.convert_dtypes(), expected.convert_dtypes(), check_dtype=False
         )
 
+    def test_rebuilding_sqlite_preserves_all_tables_and_views(self):
+        from mo_hinh_du_doan.nguyen_khang import tao_co_so_du_lieu as database
+
+        saved = database.DB
+        with TemporaryDirectory() as folder, patch.object(database, "DB", Path(folder) / "climate_lab.db"):
+            database.main()
+            with sqlite3.connect(saved) as old, sqlite3.connect(database.DB) as new:
+                self.assertFalse(new.execute("PRAGMA foreign_key_check").fetchall())
+                tables = old.execute("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')").fetchall()
+                for (name,) in tables:
+                    expected = pd.read_sql(f'SELECT * FROM "{name}"', old)
+                    actual = pd.read_sql(f'SELECT * FROM "{name}"', new)
+                    columns = expected.columns.tolist()
+                    pd.testing.assert_frame_equal(
+                        actual.sort_values(columns).reset_index(drop=True),
+                        expected.sort_values(columns).reset_index(drop=True))
+
     def test_country_summary_keeps_source_values_including_missing_values(self):
         fields = ["temperature_anomaly", "co2", "co2_per_capita", "population"]
         for code, frame in DATA.groupby("iso_alpha"):

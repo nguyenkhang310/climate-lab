@@ -9,15 +9,6 @@ DB = DATA / "nguyen_khang/climate_lab.db"
 DUC = DATA / "duc"
 QUAN = DATA / "quan"
 
-FILES = {
-    "nhiet_do_quoc_gia": DUC / "nhiet_do_quoc_gia.csv",
-    "nhiet_do_toan_cau": DUC / "nhiet_do_toan_cau.csv",
-    "co2_quoc_gia": QUAN / "co2_quoc_gia.csv",
-    "co2_toan_cau": QUAN / "co2_toan_cau.csv",
-    "nang_luong_tai_tao": QUAN / "nang_luong_tai_tao.csv",
-    "co2_theo_nganh": QUAN / "co2_theo_nganh.csv",
-}
-
 COLUMNS = {
     "nhiet_do_quoc_gia": ["iso_alpha", "year", "temperature_anomaly", "source_flag"],
     "nhiet_do_toan_cau": ["year", "temperature_anomaly"],
@@ -117,7 +108,10 @@ def main() -> None:
     DB.parent.mkdir(parents=True, exist_ok=True)
     temporary = DB.with_suffix(".tmp.db")
     temporary.unlink(missing_ok=True)
-    frames = {name: pd.read_csv(path) for name, path in FILES.items()}
+    frames = {}
+    for name in COLUMNS:
+        folder = DUC if name.startswith("nhiet_do") else QUAN
+        frames[name] = pd.read_csv(folder / f"{name}.csv")
     country, year = dimensions(frames)
 
     with sqlite3.connect(temporary) as connection:
@@ -128,11 +122,10 @@ def main() -> None:
             frame[COLUMNS[name]].to_sql(name, connection, if_exists="append", index=False)
         if connection.execute("PRAGMA foreign_key_check").fetchall():
             raise ValueError("Dữ liệu vi phạm khóa ngoại")
+        rows = connection.execute("SELECT COUNT(*) FROM dashboard_quoc_gia_nam").fetchone()[0]
 
     temporary.replace(DB)
-    with sqlite3.connect(DB) as connection:
-        rows = connection.execute("SELECT COUNT(*) FROM dashboard_quoc_gia_nam").fetchone()[0]
-    print(f"OK: {DB.name}, {len(FILES) + 2} bảng, {rows:,} dòng dashboard")
+    print(f"OK: {DB.name}, {len(frames) + 2} bảng, {rows:,} dòng dashboard")
 
 
 if __name__ == "__main__":

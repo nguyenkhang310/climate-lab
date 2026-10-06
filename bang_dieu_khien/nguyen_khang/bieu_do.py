@@ -208,6 +208,7 @@ def create_scenario_temperature_chart(history, scenarios, active_id, milestone=2
     active = scenarios[scenarios.scenario_id == active_id]
     point = active[active.year == milestone].iloc[0]
     color = SCENARIO_COLORS[active_id]
+    temperature_trend = history.temperature_anomaly.rolling(5).mean()
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
@@ -219,8 +220,8 @@ def create_scenario_temperature_chart(history, scenarios, active_id, milestone=2
         fill="tonexty", fillcolor="rgba(118,140,163,.13)", hoverinfo="skip",
     ))
     fig.add_trace(go.Scatter(
-        x=history.year, y=history.temperature_anomaly.rolling(5).mean(),
-        text=history.temperature_anomaly.rolling(5).mean().map("{:+.2f}".format),
+        x=history.year, y=temperature_trend,
+        text=temperature_trend.map("{:+.2f}".format),
         name="Thực tế · Trung bình 5 năm", mode="lines",
         line={"color": TEXT, "width": 2.5},
         hovertemplate="<b>%{text} °C</b><extra>Thực tế · Trung bình 5 năm</extra>",

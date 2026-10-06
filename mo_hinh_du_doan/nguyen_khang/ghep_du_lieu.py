@@ -33,13 +33,9 @@ def build_country_year() -> tuple[pd.DataFrame, dict]:
                                suffixes=("_temperature", "_co2"))
     merged = merged.merge(renewable, on=["iso_alpha", "year"], how="outer")
     merged["country"] = (
-        merged["country_temperature"]
-        .combine_first(merged["country_co2"])
-        .combine_first(merged["country_renewable"])
+        merged.country_temperature.fillna(merged.country_co2).fillna(merged.country_renewable)
     )
-    merged["continent"] = merged["continent_temperature"].combine_first(
-        merged["continent_co2"]
-    )
+    merged["continent"] = merged.continent_temperature.fillna(merged.continent_co2)
     regions = pd.read_csv(ROOT / "data/du_lieu_goc/dung_chung/un_m49_iso3.csv").set_index("iso_alpha").continent
     merged["continent"] = merged.continent.fillna(merged.iso_alpha.map(regions))
     merged.loc[merged["iso_alpha"] == "ATA", "continent"] = "Antarctica"

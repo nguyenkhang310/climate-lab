@@ -43,7 +43,8 @@ def main():
     cols = ["year", "temperature_anomaly", "co2", "cumulative_co2"]
     if not np.isfinite(df[cols]).all().all() or not df.year.diff().iloc[1:].eq(1).all():
         raise ValueError("Dữ liệu phải đầy đủ, mỗi năm đúng một quan sát.")
-    data = df.assign(temperature_trend_5y=df.temperature_anomaly.rolling(5).mean()).dropna(subset=cols + ["temperature_trend_5y"])
+    data = df.assign(temperature_trend_5y=df.temperature_anomaly.rolling(5).mean())
+    data = data.dropna(subset=["temperature_trend_5y"])
     x, y = data[["cumulative_co2"]].to_numpy() / 1000, data.temperature_trend_5y
     train = data.year <= NAM_CHIA
     model = LinearRegression().fit(x[train], y[train])
