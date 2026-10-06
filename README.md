@@ -104,6 +104,17 @@ Chạy kiểm thử tự động:
 python -m unittest discover -s bang_dieu_khien/nguyen_khang/kiem_thu -v
 ```
 
+Mở notebook bằng tiện ích Jupyter trong VS Code, chọn **Select Kernel → Python Environments → `.venv`** sau khi cài `requirements-dev.txt`.
+
+Kiểm thử giao diện: giữ `python app.py` đang chạy, mở terminal khác đã kích hoạt `.venv`, rồi chạy:
+
+```bash
+python -m playwright install chromium
+python bang_dieu_khien/nguyen_khang/kiem_thu/browser_smoke.py
+```
+
+Cài trình duyệt một lần trên mỗi máy. Có thể dùng Chrome đã cài bằng biến môi trường `BROWSER_CHANNEL=chrome` thay cho tải Chromium. Nếu app đổi cổng, đặt `BASE_URL` theo địa chỉ app trước khi chạy kiểm thử.
+
 Các trang phân tích còn có tệp biểu đồ tĩnh và tương tác trong thư mục `bieu_do/` của từng thành viên. Dữ liệu đầu ra và thông số mô hình được lưu trong dự án để đối chiếu với dashboard.
 
 ## Nhóm thực hiện

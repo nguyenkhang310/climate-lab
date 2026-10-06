@@ -90,6 +90,10 @@ class ClimateDataTests(unittest.TestCase):
                 connection,
             )
             self.assertFalse(connection.execute("PRAGMA foreign_key_check").fetchall())
+            document = (app.ROOT / "tai_lieu/dung_chung/SO_DO_DU_LIEU.md").read_text(encoding="utf-8")
+            query = document.split("```sql\n", 1)[1].split("```", 1)[0]
+            documented = pd.read_sql(query, connection).sort_values(["iso_alpha", "year"]).reset_index(drop=True)
+            pd.testing.assert_frame_equal(documented, actual)
         expected = DATA.sort_values(["iso_alpha", "year"]).reset_index(drop=True)
         pd.testing.assert_frame_equal(
             actual.convert_dtypes(), expected.convert_dtypes(), check_dtype=False
@@ -577,7 +581,7 @@ class EarthInteractionTests(unittest.TestCase):
             self.assertNotIn("Tỷ trọng", text)
 
     def test_map_color_range_does_not_hide_extreme_values(self):
-        for metric, field in [("temperature", "temperature_anomaly"), ("co2", "co2")]:
+        for metric in ("temperature", "co2"):
             figure = app.create_globe(DATA[DATA.year == 2024], metric=metric)
             trace = next(t for t in figure.data if t.showscale)
             self.assertLessEqual(trace.zmin, min(trace.z))

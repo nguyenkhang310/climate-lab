@@ -30,12 +30,21 @@ Khóa `iso_alpha` là mã ISO3 nên ổn định hơn tên quốc gia. Khóa gh�
 View `dashboard_quoc_gia_nam` lấy hợp các khóa quốc gia–năm của ba bảng chỉ tiêu, sau đó `LEFT JOIN` nhiệt độ, CO₂ và năng lượng tái tạo. Cách làm này giữ lại dữ liệu có ở bất kỳ nguồn nào, đồng thời giữ `NULL` khi nguồn còn thiếu số liệu.
 
 ```sql
-SELECT q.country, t.year, t.temperature_anomaly,
-       c.co2, c.co2_per_capita, r.renewable_percent
-FROM nhiet_do_quoc_gia AS t
-JOIN quoc_gia AS q USING (iso_alpha)
-LEFT JOIN co2_quoc_gia AS c USING (iso_alpha, year)
-LEFT JOIN nang_luong_tai_tao AS r USING (iso_alpha, year);
+WITH khoa AS (
+    SELECT iso_alpha, year FROM nhiet_do_quoc_gia
+    UNION SELECT iso_alpha, year FROM co2_quoc_gia
+    UNION SELECT iso_alpha, year FROM nang_luong_tai_tao
+)
+SELECT q.country, k.iso_alpha, q.continent, k.year, n.decade,
+       t.temperature_anomaly, c.co2, c.co2_per_capita, c.population,
+       r.renewable_percent, t.source_flag
+FROM khoa k
+JOIN quoc_gia q USING (iso_alpha)
+JOIN nam n USING (year)
+LEFT JOIN nhiet_do_quoc_gia t USING (iso_alpha, year)
+LEFT JOIN co2_quoc_gia c USING (iso_alpha, year)
+LEFT JOIN nang_luong_tai_tao r USING (iso_alpha, year)
+WHERE k.year BETWEEN 1970 AND 2024;
 ```
 
 Không nối trực tiếp `co2_theo_nganh` vào bảng quốc gia–năm nếu chưa tổng hợp theo ngành, vì quan hệ một–nhiều sẽ làm lặp dữ liệu nhiệt độ và dân số.

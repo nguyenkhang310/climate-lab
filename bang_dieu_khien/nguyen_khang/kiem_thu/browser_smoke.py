@@ -1,10 +1,12 @@
 import json
 import os
+from pathlib import Path
+from tempfile import gettempdir
 
 from playwright.sync_api import sync_playwright
 
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8050")
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+OUTPUT = Path(gettempdir())
 PAGES = {
     "overview": "Tổng quan khí hậu",
     "earth": "Bản đồ khí hậu",
@@ -173,7 +175,7 @@ def main() -> None:
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
-            executable_path=CHROME,
+            channel=os.environ.get("BROWSER_CHANNEL"),
             headless=True,
             ignore_default_args=["--hide-scrollbars"],
             args=["--no-sandbox", "--disable-gpu"],
@@ -278,7 +280,7 @@ def main() -> None:
         for width in (1440, 390):
             page.set_viewport_size({"width": width, "height": 1000})
             page.wait_for_function("document.documentElement.scrollWidth <= innerWidth")
-            page.screenshot(path=f"/tmp/climate_insights_{width}.png", full_page=True)
+            page.screenshot(path=OUTPUT / f"climate_insights_{width}.png", full_page=True)
         page.set_viewport_size({"width": 1440, "height": 1000})
         continent_filter = page.locator("#continent-filter")
         continent_filter.click()
@@ -321,7 +323,7 @@ def main() -> None:
             "() => document.querySelector('#scenario-temp-note')?.textContent.startsWith('2050')"
         )
 
-        page.screenshot(path="/tmp/climate_dashboard_desktop.png", full_page=True)
+        page.screenshot(path=OUTPUT / "climate_dashboard_desktop.png", full_page=True)
 
         page.set_viewport_size({"width": 390, "height": 844})
         page.goto(f"{BASE_URL}/#scenario", wait_until="networkidle")
@@ -330,7 +332,7 @@ def main() -> None:
         dimensions = page.evaluate(
             "() => ({width: innerWidth, scrollWidth: document.documentElement.scrollWidth})"
         )
-        page.screenshot(path="/tmp/climate_dashboard_mobile.png", full_page=True)
+        page.screenshot(path=OUTPUT / "climate_dashboard_mobile.png", full_page=True)
         browser.close()
 
     if page_errors or console_errors:
@@ -342,8 +344,8 @@ def main() -> None:
         "pages": checked,
         "mobile": dimensions,
         "screenshots": [
-            "/tmp/climate_dashboard_desktop.png",
-            "/tmp/climate_dashboard_mobile.png",
+            str(OUTPUT / "climate_dashboard_desktop.png"),
+            str(OUTPUT / "climate_dashboard_mobile.png"),
         ],
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
