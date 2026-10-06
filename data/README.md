@@ -16,4 +16,6 @@ data/
 
 Dữ liệu gốc chỉ dùng làm đầu vào và không chỉnh sửa thủ công. Dữ liệu đã xử lý được tạo lại bằng các script ghi trong [README chính](../README.md). Các bảng quốc gia nối bằng khóa `iso_alpha, year`; bảng theo ngành dùng thêm `sector`.
 
+Châu lục ưu tiên phân loại OWID; các mã còn thiếu được bổ sung từ `du_lieu_goc/dung_chung/un_m49_iso3.csv`. Bảng ghép và SQLite dùng cùng cách bổ sung, gán riêng `ATA` vào `Antarctica`; không thay đổi số liệu các chỉ tiêu.
+
 Bảng `du_lieu_da_xu_ly/duc/nhiet_do_theo_thang.csv` dùng riêng cho biểu đồ 12 tháng, khóa `iso_alpha, year, month`. Mã `WLD` là chuỗi toàn cầu NASA; các mã quốc gia dùng FAOSTAT. Không ghép bảng tháng vào bảng năm để tránh nhân bản dòng.

@@ -2,7 +2,9 @@ import json
 import math
 import sqlite3
 import unittest
+from io import StringIO
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import pandas as pd
@@ -27,6 +29,16 @@ from mo_hinh_du_doan.nguyen_khang.ghep_du_lieu import build_country_year, build_
 from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import kich_ban
 
 class ClimateDataTests(unittest.TestCase):
+    def test_territories_have_continents_from_reference(self):
+        expected = {"ATF": "Africa", "SJM": "Europe", "BLM": "North America",
+                    "MAF": "North America", "GUM": "Oceania", "MNP": "Oceania"}
+        self.assertFalse(DATA.continent.isna().any())
+        for code, continent in expected.items():
+            self.assertEqual(DATA.loc[DATA.iso_alpha.eq(code), "continent"].unique().tolist(), [continent])
+            options, selected = app.update_country_options(continent, "1970-2024", code)
+            self.assertEqual(selected, code)
+            self.assertIn(code, [option["value"] for option in options])
+
     def test_source_values_survive_join_and_every_filter(self):
         tables = {
             "duc/nhiet_do_quoc_gia.csv": ["temperature_anomaly"],
@@ -117,6 +129,15 @@ class ClimateDataTests(unittest.TestCase):
 
 
 class ScenarioModelTests(unittest.TestCase):
+    def test_training_reproduces_all_saved_results(self):
+        from mo_hinh_du_doan.nguyen_khang import mo_hinh_nhiet_do as model
+
+        with TemporaryDirectory() as folder, patch.object(model, "OUTPUT", Path(folder)):
+            model.main()
+            self.assertEqual(json.loads((Path(folder) / "thong_tin_mo_hinh.json").read_text()), MODEL_INFO)
+            for name, expected in [("du_doan_kiem_tra", BACKTEST_DATA), ("kich_ban_2050", SCENARIO_DATA)]:
+                pd.testing.assert_frame_equal(pd.read_csv(Path(folder) / f"{name}.csv"), expected)
+
     def test_custom_rates_and_prediction_intervals(self):
         for rate in (-1, -.1, 0, .05):
             frame = kich_ban(MODEL_INFO, rate)
@@ -183,6 +204,30 @@ class ScenarioModelTests(unittest.TestCase):
         json.dumps(result, cls=PlotlyJSONEncoder)
 
 class DashboardSmokeTests(unittest.TestCase):
+    def test_overview_year_stays_inside_selected_country_data(self):
+        frame = filter_data("1970-2024")
+        current = app.create_globe(frame[frame.year.eq(1970)]).to_plotly_json()
+        with patch.object(app, "ctx") as context:
+            context.triggered_id = "country-filter"
+            for code, first in [("BLM", 2011), ("GUM", 1990), ("MNP", 1992)]:
+                self.assertEqual(app.map_years(frame, code)[0], first)
+                result = app.update_overview("1970-2024", "all", code, "temperature", "globe", 1970, 0, "#overview", current)
+                self.assertEqual(result[7], first)
+                self.assertEqual(result[10], first)
+                self.assertEqual(result[11], str(first))
+                self.assertEqual(result[0][0].children[1].children, str(first))
+                for trace in result[5].data:
+                    self.assertTrue(all(row[1] == first for row in trace.customdata))
+
+    def test_csv_download_matches_filter_including_missing_values(self):
+        for years in ["1970-2024", "1990-2023", "2000-2024", "2015-2024"]:
+            for continent, country in [("all", "all"), ("Europe", "all"), ("Asia", "VNM"),
+                                       ("North America", "BLM"), ("all", "ATA")]:
+                result = app.export_data(1, None, years, continent, country)
+                actual = pd.read_csv(StringIO(result["content"]))
+                expected = filter_data(years, continent, country).reset_index(drop=True)
+                pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
+
     def test_wsgi_entrypoint(self):
         from app import app as wsgi_app
 
@@ -339,7 +384,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 np.testing.assert_array_equal(figure.data[0].x, series.year)
                 np.testing.assert_allclose(figure.data[0].y, series[field], equal_nan=True)
                 map_trace = cards[2].children[1].figure.data[0]
-                expected = frame[frame.year.eq(2024)].dropna(subset=[field if page == "temperature" else "co2_per_capita"])
+                expected = DATA[DATA.year.eq(1970)].dropna(subset=[field if page == "temperature" else "co2_per_capita"])
                 self.assertEqual(set(map_trace.locations), set(expected.iso_alpha))
 
     def test_country_options_follow_continent_and_keep_valid_selection(self):
@@ -396,7 +441,7 @@ class MemberEdaTests(unittest.TestCase):
     def test_all_twelve_charts_match_each_filtered_table(self):
         scopes = [("all", "all"), ("Asia", "all"), ("Europe", "all"),
                   ("all", "VNM"), ("all", "ESH"), ("all", "ATA")]
-        for years in ["1970-2024", "1990-2023", "2000-2024", "2015-2024", "2024-2024"]:
+        for years in ["1970-2024", "1990-2023", "2000-2024", "2015-2024", "2024-2024", "1971-1979"]:
             for continent, country in scopes:
                 with self.subTest(years=years, continent=continent, country=country):
                     frame = filter_data(years, continent, country)
@@ -411,9 +456,7 @@ class MemberEdaTests(unittest.TestCase):
                     np.testing.assert_allclose(temperature[0].data[1].y, series.temperature_anomaly.rolling(5).mean(), equal_nan=True)
                     decades = series.groupby(series.year // 10 * 10).temperature_anomaly.mean()
                     np.testing.assert_allclose(temperature[1].data[0].y, decades, equal_nan=True)
-                    temp_latest = latest.dropna(subset=["temperature_anomaly"])
-                    self.assertEqual(dict(zip(temperature[2].data[0].locations, temperature[2].data[0].z)),
-                                     temp_latest.set_index("iso_alpha").temperature_anomaly.to_dict())
+                    self.assert_map_years(temperature[2], frame, "temperature_anomaly")
                     pivot = valid.pivot_table(index="continent", columns="decade", values="temperature_anomaly")
                     if not pivot.empty:
                         np.testing.assert_allclose(temperature[3].data[0].z, pivot, equal_nan=True)
@@ -427,8 +470,7 @@ class MemberEdaTests(unittest.TestCase):
                     top = latest.dropna(subset=["co2"]).nlargest(15, "co2")
                     actual = {name: value for trace in co2[1].data for name, value in zip(trace.y, trace.x)}
                     self.assertEqual(actual, top.set_index("country").co2.to_dict())
-                    pc = latest.dropna(subset=["co2_per_capita"])
-                    self.assertEqual(dict(zip(co2[2].data[0].locations, co2[2].data[0].z)), pc.set_index("iso_alpha").co2_per_capita.to_dict())
+                    self.assert_map_years(co2[2], frame, "co2_per_capita")
                     totals = sectors.groupby(["sector", "year"]).co2.sum(min_count=1)
                     for trace in co2[3].data:
                         np.testing.assert_allclose(trace.y, totals.loc[trace.name].reindex(trace.x), equal_nan=True)
@@ -442,6 +484,43 @@ class MemberEdaTests(unittest.TestCase):
                     actual = {name: (x, y) for trace in co2[5].data for name, x, y in zip(trace.hovertext, trace.x, trace.y)}
                     expected = {row.country: (row.renewable_percent, row.co2_per_capita) for row in paired.itertuples()}
                     self.assertEqual(actual, expected)
+
+    def assert_map_years(self, figure, data, field):
+        valid = data.dropna(subset=[field])
+        years = sorted(valid.year.unique())
+        years = [year for year in years if year % 10 == 0 or year in (years[0], years[-1])]
+        self.assertEqual([int(frame.name) for frame in figure.frames], years if len(years) > 1 else [])
+        if not years:
+            self.assertFalse(figure.data)
+            return
+        snapshots = [(years[0], figure.data[0])] + [(int(frame.name), frame.data[0]) for frame in figure.frames]
+        for year, trace in snapshots:
+            expected = valid[valid.year.eq(year)].set_index("iso_alpha")[field].to_dict()
+            self.assertEqual(dict(zip(trace.locations, trace.z)), expected)
+        if figure.frames:
+            self.assertEqual([int(step.args[0][0]) for step in figure.layout.sliders[0].steps], years)
+            self.assertTrue(all(step.args[1]["frame"]["redraw"] for step in figure.layout.sliders[0].steps))
+            self.assertTrue(figure.layout.meta["autoplay"])
+            buttons = figure.layout.updatemenus[0].buttons
+            self.assertEqual(len(buttons), 1)
+            self.assertEqual(buttons[0].label, "■ Dừng")
+            self.assertEqual(buttons[0].method, "relayout")
+            self.assertEqual(buttons[0].args[0], {"meta.autoplay": False})
+
+    def test_member_maps_keep_global_years_while_other_charts_follow_filters(self):
+        for route, field in [("temperature", "temperature_anomaly"), ("co2", "co2_per_capita")]:
+            for continent, country in [("all", "all"), ("Asia", "VNM"), ("all", "ATA")]:
+                with self.subTest(route=route, country=country):
+                    page = app.render_page(f"#{route}", "1990-2023", continent, country, "temperature")[0]
+                    cards = page.children.children[0].children[1].children
+                    figure = cards[2].children[1].figure
+                    self.assert_map_years(figure, DATA, field)
+                    self.assertIn("Toàn cầu · 1970–2024", figure.layout.meta["scope"])
+                    if country != "ATA":
+                        frame = filter_data("1990-2023", continent, country)
+                        series = aggregate(frame, continent == country == "all")
+                        expected = series.temperature_anomaly if route == "temperature" else series.co2
+                        np.testing.assert_allclose(cards[0].children[1].figure.data[0].y, expected, equal_nan=True)
 
     def test_sector_colors_do_not_change_with_filters(self):
         from phan_tich_co2.quan.tao_bieu_do_plotly import SECTOR_COLORS
@@ -511,6 +590,8 @@ class MemberEdaTests(unittest.TestCase):
         cases = [
             ("duc/tuong_tac/01_xu_huong_nhiet_do_toan_cau.html", "Graph"),
             ("duc/tinh/01_xu_huong_nhiet_do_toan_cau.png", "Img"),
+            ("duc/tuong_tac/03_ban_do_nhiet_do.html", "Graph"),
+            ("quan/tuong_tac/03_choropleth_co2pc.html", "Graph"),
         ]
         for path, component_type in cases:
             with self.subTest(path=path):
@@ -520,6 +601,12 @@ class MemberEdaTests(unittest.TestCase):
                 self.assertEqual(modal_children[1]["type"], component_type)
                 if component_type == "Img":
                     self.assertEqual(modal_children[1]["props"]["src"], f"/eda-files/{path}")
+                elif Path(path).name.startswith("03"):
+                    figure = modal_children[1]["props"]["figure"]
+                    self.assertEqual([frame["name"] for frame in figure["frames"]],
+                                     ["1970", "1980", "1990", "2000", "2010", "2020", "2024"])
+                    self.assertIn("Toàn cầu · 1970–2024", figure["layout"]["meta"]["scope"])
+                    self.assertIn("Toàn cầu", modal_children[0]["props"]["children"][1]["props"]["children"])
                 else:
                     expected = filter_data("2015-2024", country="VNM").temperature_anomaly.to_numpy()
                     actual = modal_children[1]["props"]["figure"]["data"][0]["y"]
@@ -536,8 +623,10 @@ class MemberEdaTests(unittest.TestCase):
         output = next(key for key in app.app.callback_map if "eda-modal.className" in key)
         callback = app.app.callback_map[output]
         pattern = callback["inputs"][0]["id"]
-        frame = filter_data("2015-2024", country="VNM")
-        figure = app.temperature_figures(aggregate(frame), frame, filtered_months(frame))["01_xu_huong_nhiet_do_toan_cau"]
+        route = "#temperature" if path.startswith("duc/") else "#co2"
+        page = app.render_page(route, "2015-2024", "all", "VNM", "temperature")[0]
+        cards = page.children.children[0].children[1].children
+        figure = cards[int(Path(path).name[:2]) - 1].children[1].figure
         trigger = "close-eda-modal.n_clicks" if close else (
             json.dumps({"path": path, "type": "expand-eda"}, separators=(",", ":"), sort_keys=True)
             + ".n_clicks"
@@ -551,7 +640,7 @@ class MemberEdaTests(unittest.TestCase):
             "inputs": [
                 {"id": pattern, "property": "n_clicks", "value": [1]},
                 {"id": "close-eda-modal", "property": "n_clicks", "value": int(close)},
-                {"id": "url", "property": "hash", "value": "#temperature"},
+                {"id": "url", "property": "hash", "value": route},
                 {"id": "year-range", "property": "value", "value": "2015-2024"},
                 {"id": "continent-filter", "property": "value", "value": "all"},
                 {"id": "country-filter", "property": "value", "value": "VNM"},

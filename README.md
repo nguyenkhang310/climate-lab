@@ -37,7 +37,7 @@ Mở **http://127.0.0.1:8050**. Trên Windows, dùng `.venv\Scripts\activate` đ
 | **Nhận định** | Những điểm đáng chú ý được tính theo phạm vi dữ liệu đang xem. |
 | **Dữ liệu** | Xem bảng và tải CSV theo bộ lọc. |
 
-Bộ lọc năm, châu lục và quốc gia dùng chung cho Tổng quan, Bản đồ khí hậu, Nhiệt độ, CO₂, Nhận định và Dữ liệu. Nhiệt độ và CO₂ mỗi tab có **6 biểu đồ tương tác**, cập nhật theo bộ lọc, bố trí hai biểu đồ mỗi hàng và có nút mở rộng. Hình EDA gốc nằm trong mục thu gọn riêng, không áp dụng bộ lọc. Mô hình dự đoán sử dụng dữ liệu toàn cầu và bộ chọn kịch bản riêng.
+Bộ lọc năm, châu lục và quốc gia dùng chung cho Tổng quan, Bản đồ khí hậu, Nhiệt độ, CO₂, Nhận định và Dữ liệu. Nhiệt độ và CO₂ mỗi tab có **6 biểu đồ tương tác**, bố trí hai biểu đồ mỗi hàng và có nút mở rộng. Riêng bản đồ trong hai tab này giữ phạm vi toàn cầu, tự chạy lặp qua các mốc **1970, 1980, 1990, 2000, 2010, 2020, 2024**, mỗi mốc 1,5 giây. Bấm **Dừng** hoặc chọn năm trên thanh trượt để xem một mốc; mỗi mốc dùng số liệu của đúng năm đó, không phải trung bình thập kỷ. Năm biểu đồ còn lại cập nhật theo bộ lọc chung. Hình EDA gốc nằm trong mục thu gọn riêng, không áp dụng bộ lọc. Mô hình dự đoán sử dụng dữ liệu toàn cầu và bộ chọn kịch bản riêng.
 
 ## Dữ liệu và phương pháp
 

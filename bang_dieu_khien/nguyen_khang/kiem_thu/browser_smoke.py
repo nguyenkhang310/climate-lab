@@ -19,6 +19,9 @@ PAGES = {
 
 def check_eda_layout(page, gallery):
     cards = gallery.locator(".interactive .eda-artifact-card")
+    page.wait_for_function("id => document.querySelector('#' + id + ' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.layout?.sliders?.[0]?.active > 0",
+                           arg=gallery.get_attribute("id"))
+    cards.nth(2).get_by_text("■ Dừng", exact=True).click()
     for width in (1440, 1024, 390, 1440):
         page.set_viewport_size({"width": width, "height": 1000})
         page.wait_for_function("""() => [...document.querySelectorAll('.interactive .js-plotly-plot')].every(p => {

@@ -34,7 +34,7 @@ DATA_DICTIONARY = {
     "nhiet_do_quoc_gia.csv": {
         "country": "Tên quốc gia / lãnh thổ chuẩn hóa (theo danh mục OWID / ISO-3166).",
         "iso_alpha": "Mã quốc gia chuẩn ISO-3166-1 alpha-3 (3 ký tự viết hoa), dùng làm khóa ghép bảng chính cùng cột year.",
-        "continent": "Châu lục theo phân loại OWID (Africa, Asia, Europe, North America, South America, Oceania; null nếu là vùng đặc thù như ATA).",
+        "continent": "Châu lục theo OWID; bổ sung từ danh mục UN M49 khi thiếu, null nếu chưa phân loại (ATA).",
         "year": "Năm quan sát (1961–2025; phân tích chính 1970–2024).",
         "decade": "Thập kỷ quan sát = (year // 10) * 10.",
         "temperature_anomaly": "Độ lệch nhiệt độ trên đất liền (°C) so với thời kỳ cơ sở 1951–1980 (FAOSTAT Temperature change on land, Meteorological year).",
@@ -95,7 +95,8 @@ def clean_faostat() -> tuple[pd.DataFrame, dict]:
     df_clean = df_clean[df_clean["iso_alpha"].str.len() == 3].copy()
 
     df_clean["country"] = df_clean["iso_alpha"].map(iso_to_name).fillna(df_clean["m49_clean"].map(m49_to_name)).fillna(df_clean["Area"])
-    df_clean["continent"] = df_clean["iso_alpha"].map(iso_to_cont)
+    df_clean["continent"] = df_clean["iso_alpha"].map(iso_to_cont).fillna(
+        df_clean["iso_alpha"].map(m49_df.set_index("iso_alpha")["continent"]))
     df_clean["year"] = pd.to_numeric(df_clean["Year"], errors="coerce").astype(int)
     df_clean["temperature_anomaly"] = pd.to_numeric(df_clean["Value"], errors="coerce")
     df_clean["source_flag"] = df_clean["Flag"]

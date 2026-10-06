@@ -17,7 +17,7 @@ CHARTS = [
 ]
 
 
-def build_figures(series, countries, monthly):
+def build_figures(series, countries, monthly, map_countries=None):
     series = series.sort_values("year")
     countries = countries.dropna(subset=["temperature_anomaly"]).copy()
     countries["decade"] = (countries.year // 10 * 10).astype(str)
@@ -41,10 +41,18 @@ def build_figures(series, countries, monthly):
         textposition="outside", cliponaxis=False,
         hovertemplate="%{x} · %{customdata} năm có số liệu<br>%{y:+.2f} °C<extra></extra>"))
     bars.update_layout(xaxis_title="Thập kỷ", yaxis_title=labels["temperature_anomaly"])
-    latest = countries[countries.year == series.year.max()]
-    world_map = px.choropleth(latest, locations="iso_alpha", color="temperature_anomaly",
+    map_data = countries if map_countries is None else map_countries
+    map_data = map_data.dropna(subset=["temperature_anomaly"]).sort_values("year")
+    map_data = map_data[(map_data.year % 10 == 0) | map_data.year.isin([map_data.year.min(), map_data.year.max()])]
+    world_map = px.choropleth(map_data,
+                             locations="iso_alpha", color="temperature_anomaly",
+                             animation_frame="year", animation_group="iso_alpha",
                              hover_name="country", range_color=[-6, 6],
                              color_continuous_scale="RdBu_r", labels=labels)
+    if world_map.frames:
+        world_map.update_layout(meta=dict(autoplay=True))
+        world_map.layout.updatemenus[0].buttons = [
+            dict(label="■ Dừng", method="relayout", args=[{"meta.autoplay": False}])]
     pivot = countries.pivot_table(index="continent", columns="decade", values="temperature_anomaly")
     heatmap = (px.imshow(pivot, text_auto=".2f", aspect="auto", range_color=[-2.5, 2.5],
                         color_continuous_scale="RdBu_r",
@@ -72,7 +80,9 @@ def main():
     for name, title in CHARTS:
         figure = figures[name]
         figure.update_layout(template="plotly_white", title=title)
-        figure.write_html(OUT / f"{name}.html", include_plotlyjs="cdn", config={"scrollZoom": False})
+        animation = (ROOT.parents[1] / "bang_dieu_khien/nguyen_khang/tai_nguyen/eda.js").read_text() if figure.frames else None
+        figure.write_html(OUT / f"{name}.html", include_plotlyjs="cdn", config={"scrollZoom": False},
+                          auto_play=False, post_script=animation)
     print("Plotly OK:", list(figures))
 
 

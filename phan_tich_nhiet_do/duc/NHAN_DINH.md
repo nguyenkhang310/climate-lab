@@ -42,11 +42,11 @@ Dựa trên bản đồ thế giới (`03_ban_do_nhiet_do.html / png`) và biể
     * Nga (`RUS`): Năm 2020 đạt kỷ lục **+3.697°C**.
     * Estonia (`EST`): Năm 2020 đạt **+3.599°C**.
 - **So sánh tốc độ ấm lên giữa các Châu lục (từ thập niên 1960s đến 2020s):**
-  - **Châu Âu (Europe)** là châu lục lục địa ấm lên nhanh nhất hành tinh: từ mức âm ở thập niên 1960s (**-0.01°C**) vọt lên **+2.14°C** ở thập niên 2020s (mức tăng ròng **+2.15°C**).
+  - **Châu Âu (Europe)** có mức tăng trung bình cao nhất trong các châu lục được phân loại của tập dữ liệu: từ **-0.05°C** ở thập niên 1960s lên **+2.16°C** ở thập niên 2020s (mức tăng **+2.21°C**). Giá trị tính theo các quốc gia–năm có số liệu, không phải trung bình có trọng số diện tích.
   - **Châu Á (Asia)**: Từ **-0.01°C** vọt lên **+1.66°C** (tăng +1.67°C).
   - **Bắc Mỹ (North America)**: Từ **-0.06°C** lên **+1.35°C** (tăng +1.41°C).
   - **Nam Mỹ (South America)**: Từ **-0.00°C** lên **+1.32°C** (tăng +1.32°C).
-  - **Châu Phi (Africa)**: Từ **-0.03°C** lên **+1.31°C** (tăng +1.34°C).
+  - **Châu Phi (Africa)**: Từ **-0.03°C** lên **+1.30°C** (tăng +1.34°C, tính trước khi làm tròn).
   - **Châu Đại Dương (Oceania)**: Từ **-0.08°C** lên **+1.00°C** (tăng +1.08°C).
 
 ---
@@ -82,10 +82,10 @@ Dựa trên biểu đồ hộp (`05_phan_bo_nhiet_do_quoc_gia.png`):
    - Mã `CHN` đại diện chính thức cho thực thể Trung Quốc (UN M49 `'156'`, FAO: *China, mainland*). Tên hiển thị thống nhất là `"China"`.
    - Vùng tổng hợp của FAO `'159'` (*China aggregate*) đã được bóc tách hoàn toàn vào danh sách 52 vùng tổng hợp riêng (`aggregates_separated` trong file `bao_cao_chat_luong.json`).
    - Các lãnh thổ Hồng Kông (`HKG`), Ma Cao (`MAC`), Đài Loan (`TWN`) có mã ISO-3 độc lập.
-3. **Mã ngoại lệ không có châu lục:** `ATA` (Nam Cực), `ATF` (Vùng đất phía Nam thuộc Pháp), `SJM` (Svalbard). Khang có thể gán `ATA` vào `"Antarctica"` và `SJM` vào `"Europe"`.
+3. **Bổ sung châu lục:** Dùng danh mục UN M49 trong repo khi OWID thiếu phân loại: `ATF` thuộc `"Africa"`, `SJM` thuộc `"Europe"`. Bảng ghép và SQLite gán riêng `ATA` vào `"Antarctica"`.
 4. **Giá trị khuyết:** Tỷ lệ khuyết cột `temperature_anomaly` ở bảng quốc gia là **3.48%** (các đảo nhỏ hoặc năm gần nhất chưa đủ số liệu), tuân thủ nguyên tắc **giữ null**, không thay bằng 0.
 5. **Trực quan hóa chuẩn:**
    - Cả bản đồ Choropleth và Heatmap đều đã được cố định tâm thang màu tại đúng mốc **0.00°C** (`color_continuous_midpoint=0` và `center=0`).
-   - Dashboard có 6 biểu đồ tương tác, dùng chung bộ lọc năm, châu lục và quốc gia. Thứ tự trình bày: xu hướng theo năm → trung bình thập kỷ → bản đồ → so sánh châu lục → phân bố quốc gia → chênh nhiệt độ theo tháng.
+   - Dashboard có 6 biểu đồ tương tác; riêng bản đồ giữ phạm vi toàn cầu và tự chạy qua các mốc 10 năm cùng năm cuối, năm biểu đồ còn lại dùng bộ lọc chung. Thứ tự trình bày: xu hướng theo năm → trung bình thập kỷ → bản đồ → so sánh châu lục → phân bố quốc gia → chênh nhiệt độ theo tháng.
    - Biểu đồ cuối trả lời: mức tăng nhiệt so với cùng tháng giai đoạn 1951–1980 có đồng đều giữa 12 tháng không? Toàn cầu dùng NASA; quốc gia và châu lục dùng FAOSTAT. Châu lục lấy trung bình các nước có số liệu trong từng tháng–năm, rồi lấy trung bình các năm đang lọc. Điểm cao nhất là tháng có chênh lệch lớn nhất, không phải tháng có nhiệt độ tuyệt đối cao nhất. Giữ trống tháng thiếu số liệu; số năm có dữ liệu hiển thị khi rê chuột.
    - Biểu đồ tĩnh phân tích toàn bộ nguồn; Dashboard giới hạn 1970–2024. Trung bình thập kỷ chỉ tính các năm đang lọc; đường trung bình 5 năm cần đủ 5 quan sát trong khoảng đã chọn. Không so trực tiếp hai giá trị tổng hợp khác phạm vi năm.

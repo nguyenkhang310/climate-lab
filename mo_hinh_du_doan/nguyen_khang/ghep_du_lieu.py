@@ -40,6 +40,8 @@ def build_country_year() -> tuple[pd.DataFrame, dict]:
     merged["continent"] = merged["continent_temperature"].combine_first(
         merged["continent_co2"]
     )
+    regions = pd.read_csv(ROOT / "data/du_lieu_goc/dung_chung/un_m49_iso3.csv").set_index("iso_alpha").continent
+    merged["continent"] = merged.continent.fillna(merged.iso_alpha.map(regions))
     merged.loc[merged["iso_alpha"] == "ATA", "continent"] = "Antarctica"
     merged["decade"] = (merged["year"] // 10 * 10).astype(int)
 

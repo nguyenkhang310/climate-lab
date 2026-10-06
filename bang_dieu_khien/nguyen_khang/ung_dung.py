@@ -394,6 +394,12 @@ def create_member_eda_gallery(artifacts, gallery_id, figures, notes):
         figure.update_yaxes(nticks=6, title_font_size=11)
         figure.update_coloraxes(colorbar=dict(title=dict(side="right", font_size=10), thickness=10, len=.85))
         figure.update_geos(projection_type="natural earth", showframe=False, bgcolor="white")
+        if figure.frames:
+            note = f"Toàn cầu · {figure.frames[0].name}–{figure.frames[-1].name} · {note} · Mốc 10 năm và năm cuối"
+            figure.update_layout(meta=dict(scope=note, autoplay=True), margin_b=105)
+            figure.layout.sliders[0].update(x=0, len=1, pad=dict(t=48, b=0),
+                                            currentvalue=dict(prefix="Năm: ", xanchor="right", font_size=12))
+            figure.layout.updatemenus[0].update(x=0, xanchor="left", pad=dict(t=8, r=0))
         for trace in figure.data:
             trace.name = CONTINENT_NAMES.get(trace.name, trace.name)
         if figure.data and figure.data[0].type == "heatmap":
@@ -417,6 +423,10 @@ def scope_name(continent, country):
 
 def format_number(value, pattern, missing="—"):
     return missing if pd.isna(value) else format(value, pattern)
+
+def map_years(frame, selected):
+    chosen = frame if selected == "all" else frame[frame.iso_alpha == selected]
+    return sorted(int(year) for year in chosen.year.unique())
 
 def slider_marks(years):
     first, last = years[0], years[-1]
@@ -489,7 +499,7 @@ def overview_comparison(frame, selected, year, scope):
 
 
 def create_overview(frame, selected, scope, metric):
-    years = sorted(int(year) for year in frame.year.unique())
+    years = map_years(frame, selected)
     year = years[-1]
     snapshot = frame[frame.year == year]
     lon, lat = COORDINATES.get(selected, (105, 15))
@@ -881,7 +891,7 @@ def toggle_eda_modal(open_clicks, _, route, years, continent, country, figures, 
         media = graph(go.Figure(figure).update_layout(height=None))
         media.style = {"height": "100%", "minHeight": 0}
         media.className = "chart eda-modal-chart"
-        title, subtitle = title.replace(" toàn cầu", ""), scope
+        title, subtitle = title.replace(" toàn cầu", ""), figure.get("layout", {}).get("meta", {}).get("scope", scope)
     else:
         media = create_eda_media(title, subtitle, path, large=True)
     heading = [html.H2(title)]
@@ -971,24 +981,23 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     elif page == "earth":
         content = create_earth(frame, country, metric, scope)
     elif page == "temperature":
-        end = int(frame.year.max())
         source = "NASA GISTEMP" if scope == "Toàn cầu" else "FAOSTAT"
         if frame.iso_alpha.nunique() > 1 and scope != "Toàn cầu":
             source += " · Trung bình các nước có số liệu"
         notes = [f"{source} · Mốc 1951–1980 · TB 5 năm trong kỳ", "Trung bình các năm có số liệu",
-                 f"{end} · FAOSTAT · {frame[frame.year.eq(end)].temperature_anomaly.count()} quốc gia",
+                 "FAOSTAT",
                  "FAOSTAT · Trung bình các quốc gia–năm có số liệu", "FAOSTAT · Các giá trị quốc gia–năm",
                  f"{source} · Trung bình tháng trong kỳ · Mốc 1951–1980"]
         content = create_member_eda_gallery(DUC_TEMPERATURE_ARTIFACTS, "duc-eda-gallery",
-                                            temperature_figures(series, frame, filtered_months(frame, scope == "Toàn cầu")), notes)
+                                            temperature_figures(series, frame, filtered_months(frame, scope == "Toàn cầu"), map_countries=DATA), notes)
     elif page == "co2":
         end = int(frame.year.max())
         paired = frame[frame.year.eq(end)].dropna(subset=["co2_per_capita", "renewable_percent"])
         notes = ["OWID / Global Carbon Project", f"{end} · Tối đa 15 quốc gia có số liệu",
-                 f"{end} · OWID / Global Carbon Project", "EDGAR · Chỉ tính CO₂",
+                 "OWID / Global Carbon Project", "EDGAR · Chỉ tính CO₂",
                  f"{end} · EDGAR · Chỉ tính CO₂", f"{end} · {len(paired)} quốc gia · Tái tạo: % tiêu thụ năng lượng cuối cùng"]
         content = create_member_eda_gallery(QUAN_ARTIFACTS, "quan-eda-gallery",
-                                            co2_figures(series, frame, filtered_sectors(frame, scope == "Toàn cầu")), notes)
+                                            co2_figures(series, frame, filtered_sectors(frame, scope == "Toàn cầu"), map_countries=DATA), notes)
     elif page == "insights":
         content = create_insights_page(frame, series, scope)
     else:
@@ -1075,7 +1084,7 @@ def update_overview(
     if frame.empty or (selected != "all" and selected not in frame.iso_alpha.values):
         return (no_update,) * 13
 
-    years = sorted(int(value) for value in frame.year.unique())
+    years = map_years(frame, selected)
     year = max(years[0], min(year or years[-1], years[-1]))
     figure = update_map(frame[frame.year == year], selected, metric, map_view, resets,
                         current_figure, reset=ctx.triggered_id == "overview-reset")

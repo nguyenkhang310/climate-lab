@@ -105,6 +105,8 @@ def dimensions(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFr
     countries = [frame.reindex(columns=["iso_alpha", "country", "continent"])
                  for frame in frames.values() if "iso_alpha" in frame]
     country = pd.concat(countries).groupby("iso_alpha", as_index=False).first()
+    regions = pd.read_csv(ROOT / "data/du_lieu_goc/dung_chung/un_m49_iso3.csv").set_index("iso_alpha").continent
+    country["continent"] = country.continent.fillna(country.iso_alpha.map(regions))
     country.loc[country["iso_alpha"] == "ATA", "continent"] = "Antarctica"
     year = pd.concat([frame[["year"]] for frame in frames.values()]).drop_duplicates().sort_values("year")
     year["decade"] = year["year"] // 10 * 10

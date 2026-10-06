@@ -26,8 +26,11 @@ SECTOR_COLORS = dict(zip(sorted(SECTOR_NAMES),
 SECTOR_COLORS.update({name: SECTOR_COLORS[key] for key, name in SECTOR_NAMES.items()})
 
 
-def build_figures(series, countries, sectors):
+def build_figures(series, countries, sectors, map_countries=None):
     latest = countries[countries.year == series.year.max()]
+    map_data = countries if map_countries is None else map_countries
+    map_data = map_data.dropna(subset=["co2_per_capita"]).sort_values("year")
+    map_data = map_data[(map_data.year % 10 == 0) | map_data.year.isin([map_data.year.min(), map_data.year.max()])]
     labels = {"year": "Năm", "co2": "CO₂ (triệu tấn)", "country": "Quốc gia",
               "continent": "Châu lục", "sector": "Ngành", "co2_per_capita": "CO₂/người (tấn)",
               "renewable_percent": "Năng lượng tái tạo (%)"}
@@ -42,7 +45,8 @@ def build_figures(series, countries, sectors):
         "02_bar_top15": px.bar(top, x="co2", y="country", orientation="h", color="continent",
                                color_discrete_map=CONTINENT_COLORS, labels=labels),
         "03_choropleth_co2pc": px.choropleth(
-            latest.dropna(subset=["co2_per_capita"]), locations="iso_alpha", color="co2_per_capita",
+            map_data,
+            locations="iso_alpha", color="co2_per_capita", animation_frame="year", animation_group="iso_alpha",
             hover_name="country", range_color=[0, 40], color_continuous_scale="YlOrRd", labels=labels),
         "04_stacked_area_nganh": px.area(areas, x="year", y="co2", color="sector", labels=labels,
                                          color_discrete_map=SECTOR_COLORS),
@@ -58,6 +62,11 @@ def build_figures(series, countries, sectors):
     figures["02_bar_top15"].update_yaxes(categoryorder="total ascending", title=None, tickmode="linear", dtick=1)
     figures["03_choropleth_co2pc"].update_coloraxes(
         colorbar=dict(tickvals=[0, 10, 20, 30, 40], ticktext=["0", "10", "20", "30", "≥40"]))
+    world_map = figures["03_choropleth_co2pc"]
+    if world_map.frames:
+        world_map.update_layout(meta=dict(autoplay=True))
+        world_map.layout.updatemenus[0].buttons = [
+            dict(label="■ Dừng", method="relayout", args=[{"meta.autoplay": False}])]
     treemap = figures["05_treemap_nganh"]
     treemap.update_traces(
         texttemplate="%{label}<br>%{customdata[0]:.1f}%",
@@ -78,7 +87,9 @@ def main():
     for name, title in CHARTS:
         figure = figures[name]
         figure.update_layout(template="plotly_white", title=title)
-        figure.write_html(OUT / f"{name}.html", include_plotlyjs="cdn", config={"scrollZoom": False})
+        animation = (ROOT.parents[1] / "bang_dieu_khien/nguyen_khang/tai_nguyen/eda.js").read_text() if figure.frames else None
+        figure.write_html(OUT / f"{name}.html", include_plotlyjs="cdn", config={"scrollZoom": False},
+                          auto_play=False, post_script=animation)
     print("Plotly OK")
 
 
