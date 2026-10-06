@@ -1,206 +1,79 @@
 from pathlib import Path
-import numpy as np
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
 
 ROOT = Path(__file__).resolve().parent
-PROC = ROOT / "du_lieu_sach"
+PROC = ROOT.parents[1] / "data/du_lieu_da_xu_ly/duc"
 OUT = ROOT / "bieu_do/tuong_tac"
-OUT.mkdir(parents=True, exist_ok=True)
+CHARTS = [
+    ("01_xu_huong_nhiet_do_toan_cau", "Xu hướng nhiệt độ toàn cầu"),
+    ("02_nhiet_do_theo_thap_ky", "Nhiệt độ trung bình theo thập kỷ"),
+    ("03_ban_do_nhiet_do", "Bản đồ nhiệt độ theo quốc gia"),
+    ("04_heatmap_chau_luc_thap_ky", "Nhiệt độ theo châu lục và thập kỷ"),
+    ("05_phan_bo_nhiet_do_quoc_gia", "Phân bố nhiệt độ theo thập kỷ"),
+    ("06_nhiet_do_theo_thang", "Chênh nhiệt độ theo tháng"),
+]
 
 
-PLOTLY_CONFIG = {"scrollZoom": False}
+def build_figures(series, countries, monthly):
+    series = series.sort_values("year")
+    countries = countries.dropna(subset=["temperature_anomaly"]).copy()
+    countries["decade"] = (countries.year // 10 * 10).astype(str)
+    labels = {"year": "Năm", "temperature_anomaly": "Chênh nhiệt độ (°C)",
+              "decade": "Thập kỷ", "country": "Quốc gia"}
+    trend = go.Figure([
+        go.Scatter(x=series.year, y=series.temperature_anomaly, name="Hằng năm",
+                   mode="lines+markers" if len(series) == 1 else "lines", line=dict(color="#EF6B54", width=1.5)),
+        go.Scatter(x=series.year, y=series.temperature_anomaly.rolling(5).mean(),
+                   name="Trung bình 5 năm", mode="lines", line=dict(color="#B42335", width=2.5)),
+    ])
+    trend.update_layout(xaxis_title="Năm", yaxis_title=labels["temperature_anomaly"], hovermode="x unified")
+    trend.add_hline(y=0, line_dash="dot", line_color="#96A7BA")
+    trend.update_traces(hovertemplate="%{x}: %{y:+.2f} °C<extra>%{fullData.name}</extra>")
+    decades = series.assign(decade=(series.year // 10 * 10).astype(str)).groupby("decade").agg(
+        temperature_anomaly=("temperature_anomaly", "mean"), years=("temperature_anomaly", "count"))
+    bars = go.Figure(go.Bar(
+        x=decades.index, y=decades.temperature_anomaly,
+        marker_color=["#3478B8" if v < 0 else "#D94835" for v in decades.temperature_anomaly],
+        customdata=decades.years, text=decades.temperature_anomaly.map("{:+.2f}".format),
+        textposition="outside", cliponaxis=False,
+        hovertemplate="%{x} · %{customdata} năm có số liệu<br>%{y:+.2f} °C<extra></extra>"))
+    bars.update_layout(xaxis_title="Thập kỷ", yaxis_title=labels["temperature_anomaly"])
+    latest = countries[countries.year == series.year.max()]
+    world_map = px.choropleth(latest, locations="iso_alpha", color="temperature_anomaly",
+                             hover_name="country", range_color=[-6, 6],
+                             color_continuous_scale="RdBu_r", labels=labels)
+    pivot = countries.pivot_table(index="continent", columns="decade", values="temperature_anomaly")
+    heatmap = (px.imshow(pivot, text_auto=".2f", aspect="auto", range_color=[-2.5, 2.5],
+                        color_continuous_scale="RdBu_r",
+                        labels=dict(x="Thập kỷ", y="Châu lục", color="Chênh nhiệt độ (°C)"))
+               if not pivot.empty else go.Figure())
+    box = px.box(countries, x="decade", y="temperature_anomaly", color="decade",
+                 points="outliers", hover_data=["country", "year"], labels=labels)
+    by_month = monthly.groupby(["year", "month"]).temperature_anomaly.mean().groupby("month")
+    months = by_month.agg(["mean", "count"]).reindex(range(1, 13))
+    profile = go.Figure(go.Scatter(
+        x=months.index, y=months["mean"], customdata=months["count"], mode="lines+markers",
+        line=dict(color="#D94835", width=2.5), marker_size=7, connectgaps=False,
+        hovertemplate="Tháng %{x}<br>Chênh nhiệt độ: %{y:+.2f} °C<br>%{customdata} năm có số liệu<extra></extra>"))
+    profile.update_layout(xaxis=dict(title="Tháng", tickmode="array", tickvals=list(range(1, 13))),
+                          yaxis_title=labels["temperature_anomaly"])
+    profile.add_hline(y=0, line_dash="dot", line_color="#96A7BA")
+    return dict(zip([name for name, _ in CHARTS], [trend, bars, world_map, heatmap, box, profile]))
 
 
-def main() -> None:
-    df_nasa = pd.read_csv(PROC / "nhiet_do_toan_cau.csv")
-    df_fao = pd.read_csv(PROC / "nhiet_do_quoc_gia.csv")
-
-
-    rolling_5 = df_nasa["temperature_anomaly"].rolling(5).mean()
-    fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(
-        x=df_nasa["year"], y=df_nasa["temperature_anomaly"],
-        mode="lines+markers", name="Nhiệt độ hàng năm",
-        line=dict(color="#f46d43", width=1.5), marker=dict(size=4, color="#f46d43"),
-        hovertemplate="Năm %{x}: <b>%{y:.2f}°C</b><extra></extra>"
-    ))
-    fig1.add_trace(go.Scatter(
-        x=df_nasa["year"], y=rolling_5,
-        mode="lines", name="Trung bình 5 năm (Xu hướng)",
-        line=dict(color="#a50026", width=3),
-        hovertemplate="Xu hướng 5 năm (%{x}): <b>%{y:.2f}°C</b><extra></extra>"
-    ))
-    fig1.add_hline(y=0, line_dash="dash", line_color="blue", annotation_text="Baseline 1951–1980 (0°C)")
-    peak = df_nasa.loc[df_nasa.temperature_anomaly.idxmax()]
-    fig1.add_annotation(
-        x=peak.year, y=peak.temperature_anomaly, text=f"Kỷ lục {int(peak.year)} ({peak.temperature_anomaly:+.2f}°C)",
-        showarrow=True, arrowhead=2, ax=-50, ay=-35,
-        bgcolor="#ffebee", bordercolor="#d32f2f"
-    )
-    fig1.update_layout(
-        title="<b>Xu hướng Độ lệch Nhiệt độ Toàn cầu qua Thời gian (1880–2025)</b>",
-        xaxis_title="Năm", yaxis_title="Độ lệch nhiệt độ so với mốc 1951–1980 (°C)",
-        template="plotly_white", hovermode="x unified",
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(255,255,255,0.8)")
-    )
-    fig1.write_html(OUT / "01_xu_huong_nhiet_do_toan_cau.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
-
-
-    df_dec = df_nasa.groupby("decade")["temperature_anomaly"].mean().reset_index()
-    bar_colors = ["#4575b4" if v < 0 else "#d73027" for v in df_dec["temperature_anomaly"]]
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(
-        x=[f"{d}s" for d in df_dec["decade"]],
-        y=df_dec["temperature_anomaly"],
-        marker_color=bar_colors,
-        text=[f"{v:+.2f}°C" for v in df_dec["temperature_anomaly"]],
-        textposition="outside",
-        hoverinfo="text",
-        hovertext=[f"Thập kỷ: <b>{r.decade}s</b><br>Độ lệch trung bình: <b>{r.temperature_anomaly:+.3f}°C</b>" for r in df_dec.itertuples()],
-        name="Nhiệt độ thập kỷ"
-    ))
-    fig2.add_hline(y=0, line_color="black", line_width=1)
-    fig2.update_layout(
-        title="<b>Độ lệch Nhiệt độ Trung bình Toàn cầu theo Thập kỷ (1880s–2020s) [NASA GISS]</b>",
-        xaxis_title="Thập kỷ", yaxis_title="Độ lệch nhiệt độ trung bình (°C)",
-        template="plotly_white"
-    )
-    fig2.write_html(OUT / "02_nhiet_do_theo_thap_ky.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
-
-
-    df_map_all = df_fao.dropna(subset=["temperature_anomaly"]).sort_values("year").copy()
-    fig3 = px.choropleth(
-        df_map_all,
-        locations="iso_alpha",
-        color="temperature_anomaly",
-        hover_name="country",
-        animation_frame="year",
-        color_continuous_scale="RdBu_r",
-        color_continuous_midpoint=0,
-        range_color=[-6, 6],
-        title="<b>Bản đồ Độ lệch Nhiệt độ Thế giới theo Năm (1961–2025) [Tâm 0°C]</b>",
-        labels={"temperature_anomaly": "Độ lệch (°C)"},
-        template="plotly_white"
-    )
-    fig3.update_layout(
-        coloraxis_colorbar=dict(title="Độ lệch (°C)"),
-        margin=dict(l=0, r=0, t=50, b=0)
-    )
-    fig3.write_html(OUT / "03_ban_do_nhiet_do.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
-
-
-    piv = df_fao.pivot_table(index="continent", columns="decade", values="temperature_anomaly", aggfunc="mean")
-    piv.columns = [f"{c}s" for c in piv.columns]
-    fig4 = px.imshow(
-        piv,
-        labels=dict(x="Thập kỷ", y="Châu lục", color="Độ lệch (°C)"),
-        x=piv.columns.tolist(), y=piv.index.tolist(),
-        color_continuous_scale="RdBu_r", color_continuous_midpoint=0,
-        range_color=[-2.5, 2.5], text_auto=".2f",
-        title="<b>Biểu đồ Nhiệt theo Châu lục và Thập kỷ (1960s–2020s) [Tâm 0°C]</b>",
-        template="plotly_white"
-    )
-    fig4.update_layout(xaxis_title="Thập kỷ", yaxis_title="Châu lục", coloraxis_colorbar=dict(title="Độ lệch (°C)"))
-    fig4.write_html(OUT / "04_heatmap_chau_luc_thap_ky.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
-
-
-    df_box = df_fao.copy()
-    df_box["decade_str"] = df_box["decade"].astype(str) + "s"
-    fig5 = px.box(
-        df_box, x="decade_str", y="temperature_anomaly", color="decade_str",
-        points="outliers", hover_data=["country", "year"],
-        labels={"decade_str": "Thập kỷ", "temperature_anomaly": "Độ lệch nhiệt độ (°C)", "country": "Quốc gia", "year": "Năm"},
-        title="<b>Phân bố Độ lệch Nhiệt độ giữa các Quốc gia qua từng Thập kỷ (Boxplot Tương tác)</b>",
-        template="plotly_white"
-    )
-    fig5.add_hline(y=0, line_dash="dash", line_color="blue", annotation_text="Baseline 1951–1980 (0°C)")
-    fig5.update_layout(xaxis_title="Thập kỷ", yaxis_title="Độ lệch nhiệt độ (°C)", showlegend=False)
-    fig5.write_html(OUT / "05_phan_bo_nhiet_do_quoc_gia.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
-
-
-    df_mod = df_nasa[df_nasa["year"] >= 1970].copy()
-    train = df_mod[df_mod["year"] <= 2014]
-    test = df_mod[df_mod["year"] >= 2015]
-
-    lr_full = LinearRegression()
-    lr_full.fit(df_mod[["year"]], df_mod["temperature_anomaly"])
-    full_pred = lr_full.predict(df_mod[["year"]])
-    slope_decade = lr_full.coef_[0] * 10
-
-    future_years = np.arange(int(df_mod.year.max()) + 1, 2051)
-    future_df = pd.DataFrame({"year": future_years})
-    future_pred = lr_full.predict(future_df)
-
-    residuals = df_mod["temperature_anomaly"] - full_pred
-    dof = len(df_mod) - 2
-    s_err = np.sqrt(np.sum(residuals**2) / dof)
-    x_mean = df_mod["year"].mean()
-    ss_x = np.sum((df_mod["year"] - x_mean)**2)
-    pi = 1.96 * s_err * np.sqrt(1 + 1 / len(df_mod) + (future_years - x_mean)**2 / ss_x)
-    upper_pi = future_pred + pi
-    lower_pi = future_pred - pi
-
-    pre = df_nasa[df_nasa["year"] < 1970]
-    fig6 = go.Figure()
-    fig6.add_trace(go.Scatter(
-        x=pre["year"], y=pre["temperature_anomaly"],
-        mode="lines+markers", name="Lịch sử (1880–1969)",
-        line=dict(color="#999999", width=1.5), marker=dict(size=4, color="#999999"),
-        hovertemplate="Năm %{x}: %{y:.3f}°C<extra></extra>"
-    ))
-    fig6.add_trace(go.Scatter(
-        x=train["year"], y=train["temperature_anomaly"],
-        mode="markers", name="Huấn luyện (1970–2014)",
-        marker=dict(size=6, color="#1f77b4"),
-        hovertemplate="Năm %{x}: %{y:.3f}°C (Train)<extra></extra>"
-    ))
-    fig6.add_trace(go.Scatter(
-        x=test["year"], y=test["temperature_anomaly"],
-        mode="markers", name="Kiểm định thực tế (2015–2025)",
-        marker=dict(size=8, symbol="square", color="#d62728"),
-        hovertemplate="Năm %{x}: %{y:.3f}°C (Test)<extra></extra>"
-    ))
-    fig6.add_trace(go.Scatter(
-        x=df_mod["year"], y=full_pred,
-        mode="lines", name=f"Hồi quy OLS (+{slope_decade:.3f}°C/thập kỷ)",
-        line=dict(color="#d95f02", width=2.5),
-        hovertemplate="Hồi quy %{x}: %{y:.3f}°C<extra></extra>"
-    ))
-    fig6.add_trace(go.Scatter(
-        x=future_years, y=future_pred,
-        mode="lines", name="Dự báo đến 2050",
-        line=dict(color="#e41a1c", width=2.5, dash="dash"),
-        hovertemplate="Dự báo %{x}: %{y:.3f}°C<extra></extra>"
-    ))
-    fig6.add_trace(go.Scatter(
-        x=np.concatenate([future_years, future_years[::-1]]),
-        y=np.concatenate([upper_pi, lower_pi[::-1]]),
-        fill="toself", fillcolor="rgba(228, 26, 28, 0.15)",
-        line=dict(color="rgba(255,255,255,0)"),
-        hoverinfo="skip", showlegend=True, name="Khoảng dự đoán xấp xỉ 95%"
-    ))
-    fig6.add_hline(y=0, line_dash="dot", line_color="blue", annotation_text="Baseline 1951–1980 (0°C)")
-
-    fig6.update_layout(
-        title="<b>Dự báo Xu hướng Nhiệt độ Toàn cầu đến năm 2050 (Mô hình Hồi quy Tuyến tính OLS)</b>",
-        xaxis_title="Năm",
-        yaxis_title="Độ lệch nhiệt độ so với mốc 1951–1980 (°C)",
-        template="plotly_white",
-        hovermode="x unified",
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(255,255,255,0.8)"),
-        annotations=[dict(
-            x=2050, y=future_pred[-1],
-            text=f"2050: +{future_pred[-1]:.2f}°C",
-            showarrow=True, arrowhead=2, ax=-40, ay=-30,
-            bgcolor="#ffebee", bordercolor="#d32f2f"
-        )]
-    )
-    fig6.write_html(OUT / "06_du_bao_hoi_quy_tuyen_tinh.html", include_plotlyjs="cdn", config=PLOTLY_CONFIG)
-
-    print("Plotly OK:", sorted(p.name for p in OUT.glob("*.html")))
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    figures = build_figures(pd.read_csv(PROC / "nhiet_do_toan_cau.csv"),
+                            pd.read_csv(PROC / "nhiet_do_quoc_gia.csv"),
+                            pd.read_csv(PROC / "nhiet_do_theo_thang.csv").query("iso_alpha == 'WLD'"))
+    for name, title in CHARTS:
+        figure = figures[name]
+        figure.update_layout(template="plotly_white", title=title)
+        figure.write_html(OUT / f"{name}.html", include_plotlyjs="cdn", config={"scrollZoom": False})
+    print("Plotly OK:", list(figures))
 
 
 if __name__ == "__main__":

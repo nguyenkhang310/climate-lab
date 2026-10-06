@@ -1,6 +1,6 @@
 # Insight phần Quân - CO₂, ngành phát thải, năng lượng tái tạo
 
-Nguồn: các CSV trong `du_lieu_sach/` + biểu đồ tương tác
+Nguồn: các CSV trong `data/du_lieu_da_xu_ly/quan/` + biểu đồ tương tác
 `bieu_do/tuong_tac/*.html` + EDA tĩnh `bieu_do/tinh/*.png` (cùng thư mục Quân).
 Đơn vị: OWID `co2` = Mt/năm (không gồm thay đổi sử dụng đất), `co2_per_capita` = tấn/người;
 EDGAR `Substance = CO2` = Mt CO₂; `renewable_percent` = % tái tạo trong **tổng tiêu thụ
@@ -64,7 +64,7 @@ nước) và EDGAR ở đây chỉ tính CO₂, không phải tổng khí nhà k
   giữ lại để left-join từ danh mục quốc gia rồi quyết định hiển thị.
 - Kosovo không có mã ISO ở cả OWID và tái tạo nên tách riêng, không có trong các CSV.
 - Năm 2025 của EDGAR là số sơ bộ, biểu đồ chốt ở 2024.
-- Chi tiết đầy đủ: `du_lieu_sach/bao_cao_chat_luong.json` (từ điển dữ liệu, missing,
+- Chi tiết đầy đủ: `data/du_lieu_da_xu_ly/quan/bao_cao_chat_luong.json` (từ điển dữ liệu, missing,
   quy tắc outlier, độ phủ theo năm).
 - Nhìn chart `05_line_do_phu_du_lieu`: đường cam bắt đầu 1990 theo đúng phạm vi nguồn;
   điểm 2024 chỉ 84/225 nước (sơ bộ) - đoạn cắm đầu không phải sụp đổ mà là thiếu số liệu.

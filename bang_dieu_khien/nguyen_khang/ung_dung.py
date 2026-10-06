@@ -2,22 +2,27 @@ import base64
 from pathlib import Path
 
 import pandas as pd
+import plotly.graph_objects as go
 
 from dash import ALL, Dash, Input, Output, State, ctx, dcc, html, no_update
 from dash.exceptions import MissingCallbackContextException
 from flask import send_from_directory
+from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import kich_ban
+from phan_tich_nhiet_do.duc.tao_bieu_do_plotly import CHARTS, build_figures as temperature_figures
+from phan_tich_co2.quan.tao_bieu_do_plotly import CHARTS as CO2_CHARTS, build_figures as co2_figures
 
 from .bieu_do import (
     SCENARIO_COLORS,
     create_backtest_chart,
     create_co2_chart,
-    create_decade_chart,
     create_sector_chart,
     create_globe,
     create_ranking_chart,
     create_scenario_co2_chart,
     create_scenario_temperature_chart,
     create_temperature_chart,
+    empty_chart,
+    style_chart,
 )
 from .du_lieu import (
     BACKTEST_DATA,
@@ -31,7 +36,8 @@ from .du_lieu import (
     SCENARIO_DATA,
     aggregate,
     filter_data,
-    simulate_scenario,
+    filtered_months,
+    filtered_sectors,
     sector_totals,
 )
 
@@ -57,41 +63,24 @@ def serve_eda_file(member, filename):
 
 
 DUC_TEMPERATURE_ARTIFACTS = [
-    (title, subtitle, f"duc/{folder}/{name}.{extension}")
-    for title, subtitle, name in [
-        ("Xu hướng nhiệt độ toàn cầu", "1880–2025", "01_xu_huong_nhiet_do_toan_cau"),
-        ("Nhiệt độ trung bình theo thập kỷ", "", "02_nhiet_do_theo_thap_ky"),
-        ("Bản đồ nhiệt độ theo quốc gia", "", "03_ban_do_nhiet_do"),
-        ("Nhiệt độ theo châu lục và thập kỷ", "", "04_heatmap_chau_luc_thap_ky"),
-        ("Phân bố nhiệt độ giữa các quốc gia", "Theo thập kỷ", "05_phan_bo_nhiet_do_quoc_gia"),
-    ]
+    (title, "1880–2025" if name.startswith("01") else "", f"duc/{folder}/{name}.{extension}")
+    for name, title in CHARTS
     for folder, extension in [("tinh", "png"), ("tuong_tac", "html")]
+    if extension == "html" or not name.startswith("06")
 ]
 
 QUAN_ARTIFACTS = [
-    ("Lượng CO₂ toàn cầu", "1970–2024",
+    ("Lượng CO₂ toàn cầu", "2024 gấp 2,59 lần năm 1970",
      "quan/tinh/01_line_co2_toan_cau.png"),
-    ("Top 15 quốc gia thải CO₂", "2023",
+    ("Top 15 quốc gia thải CO₂", "2023 · Trung Quốc gấp 2,47 lần Mỹ",
      "quan/tinh/02_bar_top15_quoc_gia.png"),
-    ("Lượng CO₂ theo ngành", "1970–2024",
+    ("Lượng CO₂ theo ngành", "1970–2024 · Điện chiếm 40,8% năm 2024",
      "quan/tinh/03_area_co_cau_nganh.png"),
-    ("CO₂/người và năng lượng tái tạo", "2023",
+    ("CO₂/người và năng lượng tái tạo", "2023 · Tương quan −0,49; không phải nhân quả",
      "quan/tinh/04_scatter_co2pc_renewable.png"),
-    ("Độ phủ dữ liệu theo năm", "",
+    ("Độ phủ dữ liệu theo năm", "Tái tạo năm 2024: 84 quốc gia có số liệu",
      "quan/tinh/05_line_do_phu_du_lieu.png"),
-    ("Lượng CO₂ toàn cầu", "1970–2024",
-     "quan/tuong_tac/01_line_co2_toan_cau.html"),
-    ("Top 15 quốc gia thải CO₂", "2023",
-     "quan/tuong_tac/02_bar_top15.html"),
-     ("CO₂ bình quân đầu người", "1970–2024",
-      "quan/tuong_tac/03_choropleth_co2pc.html"),
-    ("Lượng CO₂ theo ngành", "1970–2024",
-     "quan/tuong_tac/04_stacked_area_nganh.html"),
-    ("Tỷ trọng CO₂ theo ngành", "2024",
-     "quan/tuong_tac/05_treemap_nganh.html"),
-    ("CO₂/người và năng lượng tái tạo", "2023",
-     "quan/tuong_tac/06_scatter_co2pc_renewable.html"),
-]
+] + [(title, "", f"quan/tuong_tac/{name}.html") for name, title in CO2_CHARTS]
 
 MENU = [
     ("overview", "Tổng quan", "grid"),
@@ -103,18 +92,8 @@ MENU = [
     ("data", "Dữ liệu", "database"),
 ]
 
-PAGE_INFO = {
-    "overview": (
-        "Tổng quan khí hậu",
-        "Nhiệt độ và CO₂ theo thời gian, khu vực và quốc gia.",
-    ),
-    "earth": ("Bản đồ khí hậu", "Khám phá nhiệt độ và CO₂ của từng quốc gia."),
-    "temperature": ("Nhiệt độ", "Toàn cầu: 1880–2025 · Quốc gia: 1961–2025"),
-    "co2": ("Khí thải CO₂", "1970–2024 · theo quốc gia, ngành"),
-    "scenario": ("Mô hình dự đoán", "Lượng CO₂ thay đổi · Nhiệt độ đến 2050"),
-    "insights": ("Nhận định", "Điểm nổi bật trong dữ liệu"),
-    "data": ("Dữ liệu", "Bảng dữ liệu và xuất CSV"),
-}
+PAGE_INFO = {key: title for key, title, _ in MENU}
+PAGE_INFO["overview"] = "Tổng quan khí hậu"
 MAP_VIEW_OPTIONS = [
     {"label": "Địa cầu", "value": "globe"},
     {"label": "Bản đồ phẳng", "value": "flat"},
@@ -148,13 +127,6 @@ def icon(name, class_name="icon"):
         className=class_name,
         alt="",
     )
-
-def _empty(*children):
-    if len(children) == 1 and isinstance(children[0], str):
-        children = children[0]
-    else:
-        children = list(children)
-    return html.Div(children, className="card empty-state")
 
 def _select_field(label, dropdown_id, options, value, symbol=None,
                   field_id=None, field_class="filter-field", **dropdown_props):
@@ -224,7 +196,7 @@ def create_header():
         [icon("download"), html.Span("Tải CSV")],
         id="header-export",
         className="header-export",
-        title="Tải dữ liệu đang lọc",
+        title="Tải bảng quốc gia–năm đang lọc",
         n_clicks=0,
     )
     actions = html.Div([data_range, export_button], className="header-actions")
@@ -294,7 +266,7 @@ def create_filters():
         *[{"label": CONTINENT_NAMES[name], "value": name} for name in CONTINENTS],
     ]
     country_options = [
-        {"label": "Toàn cầu", "value": "all"},
+        {"label": "Tất cả quốc gia", "value": "all"},
         *[
             {"label": name, "value": iso}
             for iso, name in COUNTRY_NAMES.items()
@@ -311,7 +283,7 @@ def create_filters():
     )
     continent_filter = _select_field(
         "Châu lục", "continent-filter", continent_options, "all",
-        field_class="filter-field hidden-filter",
+        symbol="globe", searchable=False,
     )
     country_filter = _select_field(
         "Quốc gia", "country-filter", country_options, "all",
@@ -375,12 +347,6 @@ def create_eda_media(title, subtitle, path, large=False):
     source = f"/eda-files/{path}"
     label = title if not subtitle else f"{title} — {subtitle}"
     size = "modal" if large else "artifact"
-    if path.endswith(".html"):
-        return html.Iframe(
-            src=source,
-            title=label,
-            className=f"eda-{size}-frame",
-        )
     return html.Img(
         src=source,
         alt=label,
@@ -388,7 +354,7 @@ def create_eda_media(title, subtitle, path, large=False):
     )
 
 
-def create_eda_artifact_card(title, subtitle, path):
+def create_eda_artifact_card(title, subtitle, path, figure=None):
     heading = [html.H3(title)]
     if subtitle:
         heading.append(html.P(subtitle, className="small-meta"))
@@ -403,29 +369,45 @@ def create_eda_artifact_card(title, subtitle, path):
                 title=f"Mở rộng {title}",
             ),
         ], className="eda-artifact-heading"),
-        create_eda_media(title, subtitle, path),
+        graph(figure, {"type": "eda-chart", "path": path}) if figure is not None
+        else create_eda_media(title, subtitle, path),
     ], className="card eda-artifact-card")
 
 
-def create_member_eda_gallery(artifacts, gallery_id):
-
-    formats = [
-        ("Biểu đồ tương tác", "interactive",
-         [item for item in artifacts if item[2].endswith(".html")]),
-        ("Biểu đồ tĩnh", "static",
-         [item for item in artifacts if not item[2].endswith(".html")]),
-    ]
+def create_member_eda_gallery(artifacts, gallery_id, figures, notes):
+    cards = []
+    fields = {"choropleth": "z", "heatmap": "z", "treemap": "values"}
+    interactive = [item for item in artifacts if item[2].endswith(".html")]
+    for (title, _, path), note in zip(interactive, notes):
+        figure = figures[Path(path).stem]
+        values = [getattr(trace, fields.get(trace.type, "y"), None) for trace in figure.data]
+        if not any(value is not None and len(value) and pd.notna(value).any() for value in values):
+            figure = empty_chart()
+        style_chart(figure, 380)
+        figure.update_layout(title=None,
+                             showlegend=len(figure.data) > 1 and not path.endswith("05_phan_bo_nhiet_do_quoc_gia.html"),
+                             legend=dict(y=-.23, yanchor="top", font_size=10, title=None),
+                             margin=dict(l=16, r=24, t=16, b=90))
+        figure.update_xaxes(nticks=7, title_font_size=11)
+        figure.update_yaxes(nticks=6, title_font_size=11)
+        figure.update_coloraxes(colorbar=dict(title=dict(side="right", font_size=10), thickness=10, len=.85))
+        figure.update_geos(projection_type="natural earth", showframe=False, bgcolor="white")
+        for trace in figure.data:
+            trace.name = CONTINENT_NAMES.get(trace.name, trace.name)
+        if figure.data and figure.data[0].type == "heatmap":
+            figure.update_yaxes(tickvals=list(figure.data[0].y),
+                                ticktext=[CONTINENT_NAMES.get(name, name) for name in figure.data[0].y])
+        cards.append(create_eda_artifact_card(title.replace(" toàn cầu", ""), note, path, figure))
     return html.Section([
-        *[
-            html.Div([
-                html.Div(html.H3(title), className="eda-format-heading"),
-                html.Div(
-                    [create_eda_artifact_card(*item) for item in items],
-                    className=f"eda-artifact-grid {kind}",
-                ),
-            ], className=f"eda-format-section {kind}")
-            for title, kind, items in formats if items
-        ],
+        html.Div([
+            html.Div(html.H3("Biểu đồ tương tác"), className="eda-format-heading"),
+            html.Div(cards, className="eda-artifact-grid interactive"),
+        ], className="eda-format-section interactive"),
+        html.Details([
+            html.Summary("Biểu đồ tĩnh · EDA toàn bộ dữ liệu (không áp dụng bộ lọc)"),
+            html.Div([create_eda_artifact_card(*item) for item in artifacts if item[2].endswith(".png")],
+                     className="eda-artifact-grid static"),
+        ], className="eda-format-section static"),
     ], id=gallery_id, className="eda-gallery")
 
 def scope_name(continent, country):
@@ -665,7 +647,7 @@ def create_scenario_page():
               "scenario-temperature-chart"),
         html.Div([
             html.Span([html.I(style={"background": "#16324F"}), "Thực tế · Trung bình 5 năm"]),
-            html.Span("Nét đứt: dự đoán · Vùng mờ: khoảng ước tính 90%*"),
+            html.Span("Nét đứt: dự đoán · Vùng mờ: khoảng ước tính 90%"),
         ], className="forecast-chart-key"),
     ], className="card forecast-main")
 
@@ -684,65 +666,74 @@ def create_scenario_page():
             html.P("NASA GISTEMP + OWID/GCP · Toàn cầu 1970–2024."),
             html.P(f"Hồi quy tuyến tính CO₂ tích lũy → nhiệt độ TB 5 năm. R²: {MODEL_INFO['r2_test']:.3f} · "
                    f"MAE 2015–2024: {MODEL_INFO['mae_test']:.3f} °C."),
+            html.P("Khoảng 90% theo giả định hồi quy; chưa gồm bất định về CO₂ trong tương lai."),
         ]),
     ], className="forecast-method")
     return html.Div([controls, main, support, method,
                      dcc.Store(id="scenario-result-store")], className="forecast-page")
 
 def create_insights_page(frame, series, scope):
-    temperature = series.dropna(subset=["temperature_anomaly"])
+    start, end = int(series.year.min()), int(series.year.max())
+    window = min(5, (end - start + 1) // 2)
+    first = series[series.year < start + window].temperature_anomaly
+    last = series[series.year > end - window].temperature_anomaly
+    change = (last.mean() - first.mean() if window and len(first) == len(last) == window
+              and first.notna().all() and last.notna().all() else float("nan"))
+    temperature_note = (f"{start}–{start + window - 1}: {first.mean():+.2f} °C · "
+                        f"{end - window + 1}–{end}: {last.mean():+.2f} °C") if pd.notna(change) else "Chưa có đủ hai giai đoạn để so sánh"
+    temperature_chart = create_temperature_chart(series, 320)
+    if pd.notna(change):
+        for left, right in [(start, start + window - 1), (end - window + 1, end)]:
+            temperature_chart.add_vrect(x0=left - .5, x1=right + .5, fillcolor="#EF4444",
+                                       opacity=.08, line_width=0, layer="below")
     co2 = series.dropna(subset=["co2"])
-    window = min(5, len(temperature) // 2)
-    change = float("nan")
-    if window:
-        first, last = temperature.head(window), temperature.tail(window)
-        change = last.temperature_anomaly.mean() - first.temperature_anomaly.mean()
-    growth = float("nan")
+    growth, co2_note = float("nan"), "Chưa có đủ hai năm để so sánh"
     if len(co2) > 1 and co2.iloc[0].co2 > 0:
-        first, last = co2.iloc[0], co2.iloc[-1]
-        growth = (last.co2 / first.co2 - 1) * 100
+        first_co2, last_co2 = co2.iloc[0], co2.iloc[-1]
+        growth = (last_co2.co2 / first_co2.co2 - 1) * 100
+        co2_note = (f"{int(first_co2.year)}: {first_co2.co2:,.1f} · "
+                    f"{int(last_co2.year)}: {last_co2.co2:,.1f} triệu tấn")
     totals = sector_totals(frame, use_global=scope == "Toàn cầu")
-    share, sector_title = float("nan"), "Chưa có dữ liệu theo ngành"
-    if not totals.empty and totals.sum() > 0:
-        share = totals.iloc[0] / totals.sum() * 100
-        sector_title = f"{totals.index[0]} đóng góp nhiều nhất"
+    share = totals.iloc[0] / totals.sum() * 100 if not totals.empty and totals.sum() > 0 else float("nan")
     stories = [
-        ("NHIỆT ĐỘ", f"{change:+.2f} °C" if pd.notna(change) else "—",
-         ("Nhiệt độ trung bình tăng" if change > 0 else "Nhiệt độ trung bình giảm" if change < 0
-          else "Chưa thấy chênh lệch" if change == 0 else "Chưa đủ dữ liệu nhiệt độ"),
-         create_decade_chart(series), "red"),
-        ("LƯỢNG CO₂", f"{growth:+.1f}%" if pd.notna(growth) else "—",
-         ("Lượng CO₂ cao hơn đầu kỳ" if growth > 0 else "Lượng CO₂ thấp hơn đầu kỳ" if growth < 0
+        ("01", "Nhiệt độ", format_number(change, "+.2f") + " °C" if pd.notna(change) else "—",
+         ("Trung bình cuối kỳ cao hơn đầu kỳ" if change > 0 else "Trung bình cuối kỳ thấp hơn đầu kỳ" if change < 0
+          else "Trung bình hai giai đoạn bằng nhau" if change == 0 else "Chưa đủ dữ liệu nhiệt độ"),
+         temperature_note, temperature_chart, "red"),
+        ("02", "Lượng CO₂", format_number(growth, "+.1f") + "%" if pd.notna(growth) else "—",
+         ("Lượng CO₂ tăng so với đầu kỳ" if growth > 0 else "Lượng CO₂ giảm so với đầu kỳ" if growth < 0
           else "Lượng CO₂ không đổi" if growth == 0 else "Chưa đủ dữ liệu CO₂"),
-         create_co2_chart(series, 290), "blue"),
-        ("NGUỒN CO₂", f"{share:.1f}%" if pd.notna(share) else "—",
-         sector_title, create_sector_chart(totals), "green"),
+         co2_note, create_co2_chart(series, 290), "blue"),
+        ("03", "CO₂ theo ngành", format_number(share, ".1f") + "%" if pd.notna(share) else "—",
+         f"{totals.index[0]} chiếm tỷ trọng cao nhất" if pd.notna(share) else "Chưa có dữ liệu theo ngành",
+         f"{end} · Tổng CO₂ theo ngành: {totals.sum():,.1f} triệu tấn" if pd.notna(share) else str(end),
+         create_sector_chart(totals), "green"),
     ]
+    source = ("NASA GISTEMP · Chênh nhiệt độ so với 1951–1980" if scope == "Toàn cầu"
+              else "FAOSTAT · Chênh nhiệt độ so với 1951–1980" +
+              (" · Trung bình các nước có số liệu" if frame.iso_alpha.nunique() > 1 else ""))
     return [
-        html.Div([html.Span(f"{scope} · {int(frame.year.min())}–{int(frame.year.max())}"),
-                  dcc.Link("Xem mô hình dự đoán →", href="#scenario", className="text-link")],
-                 className="section-heading"),
+        html.Div([html.H2("Kết quả phân tích"), html.Span(f"{scope} · {start}–{end}")],
+                 className="section-heading insight-heading"),
         html.Div([
             html.Article([
-                html.Div([html.Small(label), html.Strong(value, className=tone),
-                          html.H2(title)], className="insight-copy"),
+                html.Div([
+                    html.Div([html.Small(label), html.Span(number)], className="insight-label"),
+                    html.Strong(value, className=tone), html.H2(title), html.P(note),
+                ], className="insight-copy"),
                 graph(figure),
             ], className="card insight-card")
-            for label, value, title, figure, tone in stories
+            for number, label, value, title, note, figure, tone in stories
         ], className="insight-grid"),
+        html.Div([html.Span(source), html.Span("CO₂: OWID/GCP · Theo ngành: EDGAR")],
+                 className="insight-source"),
     ]
 
 def format_table_value(row, key):
-    decimal_columns = {
-        "temperature_anomaly",
-        "co2",
-        "co2_per_capita",
-        "renewable_percent",
-    }
     value = getattr(row, key)
     if pd.isna(value):
         return "—"
-    if key in decimal_columns:
+    if key in {"temperature_anomaly", "co2", "co2_per_capita", "renewable_percent"}:
         return f"{value:,.2f}"
     if key == "population":
         return f"{value:,.0f}"
@@ -774,7 +765,7 @@ def create_data_page(frame):
 
     record_count = (
         f"{len(frame)} bản ghi · {frame.iso_alpha.nunique()} quốc gia · "
-        f"{frame.year.nunique()} mốc năm"
+        f"{frame.year.nunique()} mốc năm · Hiển thị {len(visible)}/{len(frame)} dòng"
     )
     heading = html.Div([
         html.Div([
@@ -861,36 +852,54 @@ def update_display(clicks):
     Output("eda-modal-content", "children"),
     Input({"type": "expand-eda", "path": ALL}, "n_clicks"),
     Input("close-eda-modal", "n_clicks"),
+    Input("url", "hash"),
+    Input("year-range", "value"),
+    Input("continent-filter", "value"),
+    Input("country-filter", "value"),
+    State({"type": "eda-chart", "path": ALL}, "figure"),
+    State({"type": "eda-chart", "path": ALL}, "id"),
+    State("page-subtitle", "children"),
     prevent_initial_call=True,
 )
-def toggle_eda_modal(open_clicks, _):
+def toggle_eda_modal(open_clicks, _, route, years, continent, country, figures, ids, scope):
 
     trigger = ctx.triggered_id
-    if trigger == "close-eda-modal":
+    if not isinstance(trigger, dict):
         return "eda-modal", None
-    if not isinstance(trigger, dict) or not any(open_clicks or []):
+    if not any(open_clicks or []):
         return no_update, no_update
 
     path = trigger["path"]
     artifacts = DUC_TEMPERATURE_ARTIFACTS + QUAN_ARTIFACTS
     title, subtitle, _ = next(item for item in artifacts if item[2] == path)
+    if path.endswith(".html"):
+        figure = next((figure for figure, graph_id in zip(figures, ids) if graph_id["path"] == path), None)
+        if figure is None:
+            return no_update, no_update
+        media = graph(go.Figure(figure).update_layout(height=None))
+        media.style = {"height": "100%", "minHeight": 0}
+        media.className = "chart eda-modal-chart"
+        title, subtitle = title.replace(" toàn cầu", ""), scope
+    else:
+        media = create_eda_media(title, subtitle, path, large=True)
     heading = [html.H2(title)]
     if subtitle:
         heading.append(html.P(subtitle))
     return "eda-modal open", [
         html.Div(heading, className="eda-modal-heading"),
-        create_eda_media(title, subtitle, path, large=True),
+        media,
     ]
 
 @app.callback(
     Output("country-filter", "options"),
     Output("country-filter", "value"),
     Input("continent-filter", "value"),
+    Input("year-range", "value"),
     State("country-filter", "value"),
 )
-def update_country_options(continent, selected):
-    available = filter_data(continent=continent)[["iso_alpha", "country"]].drop_duplicates()
-    options = [{"label": "Toàn cầu", "value": "all"}] + [
+def update_country_options(continent, years, selected):
+    available = filter_data(years, continent)[["iso_alpha", "country"]].drop_duplicates().sort_values("country")
+    options = [{"label": "Tất cả quốc gia", "value": "all"}] + [
         {"label": row.country, "value": row.iso_alpha}
         for row in available.itertuples()
     ]
@@ -918,6 +927,9 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     page = (route or "#overview").lstrip("#")
     if page not in PAGE_INFO:
         page = "overview"
+    scope = scope_name(continent, country)
+    subtitle = ("Toàn cầu · Kiểm tra 2015–2024 · Dự đoán đến 2050" if page == "scenario"
+                else f"{scope} · {years.replace('-', '–')}")
 
     try:
         trigger = ctx.triggered_id
@@ -928,40 +940,53 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     if map_ready and page in ("overview", "earth") and trigger in {
         "year-range", "continent-filter", "country-filter", "metric-filter"
     }:
-        return (no_update,) * 3 + ([no_update] * len(MENU),) + (no_update,) * 5
+        return (no_update, no_update, subtitle, [no_update] * len(MENU)) + (no_update,) * 5
 
-    title, subtitle = PAGE_INFO[page]
-    filterless = page in ("temperature", "co2", "scenario")
+    title = PAGE_INFO[page]
+    filterless = page == "scenario"
 
-    pages_with_all_countries = {"overview", "earth"}
-    country_filter = "all" if page in pages_with_all_countries else country
+    country_filter = "all" if page in ("overview", "earth") else country
     frame = filter_data(years, continent, country_filter)
     series = aggregate(
         frame,
         use_global=country_filter == "all" and continent == "all",
     )
-    scope = scope_name(continent, country)
 
     invalid_country = (
         page in ("overview", "earth")
         and country != "all"
         and country not in frame.iso_alpha.values
     )
-    if page == "temperature":
-        content = create_member_eda_gallery(DUC_TEMPERATURE_ARTIFACTS, "duc-eda-gallery")
-    elif page == "co2":
-        content = create_member_eda_gallery(QUAN_ARTIFACTS, "quan-eda-gallery")
-    elif page == "scenario":
+    if page == "scenario":
         content = create_scenario_page()
     elif frame.empty or invalid_country:
-        content = _empty(
+        content = html.Div([
             html.H2("Chưa có dữ liệu trong phạm vi này"),
             html.P("Chọn quốc gia hoặc khoảng năm khác trong bộ lọc phía trên."),
-        )
+        ], className="card empty-state")
     elif page == "overview":
         content = create_overview(frame, country, scope, metric)
     elif page == "earth":
         content = create_earth(frame, country, metric, scope)
+    elif page == "temperature":
+        end = int(frame.year.max())
+        source = "NASA GISTEMP" if scope == "Toàn cầu" else "FAOSTAT"
+        if frame.iso_alpha.nunique() > 1 and scope != "Toàn cầu":
+            source += " · Trung bình các nước có số liệu"
+        notes = [f"{source} · Mốc 1951–1980 · TB 5 năm trong kỳ", "Trung bình các năm có số liệu",
+                 f"{end} · FAOSTAT · {frame[frame.year.eq(end)].temperature_anomaly.count()} quốc gia",
+                 "FAOSTAT · Trung bình các quốc gia–năm có số liệu", "FAOSTAT · Các giá trị quốc gia–năm",
+                 f"{source} · Trung bình tháng trong kỳ · Mốc 1951–1980"]
+        content = create_member_eda_gallery(DUC_TEMPERATURE_ARTIFACTS, "duc-eda-gallery",
+                                            temperature_figures(series, frame, filtered_months(frame, scope == "Toàn cầu")), notes)
+    elif page == "co2":
+        end = int(frame.year.max())
+        paired = frame[frame.year.eq(end)].dropna(subset=["co2_per_capita", "renewable_percent"])
+        notes = ["OWID / Global Carbon Project", f"{end} · Tối đa 15 quốc gia có số liệu",
+                 f"{end} · OWID / Global Carbon Project", "EDGAR · Chỉ tính CO₂",
+                 f"{end} · EDGAR · Chỉ tính CO₂", f"{end} · {len(paired)} quốc gia · Tái tạo: % tiêu thụ năng lượng cuối cùng"]
+        content = create_member_eda_gallery(QUAN_ARTIFACTS, "quan-eda-gallery",
+                                            co2_figures(series, frame, filtered_sectors(frame, scope == "Toàn cầu")), notes)
     elif page == "insights":
         content = create_insights_page(frame, series, scope)
     else:
@@ -981,7 +1006,7 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     elif page in ("overview", "earth"):
         filter_class = "filter-bar"
     else:
-        filter_class = "filter-bar two-filters"
+        filter_class = "filter-bar three-filters"
     return (
         content, title, subtitle,
         navigation_classes,
@@ -1117,7 +1142,7 @@ def configure_scenario_rate(scenario_id):
 def update_scenario_page(scenario_id, annual_rate, milestone):
     scenarios = SCENARIO_DATA
     if scenario_id == "custom":
-        scenarios = pd.concat([scenarios, simulate_scenario(float(annual_rate or 0) / 100)])
+        scenarios = pd.concat([scenarios, kich_ban(MODEL_INFO, float(annual_rate or 0) / 100)])
     point = scenarios[(scenarios.scenario_id == scenario_id) & (scenarios.year == milestone)].iloc[0]
     base = scenarios[(scenarios.scenario_id == "trend") & (scenarios.year == milestone)].iloc[0]
     difference = point.temperature_prediction - base.temperature_prediction
@@ -1127,7 +1152,7 @@ def update_scenario_page(scenario_id, annual_rate, milestone):
         create_scenario_temperature_chart(GLOBAL_DATA, scenarios, scenario_id, milestone),
         create_scenario_co2_chart(scenarios, scenario_id, milestone),
         f"{point.temperature_prediction:+.2f} °C",
-        f"{milestone} · Dải 90%*: {point.lower_90:.2f}–{point.upper_90:.2f} °C",
+        f"{milestone} · Khoảng 90%: {point.lower_90:.2f}–{point.upper_90:.2f} °C",
         f"{difference:+.2f} °C" if abs(difference) >= .005 else "0.00 °C",
         comparison,
         f"{point.co2 / 1000:.1f} tỷ tấn",

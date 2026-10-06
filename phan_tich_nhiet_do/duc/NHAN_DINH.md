@@ -75,37 +75,7 @@ Dựa trên biểu đồ hộp (`05_phan_bo_nhiet_do_quoc_gia.png`):
 
 ---
 
-## 4. Biểu đồ hồi quy tham khảo — không phải mô hình chính của phần Đức
-
-Biểu đồ `06_du_bao_hoi_quy_tuyen_tinh.png / html` được giữ như một phân tích khám phá
-tuyến tính theo năm. Phần xây dựng, so sánh và lựa chọn mô hình dự báo chính của đồ án
-thuộc phạm vi **Nguyên Khang** và được trình bày riêng trên trang Mô hình & Kịch bản.
-
-Dựa trên mô hình OLS và biểu đồ dự báo (`06_du_bao_hoi_quy_tuyen_tinh.png / html`):
-
-### 4.1. Thông số Kỹ thuật & Chỉ số Đánh giá Mô hình
-Mô hình hồi quy tuyến tính OLS được huấn luyện trên giai đoạn hiện đại (1970–2025, $n=56$ năm):
-
-$$\widehat{\text{temperature\_anomaly}} = -39.739 + 0.0202 \times \text{year}$$
-
-- **Hệ số xác định ($R^2$):** **0.9075** (mô hình giải thích được hơn 90.7% biến thiên nhiệt độ toàn cầu trong nửa thế kỷ qua).
-- **Sai số tuyệt đối trung bình (MAE):** **0.0886°C**.
-- **Căn bậc hai sai số toàn phương trung bình (RMSE):** **0.1042°C**.
-- **Tốc độ nóng lên (Slope):** **+0.0202°C / năm**, tương đương **+0.202°C / thập kỷ**.
-
-### 4.2. Hiện tượng Gia tốc Nóng lên (Warming Acceleration)
-Khi thực hiện kiểm định ngoài mẫu (Out-of-sample test):
-- Huấn luyện trên tập Train (1970–2014): tốc độ tăng là **+0.173°C / thập kỷ**.
-- Áp dụng mô hình này cho tập Test (2015–2025): toàn bộ các điểm quan sát thực tế (đặc biệt là 2023–2025) đều nằm **cao hơn đáng kể** so với đường hồi quy dự báo ($\text{RMSE}_{\text{test}} = 0.2016^\circ\text{C}$).
-- Sai số ngoài mẫu lớn hơn và các quan sát gần đây nằm cao hơn đường xu hướng **gợi ý** mô hình tuyến tính theo năm đang đánh giá thấp giai đoạn gần đây. Kết quả này không đủ để tự chứng minh gia tốc hay xác định nguyên nhân khí hậu.
-
-### 4.3. Dự báo Xu hướng đến năm 2050
-- Nếu xu hướng tuyến tính hiện tại tiếp diễn, đến năm **2050**, độ lệch nhiệt độ toàn cầu dự báo đạt **+1.54°C** so với thời kỳ 1951–1980 (dải tin cậy 95%: **[+1.33°C, +1.76°C]**).
-- Không dùng phép cộng xấp xỉ giữa hai baseline để kết luận chính thức về ngưỡng 1.5°C của Hiệp định Paris; mô hình này chỉ là ngoại suy thống kê theo năm và không phải dự báo khí hậu chính thức.
-
----
-
-## 5. Lưu ý Kỹ thuật & Bàn giao cho Dashboard của Nguyên Khang
+## 4. Lưu ý Kỹ thuật & Bàn giao cho Dashboard của Nguyên Khang
 
 1. **Khóa ghép bảng:** Sử dụng cặp khóa `(iso_alpha, year)`. Bảng `nhiet_do_quoc_gia.csv` đã được kiểm tra với **0 dòng trùng lặp**.
 2. **Xử lý dứt điểm mã quốc gia Trung Quốc:**
@@ -116,4 +86,6 @@ Khi thực hiện kiểm định ngoài mẫu (Out-of-sample test):
 4. **Giá trị khuyết:** Tỷ lệ khuyết cột `temperature_anomaly` ở bảng quốc gia là **3.48%** (các đảo nhỏ hoặc năm gần nhất chưa đủ số liệu), tuân thủ nguyên tắc **giữ null**, không thay bằng 0.
 5. **Trực quan hóa chuẩn:**
    - Cả bản đồ Choropleth và Heatmap đều đã được cố định tâm thang màu tại đúng mốc **0.00°C** (`color_continuous_midpoint=0` và `center=0`).
-   - Bản đồ tương tác Plotly [`03_ban_do_nhiet_do.html`](bieu_do/tuong_tac/03_ban_do_nhiet_do.html) đã tích hợp thanh trượt chọn năm (Year Slider) từ 1961 đến 2025.
+   - Dashboard có 6 biểu đồ tương tác, dùng chung bộ lọc năm, châu lục và quốc gia. Thứ tự trình bày: xu hướng theo năm → trung bình thập kỷ → bản đồ → so sánh châu lục → phân bố quốc gia → chênh nhiệt độ theo tháng.
+   - Biểu đồ cuối trả lời: mức tăng nhiệt so với cùng tháng giai đoạn 1951–1980 có đồng đều giữa 12 tháng không? Toàn cầu dùng NASA; quốc gia và châu lục dùng FAOSTAT. Châu lục lấy trung bình các nước có số liệu trong từng tháng–năm, rồi lấy trung bình các năm đang lọc. Điểm cao nhất là tháng có chênh lệch lớn nhất, không phải tháng có nhiệt độ tuyệt đối cao nhất. Giữ trống tháng thiếu số liệu; số năm có dữ liệu hiển thị khi rê chuột.
+   - Biểu đồ tĩnh phân tích toàn bộ nguồn; Dashboard giới hạn 1970–2024. Trung bình thập kỷ chỉ tính các năm đang lọc; đường trung bình 5 năm cần đủ 5 quan sát trong khoảng đã chọn. Không so trực tiếp hai giá trị tổng hợp khác phạm vi năm.

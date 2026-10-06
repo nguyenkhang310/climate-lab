@@ -8,7 +8,7 @@ import seaborn as sns
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "bieu_do/tinh"
-PROC = ROOT / "du_lieu_sach"
+PROC = ROOT.parents[1] / "data/du_lieu_da_xu_ly/quan"
 
 sns.set_theme(style="whitegrid")
 plt.rcParams.update({
@@ -77,8 +77,8 @@ def main():
     fig.tight_layout(); fig.savefig(OUT / "04_scatter_co2pc_renewable.png"); plt.close(fig)
 
     cov = pd.DataFrame({
-        "CO₂ (quốc gia có số liệu)": nat.groupby("year")["co2"].apply(lambda s: s.notna().sum()),
-        "Tái tạo (quốc gia có số liệu)": ren.groupby("year")["renewable_percent"].apply(lambda s: s.notna().sum()),
+        "CO₂ (quốc gia có số liệu)": nat.groupby("year")["co2"].count(),
+        "Tái tạo (quốc gia có số liệu)": ren.groupby("year")["renewable_percent"].count(),
     })
     cov = cov.loc[1970:2024]
     fig, ax = plt.subplots(figsize=(8, 4.2))

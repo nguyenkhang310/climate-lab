@@ -1,18 +1,17 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
 
 import pandas as pd
 
-from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import kich_ban
+from phan_tich_co2.quan.tao_bieu_do_plotly import SECTOR_NAMES
 
 ROOT = Path(__file__).resolve().parents[2]
-MODEL = ROOT / "mo_hinh_du_doan/nguyen_khang"
-OUTPUTS = MODEL / "ket_qua"
-DATA = pd.read_csv(MODEL / "du_lieu/dashboard_quoc_gia_nam.csv")
-GLOBAL_DATA = pd.read_csv(MODEL / "du_lieu/khi_hau_toan_cau_nam.csv")
-SECTOR_DATA = pd.read_csv(ROOT / "phan_tich_co2/quan/du_lieu_sach/co2_theo_nganh.csv")
+PROCESSED = ROOT / "data/du_lieu_da_xu_ly"
+OUTPUTS = ROOT / "data/ket_qua_mo_hinh/nguyen_khang"
+DATA = pd.read_csv(PROCESSED / "nguyen_khang/dashboard_quoc_gia_nam.csv")
+GLOBAL_DATA = pd.read_csv(PROCESSED / "nguyen_khang/khi_hau_toan_cau_nam.csv")
+SECTOR_DATA = pd.read_csv(PROCESSED / "quan/co2_theo_nganh.csv")
+MONTHLY_DATA = pd.read_csv(PROCESSED / "duc/nhiet_do_theo_thang.csv")
 SCENARIO_DATA = pd.read_csv(OUTPUTS / "kich_ban_2050.csv")
 BACKTEST_DATA = pd.read_csv(OUTPUTS / "du_doan_kiem_tra.csv")
 MODEL_INFO = json.loads((OUTPUTS / "thong_tin_mo_hinh.json").read_text(encoding="utf-8"))
@@ -76,16 +75,18 @@ def aggregate(frame: pd.DataFrame, use_global: bool = False) -> pd.DataFrame:
     result["co2_per_capita"] = result.year.map(totals.co2 * 1_000_000 / totals.population)
     return result
 
-def sector_totals(frame: pd.DataFrame, use_global=False) -> pd.Series:
-    names = {"Power Industry": "Điện năng", "Transport": "Giao thông",
-             "Industrial Combustion": "Đốt công nghiệp", "Buildings": "Tòa nhà",
-             "Processes": "Quy trình công nghiệp", "Fuel Production": "Sản xuất nhiên liệu",
-             "Agriculture": "Nông nghiệp", "Waste": "Chất thải"}
-    data = SECTOR_DATA[SECTOR_DATA.year.eq(frame.year.max())]
+def filtered_sectors(frame, use_global=False):
+    data = SECTOR_DATA[SECTOR_DATA.year.between(frame.year.min(), frame.year.max())]
     if not use_global:
         data = data[data.iso_alpha.isin(frame.iso_alpha)]
-    return data.groupby("sector").co2.sum(min_count=1).dropna().rename(index=names).sort_values(ascending=False)
+    return data.assign(sector=data.sector.replace(SECTOR_NAMES))
 
 
-def simulate_scenario(annual_rate: float) -> pd.DataFrame:
-    return kich_ban(MODEL_INFO, annual_rate)
+def filtered_months(frame, use_global=False):
+    codes = ["WLD"] if use_global else frame.iso_alpha.unique()
+    return MONTHLY_DATA[MONTHLY_DATA.year.between(frame.year.min(), frame.year.max()) & MONTHLY_DATA.iso_alpha.isin(codes)]
+
+
+def sector_totals(frame: pd.DataFrame, use_global=False) -> pd.Series:
+    data = filtered_sectors(frame, use_global)
+    return data[data.year.eq(frame.year.max())].groupby("sector").co2.sum(min_count=1).dropna().sort_values(ascending=False)

@@ -2,17 +2,16 @@
 
 Phân công, cây thư mục và lệnh chạy xem [README](../../README.md).
 
-- Nhiệt độ: `phan_tich_nhiet_do/duc/du_lieu_goc` → `du_lieu_sach`.
-- CO₂ và năng lượng: `phan_tich_co2/quan/du_lieu_goc` → `du_lieu_sach`.
-- Hai bảng ghép: `mo_hinh_du_doan/nguyen_khang/du_lieu`.
-- Kết quả mô hình: `mo_hinh_du_doan/nguyen_khang/ket_qua`.
-- Danh mục UN M49, châu lục và từ điển OWID nằm cùng tài liệu này.
+- Dữ liệu gốc: `data/du_lieu_goc/<thanh_vien>`.
+- Dữ liệu đã xử lý: `data/du_lieu_da_xu_ly/<thanh_vien>`.
+- Kết quả mô hình: `data/ket_qua_mo_hinh/nguyen_khang`.
+- Danh mục UN M49, châu lục và từ điển OWID: `data/du_lieu_goc/dung_chung`.
 - Mỗi phần có báo cáo JSON ghi đơn vị, tỷ lệ thiếu và chất lượng dữ liệu.
 
 Giữ CSV nguồn và CSV sạch vì chúng phục vụ các bước khác nhau; không sửa dữ liệu gốc.
 Hai CSV tra cứu FAOSTAT không dùng đã bỏ khỏi cây dự án: pipeline đối chiếu bằng
 `un_m49_iso3.csv`; cờ nguồn vẫn giữ ở cột `source_flag`. Có thể lấy lại hai bảng tra cứu
-từ ZIP FAOSTAT bên dưới. `NGUON_DU_LIEU_GOC.pdf` là tài liệu bàn giao cũ, không dùng làm hướng dẫn đường dẫn.
+từ ZIP FAOSTAT bên dưới.
 
 Bản đồ dashboard dùng `world_110m.json` tải từ [Plotly](https://cdn.plot.ly/world_110m.json),
 lưu tại `bang_dieu_khien/nguyen_khang/tai_nguyen` để không phụ thuộc mạng khi mở địa cầu.
@@ -43,6 +42,8 @@ Trong tệp FAOSTAT, lọc:
 - `Months = Meteorological year`
 
 Giữ các cột `Area`, `Area Code (M49)`, `Year`, `Value`, `Unit`, `Flag`. `Value` là độ lệch nhiệt độ trên đất liền so với **1951–1980**. Không trộn các dòng `Standard Deviation`, tháng và mùa vào chuỗi nhiệt độ năm.
+
+Biểu đồ **Chênh nhiệt độ theo tháng** dùng bảng riêng `duc/nhiet_do_theo_thang.csv`, khóa `(iso_alpha, year, month)`. Toàn cầu (`WLD`) lấy 12 cột `Jan`–`Dec` của NASA; quốc gia lấy `January`–`December` và `Element = Temperature change` của FAOSTAT, giữ cờ `Flag`. Không dùng dòng mùa hoặc suy ra số liệu tháng từ trung bình năm. Giá trị là chênh lệch so với cùng tháng trong giai đoạn **1951–1980**. Bộ lọc châu lục lấy trung bình các nước có số liệu từng tháng–năm, sau đó trung bình các năm trong kỳ; đây không phải trung bình có trọng số diện tích. Không thay số liệu thiếu bằng 0 và không dùng năm 2026.
 
 ### 3. Phát thải CO₂
 

@@ -5,6 +5,13 @@
       "decade": "Thập kỷ quan sát = (year // 10) * 10 (ví dụ 2020s là 2020–2025).",
       "temperature_anomaly": "Độ lệch nhiệt độ trung bình năm toàn cầu (°C) so với thời kỳ cơ sở 1951–1980 (NASA GISTEMP v4, cột J-D)."
     },
+    "nhiet_do_theo_thang.csv": {
+      "iso_alpha": "Mã ISO3 của quốc gia (FAOSTAT); WLD là chuỗi toàn cầu NASA GISTEMP.",
+      "year": "Năm quan sát, không dùng năm 2026 chưa hoàn chỉnh.",
+      "month": "Tháng 1–12; khóa bảng: iso_alpha + year + month.",
+      "temperature_anomaly": "Chênh nhiệt độ tháng (°C) so với cùng tháng giai đoạn 1951–1980; giữ nguyên giá trị thiếu.",
+      "source_flag": "Cờ nguồn FAOSTAT; để trống với NASA."
+    },
     "nhiet_do_quoc_gia.csv": {
       "country": "Tên quốc gia / lãnh thổ chuẩn hóa (theo danh mục OWID / ISO-3166).",
       "iso_alpha": "Mã quốc gia chuẩn ISO-3166-1 alpha-3 (3 ký tự viết hoa), dùng làm khóa ghép bảng chính cùng cột year.",

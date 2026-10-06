@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import os
 
@@ -16,6 +14,23 @@ PAGES = {
     "insights": "Nhận định",
     "data": "Dữ liệu",
 }
+
+def check_eda_layout(page, gallery):
+    cards = gallery.locator(".interactive .eda-artifact-card")
+    for width in (1440, 1024, 390, 1440):
+        page.set_viewport_size({"width": width, "height": 1000})
+        page.wait_for_function("""() => [...document.querySelectorAll('.interactive .js-plotly-plot')].every(p => {
+            const svg = p.querySelector('.main-svg');
+            return p?._fullLayout && svg && !p.layout.title?.text && Math.abs(p._fullLayout.width - p.clientWidth) < 2
+                && Math.abs(svg.getBoundingClientRect().width - p.clientWidth) < 2;
+        })""")
+        first, second = [cards.nth(i).bounding_box() for i in (0, 1)]
+        if width > 1000:
+            assert abs(first["y"] - second["y"]) < 2, "Hai biểu đồ phải cùng hàng"
+            assert second["x"] >= first["x"] + first["width"], "Hai biểu đồ chồng nhau"
+        else:
+            assert second["y"] >= first["y"] + first["height"], "Màn hình nhỏ phải dùng một cột"
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Trang bị tràn ngang"
 
 def check_year_slider(page):
     globe = page.locator("#overview-globe .js-plotly-plot")
@@ -191,43 +206,58 @@ def main() -> None:
         page.locator('a[href="#co2"]').first.click()
         quan_gallery = page.locator("#quan-eda-gallery")
         quan_gallery.wait_for()
-        quan_gallery.get_by_text("Biểu đồ tĩnh", exact=True).wait_for()
+        quan_gallery.locator("summary").wait_for()
         quan_gallery.get_by_text("Biểu đồ tương tác", exact=True).wait_for()
         if quan_gallery.locator("img").count() != 5:
             raise AssertionError("Trang CO₂ chưa hiển thị đủ 5 biểu đồ tĩnh của Quân")
-        if quan_gallery.locator("iframe").count() != 6:
+        if quan_gallery.locator(".js-plotly-plot").count() != 6:
             raise AssertionError("Trang CO₂ chưa hiển thị đủ 6 biểu đồ tương tác của Quân")
-        if page.locator("#page-content .js-plotly-plot").count() != 0:
-            raise AssertionError("Trang CO₂ còn biểu đồ dashboard không thuộc phần Quân")
+        assert page.locator("#filter-bar").is_visible()
+        page.wait_for_function("document.querySelector('#quan-eda-gallery .js-plotly-plot')._fullData[0].x[0]===1990")
+        assert "Vietnam" in page.locator("#page-subtitle").inner_text()
+        check_eda_layout(page, quan_gallery)
 
         page.locator('a[href="#temperature"]').first.click()
         duc_gallery = page.locator("#duc-eda-gallery")
         duc_gallery.wait_for()
-        duc_gallery.get_by_text("Biểu đồ tĩnh", exact=True).wait_for()
+        duc_gallery.locator("summary").wait_for()
         duc_gallery.get_by_text("Biểu đồ tương tác", exact=True).wait_for()
         section_titles = duc_gallery.locator(".eda-format-heading h3").all_inner_texts()
-        if section_titles != ["Biểu đồ tương tác", "Biểu đồ tĩnh"]:
+        if section_titles != ["Biểu đồ tương tác"]:
             raise AssertionError(f"Sai thứ tự nhóm biểu đồ: {section_titles}")
         interactive_card = duc_gallery.locator(".eda-artifact-grid.interactive .eda-artifact-card").first
-        card_box = interactive_card.bounding_box()
-        gallery_box = duc_gallery.bounding_box()
-        frame_box = interactive_card.locator("iframe").bounding_box()
-        if card_box["width"] < gallery_box["width"] * .9 or frame_box["height"] < 600:
-            raise AssertionError("Biểu đồ tương tác vẫn bị thu nhỏ")
+        check_eda_layout(page, duc_gallery)
         if not interactive_card.locator(".eda-artifact-heading h3").inner_text().strip():
             raise AssertionError("Biểu đồ tương tác bị mất tiêu đề")
         if duc_gallery.locator("img").count() != 5:
             raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 5 biểu đồ tĩnh của Đức")
-        if duc_gallery.locator("iframe").count() != 5:
-            raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 5 biểu đồ tương tác của Đức")
-        if page.locator("#page-content .js-plotly-plot").count() != 0:
-            raise AssertionError("Trang Nhiệt độ còn biểu đồ dashboard không thuộc phần Đức")
+        if duc_gallery.locator(".js-plotly-plot").count() != 6:
+            raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 6 biểu đồ tương tác của Đức")
+        assert page.locator("#filter-bar").is_visible()
         duc_gallery.locator(".eda-expand-button").first.click()
-        page.locator("#eda-modal.open .eda-modal-frame").wait_for()
-        page.locator("#close-eda-modal").click()
+        page.locator("#eda-modal.open .js-plotly-plot").wait_for()
+        assert page.locator(".eda-modal-chart").bounding_box()["width"] > interactive_card.bounding_box()["width"]
+        original = interactive_card.locator(".js-plotly-plot").evaluate("p=>Array.from(p._fullData[0].y)")
+        expanded = page.locator(".eda-modal-chart .js-plotly-plot").evaluate("p=>Array.from(p._fullData[0].y)")
+        assert original == expanded, "Mở rộng phải giữ nguyên số liệu đang lọc"
+        page.keyboard.press("Escape")
         page.wait_for_function(
             "() => !document.querySelector('#eda-modal').classList.contains('open')"
         )
+
+        page.locator('a[href="#insights"]').first.click()
+        page.locator(".insight-grid").wait_for()
+        for width in (1440, 390):
+            page.set_viewport_size({"width": width, "height": 1000})
+            page.wait_for_function("document.documentElement.scrollWidth <= innerWidth")
+            page.screenshot(path=f"/tmp/climate_insights_{width}.png", full_page=True)
+        page.set_viewport_size({"width": 1440, "height": 1000})
+        continent_filter = page.locator("#continent-filter")
+        continent_filter.click()
+        continent_filter.get_by_text("Châu Âu", exact=True).click()
+        page.wait_for_function("document.querySelector('#page-subtitle').textContent==='Châu Âu · 1990–2023'")
+        assert "Tất cả quốc gia" in country_filter.inner_text()
+        assert "nan" not in page.locator(".insight-grid").inner_text().lower()
 
         page.locator('a[href="#scenario"]').first.click()
         page.locator("#scenario-temperature-chart").wait_for()

@@ -4,22 +4,22 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent
-INPUT = ROOT / "du_lieu/khi_hau_toan_cau_nam.csv"
-OUTPUT = ROOT / "ket_qua"
+ROOT = Path(__file__).resolve().parents[2]
+INPUT = ROOT / "data/du_lieu_da_xu_ly/nguyen_khang/khi_hau_toan_cau_nam.csv"
+OUTPUT = ROOT / "data/ket_qua_mo_hinh/nguyen_khang"
 
 NAM_CHIA = 2014
 NAM_CUOI = 2050
 
 
 def kich_ban(info, toc_do_nam, ma="custom", ten=None):
+    if not np.isfinite(toc_do_nam) or toc_do_nam < -1:
+        raise ValueError("Mức thay đổi CO₂ phải hữu hạn và không thấp hơn −100%/năm.")
     nam_goc = info["full_period"][1]
     nam = np.arange(nam_goc + 1, NAM_CUOI + 1)
     co2 = info["last_co2"] * (1 + toc_do_nam) ** (nam - nam_goc)
     tich_luy = info["last_cumulative_co2"] + np.cumsum(co2)
     x = tich_luy / 1000
-
-
     du_bao = info["intercept"] + info["coefficient"] * x
     sai_so = info["residual_std"] * np.sqrt(
         1 + 1 / info["sample_size"] + (x - info["x_mean"]) ** 2 / info["sxx"]
@@ -46,8 +46,6 @@ def main():
     data = df.assign(temperature_trend_5y=df.temperature_anomaly.rolling(5).mean()).dropna(subset=cols + ["temperature_trend_5y"])
     x, y = data[["cumulative_co2"]].to_numpy() / 1000, data.temperature_trend_5y
     train = data.year <= NAM_CHIA
-
-
     model = LinearRegression().fit(x[train], y[train])
     prediction = model.predict(x[~train])
     info = {

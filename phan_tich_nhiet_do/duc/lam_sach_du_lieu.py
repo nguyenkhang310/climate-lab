@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 import json
 import sys
+from calendar import month_abbr, month_name
 from pathlib import Path
 
 import pandas as pd
@@ -10,19 +9,27 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = Path(__file__).resolve().parents[2]
-RAW = Path(__file__).with_name("du_lieu_goc")
-OUT = Path(__file__).with_name("du_lieu_sach")
+RAW = ROOT / "data/du_lieu_goc/duc"
+OUT = ROOT / "data/du_lieu_da_xu_ly/duc"
+REFERENCE = ROOT / "data/du_lieu_goc/dung_chung"
 
 NASA_RAW = RAW / "nasa_nhiet_do_toan_cau_1880_2026.csv"
 FAO_RAW = RAW / "faostat_nhiet_do_quoc_gia_1961_2025.csv"
-M49_REF = ROOT / "tai_lieu/dung_chung/un_m49_iso3.csv"
-OWID_CONTINENT = ROOT / "tai_lieu/dung_chung/owid_quoc_gia_chau_luc.csv"
+M49_REF = REFERENCE / "un_m49_iso3.csv"
+OWID_CONTINENT = REFERENCE / "owid_quoc_gia_chau_luc.csv"
 
 DATA_DICTIONARY = {
     "nhiet_do_toan_cau.csv": {
         "year": "Năm quan sát (1880–2025). Năm 2026 chưa đủ 12 tháng nên được loại bỏ.",
         "decade": "Thập kỷ quan sát = (year // 10) * 10 (ví dụ 2020s là 2020–2025).",
         "temperature_anomaly": "Độ lệch nhiệt độ trung bình năm toàn cầu (°C) so với thời kỳ cơ sở 1951–1980 (NASA GISTEMP v4, cột J-D)."
+    },
+    "nhiet_do_theo_thang.csv": {
+        "iso_alpha": "Mã ISO3 của quốc gia (FAOSTAT); WLD là chuỗi toàn cầu NASA GISTEMP.",
+        "year": "Năm quan sát, không dùng năm 2026 chưa hoàn chỉnh.",
+        "month": "Tháng 1–12; khóa bảng: iso_alpha + year + month.",
+        "temperature_anomaly": "Chênh nhiệt độ tháng (°C) so với cùng tháng giai đoạn 1951–1980; giữ nguyên giá trị thiếu.",
+        "source_flag": "Cờ nguồn FAOSTAT; để trống với NASA."
     },
     "nhiet_do_quoc_gia.csv": {
         "country": "Tên quốc gia / lãnh thổ chuẩn hóa (theo danh mục OWID / ISO-3166).",
@@ -37,9 +44,7 @@ DATA_DICTIONARY = {
 
 
 def clean_nasa() -> tuple[pd.DataFrame, dict]:
-    df_raw = pd.read_csv(NASA_RAW, na_values="***")
-    if "Year" not in df_raw.columns:
-        df_raw = pd.read_csv(NASA_RAW, header=1, na_values="***")
+    df_raw = pd.read_csv(NASA_RAW, header=1, na_values="***")
 
     df = df_raw[["Year", "J-D"]].rename(columns={"Year": "year", "J-D": "temperature_anomaly"})
     df["year"] = pd.to_numeric(df["year"], errors="coerce")
@@ -144,6 +149,28 @@ def clean_faostat() -> tuple[pd.DataFrame, dict]:
     return out, stats
 
 
+def clean_monthly() -> pd.DataFrame:
+    nasa = pd.read_csv(NASA_RAW, header=1, na_values="***")
+    nasa = nasa[nasa.Year <= 2025].melt(id_vars="Year", value_vars=list(month_abbr)[1:],
+                                      var_name="month", value_name="temperature_anomaly")
+    nasa = nasa.rename(columns={"Year": "year"}).assign(iso_alpha="WLD")
+    nasa["month"] = nasa.month.map({name: i for i, name in enumerate(month_abbr)})
+    fao = pd.read_csv(FAO_RAW, usecols=["Area Code (M49)", "Year", "Months", "Element", "Value", "Flag"])
+    fao = fao[fao.Element.eq("Temperature change") & fao.Months.isin(list(month_name)[1:])].copy()
+    codes = pd.read_csv(M49_REF, dtype=str).set_index("m49").iso_alpha
+    fao["iso_alpha"] = fao["Area Code (M49)"].str.replace("'", "", regex=False).str.zfill(3).map(codes)
+    fao["month"] = fao.Months.map({name: i for i, name in enumerate(month_name)})
+    fao = fao.rename(columns={"Year": "year", "Value": "temperature_anomaly", "Flag": "source_flag"})
+    keys = ["iso_alpha", "year", "month"]
+    out = pd.concat([nasa, fao.dropna(subset=["iso_alpha"])])[keys + ["temperature_anomaly", "source_flag"]]
+    out["temperature_anomaly"] = pd.to_numeric(out.temperature_anomaly, errors="coerce")
+    out = out[out.year <= 2025].sort_values(keys).reset_index(drop=True)
+    if out.duplicated(keys).any():
+        raise ValueError("Dữ liệu nhiệt độ tháng trùng khóa quốc gia, năm, tháng.")
+    out.to_csv(OUT / "nhiet_do_theo_thang.csv", index=False)
+    return out
+
+
 def export_quality_report(nasa_stats: dict, fao_stats: dict) -> None:
     report = {
         "data_dictionary": DATA_DICTIONARY,
@@ -163,6 +190,7 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     df_nasa, nasa_stats = clean_nasa()
     df_fao, fao_stats = clean_faostat()
+    clean_monthly()
     export_quality_report(nasa_stats, fao_stats)
     print(f"OK: NASA ({len(df_nasa)} dòng), FAOSTAT ({len(df_fao)} dòng, {df_fao['iso_alpha'].nunique()} nước). Đã xuất bao_cao_chat_luong.json.")
 

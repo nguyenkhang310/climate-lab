@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import plotly.graph_objects as go
 
 RED, BLUE, TEXT, MUTED = "#EF4444", "#1689E8", "#16324F", "#52677D"
@@ -7,7 +5,6 @@ FONT_FAMILY = (
     "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, "
     "Roboto, Helvetica, Arial, sans-serif"
 )
-DIVERGING = [[0, "#388bd3"], [.5, "#f7f9fc"], [1, "#ef4444"]]
 
 def style_chart(fig, height=280):
     fig.update_layout(
@@ -34,7 +31,7 @@ def style_chart(fig, height=280):
     )
     return fig
 
-def empty_chart(message="Không có dữ liệu cho phạm vi đã chọn", height=280):
+def empty_chart(message="Chưa có dữ liệu", height=280):
     fig = go.Figure()
     style_chart(fig, height)
     fig.add_annotation(
@@ -182,23 +179,6 @@ def create_globe(
     )
     return fig
 
-def create_decade_chart(series):
-    data = series.dropna(subset=["temperature_anomaly"]).copy()
-    if data.empty:
-        return empty_chart()
-    data["decade"] = data.year // 10 * 10
-    data = data.groupby("decade", as_index=False).agg(temperature_anomaly=("temperature_anomaly", "mean"), years=("year", "count"))
-    fig = go.Figure(go.Bar(
-        x=data.decade.astype(str), y=data.temperature_anomaly,
-        text=data.temperature_anomaly.map("{:+.2f}".format), textposition="outside",
-        customdata=data.years, cliponaxis=False,
-        marker={"color": data.temperature_anomaly, "colorscale": DIVERGING, "cmin": -2, "cmax": 2},
-        width=.58,
-        hovertemplate="Thập kỷ %{x} · %{customdata} năm có số liệu<br>TB: %{text} °C<extra>NASA / FAOSTAT</extra>",
-    ))
-    style_chart(fig)
-    fig.update_yaxes(title="Độ lệch nhiệt độ (°C)")
-    return fig
 
 def create_sector_chart(totals, height=290):
     if totals.empty or totals.sum() <= 0:

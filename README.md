@@ -29,11 +29,13 @@ Mở **http://127.0.0.1:8050**. Trên Windows, dùng `.venv\Scripts\activate` đ
 | **Nhận định** | Những điểm đáng chú ý được tính theo phạm vi dữ liệu đang xem. |
 | **Dữ liệu** | Xem bảng và tải CSV theo bộ lọc. |
 
-Bộ lọc năm, khu vực và quốc gia áp dụng cho các phần tổng hợp của dashboard. Các biểu đồ phân tích chuyên sâu ghi rõ phạm vi dữ liệu riêng để tránh hiểu nhầm.
+Bộ lọc năm, châu lục và quốc gia dùng chung cho Tổng quan, Bản đồ khí hậu, Nhiệt độ, CO₂, Nhận định và Dữ liệu. Nhiệt độ và CO₂ mỗi tab có **6 biểu đồ tương tác**, cập nhật theo bộ lọc, bố trí hai biểu đồ mỗi hàng và có nút mở rộng. Hình EDA gốc nằm trong mục thu gọn riêng, không áp dụng bộ lọc. Mô hình dự đoán sử dụng dữ liệu toàn cầu và bộ chọn kịch bản riêng.
 
 ## Dữ liệu và phương pháp
 
-Dữ liệu được làm sạch theo từng chủ đề rồi ghép bằng khóa **mã quốc gia ISO3 + năm**. Bảng dùng cho dashboard bao phủ **1970–2024**, gồm **13.296 dòng và 244 mã quốc gia/vùng lãnh thổ**; không có khóa trùng theo [báo cáo ghép dữ liệu](mo_hinh_du_doan/nguyen_khang/du_lieu/bao_cao_ghep_du_lieu.json). Giá trị thiếu được giữ nguyên, không tự thay bằng 0.
+Dữ liệu được làm sạch theo từng chủ đề rồi ghép bằng khóa **mã quốc gia ISO3 + năm**. Bảng dùng cho dashboard bao phủ **1970–2024**, gồm **13.296 dòng và 244 mã quốc gia/vùng lãnh thổ**; không có khóa trùng theo [báo cáo ghép dữ liệu](data/du_lieu_da_xu_ly/nguyen_khang/bao_cao_ghep_du_lieu.json). Giá trị thiếu được giữ nguyên, không tự thay bằng 0.
+
+Dữ liệu sạch còn được tổ chức trong [cơ sở dữ liệu SQLite](data/du_lieu_da_xu_ly/nguyen_khang/climate_lab.db), gồm **8 bảng có khóa chính, khóa ngoại và 2 view kết nối dữ liệu**. Xem [sơ đồ ERD và câu lệnh JOIN](tai_lieu/dung_chung/SO_DO_DU_LIEU.md).
 
 | Chủ đề | Nguồn | Cách sử dụng |
 | --- | --- | --- |
@@ -57,7 +59,7 @@ flowchart LR
 
 ### Mô hình dự đoán
 
-Mô hình **hồi quy tuyến tính** liên hệ lượng CO₂ tích lũy toàn cầu với độ lệch nhiệt độ trung bình trượt 5 năm. Dữ liệu **1974–2014** dùng để huấn luyện, **2015–2024** để kiểm tra theo thời gian; sau đó mô hình được huấn luyện lại trên **1974–2024** để tạo kịch bản **2025–2050**. Kết quả kiểm tra lưu trong [thông số mô hình](mo_hinh_du_doan/nguyen_khang/ket_qua/thong_tin_mo_hinh.json): **R² = 0,835**, **MAE = 0,031 °C**.
+Mô hình **hồi quy tuyến tính** liên hệ lượng CO₂ tích lũy toàn cầu với độ lệch nhiệt độ trung bình trượt 5 năm. Dữ liệu **1974–2014** dùng để huấn luyện, **2015–2024** để kiểm tra theo thời gian; sau đó mô hình được huấn luyện lại trên **1974–2024** để tạo kịch bản **2025–2050**. Kết quả kiểm tra lưu trong [thông số mô hình](data/ket_qua_mo_hinh/nguyen_khang/thong_tin_mo_hinh.json): **R² = 0,835**, **MAE = 0,031 °C**.
 
 Dashboard cho phép so sánh mức CO₂ tiếp diễn xu hướng, giữ nguyên, giảm 5% mỗi năm hoặc tốc độ do người dùng chọn. Đây là **mô phỏng thống kê theo giả định**, không phải dự báo khí hậu chính thức. Dải 90% trên biểu đồ chỉ phản ánh bất định của mô hình hồi quy theo các giả định thống kê, chưa bao gồm bất định của kịch bản hay toàn bộ yếu tố vật lý khí hậu. Xem [giải thích mô hình](mo_hinh_du_doan/nguyen_khang/GIAI_THICH.md).
 
@@ -65,6 +67,7 @@ Dashboard cho phép so sánh mức CO₂ tiếp diễn xu hướng, giữ nguyê
 
 ```text
 app.py                         Điểm chạy dashboard
+data/                          Dữ liệu gốc, dữ liệu đã xử lý và kết quả mô hình
 bang_dieu_khien/nguyen_khang/  Giao diện, biểu đồ, dữ liệu và kiểm thử
 phan_tich_nhiet_do/duc/        Làm sạch, phân tích và biểu đồ nhiệt độ
 phan_tich_co2/quan/            Làm sạch, phân tích và biểu đồ CO₂
@@ -72,7 +75,7 @@ mo_hinh_du_doan/nguyen_khang/  Ghép dữ liệu, hồi quy và kịch bản
 tai_lieu/dung_chung/           Nguồn dữ liệu và tài liệu dùng chung
 ```
 
-Mỗi phần chứa mã nguồn, dữ liệu hoặc sản phẩm tương ứng của thành viên phụ trách. Phần nhận định chi tiết nằm ở [nhiệt độ](phan_tich_nhiet_do/duc/NHAN_DINH.md) và [CO₂](phan_tich_co2/quan/NHAN_DINH.md).
+Mã nguồn được chia theo nhiệm vụ và thành viên; toàn bộ tệp dữ liệu nằm tập trung trong [`data/`](data/README.md). Phần nhận định chi tiết nằm ở [nhiệt độ](phan_tich_nhiet_do/duc/NHAN_DINH.md) và [CO₂](phan_tich_co2/quan/NHAN_DINH.md).
 
 ## Tái tạo kết quả và kiểm thử
 
@@ -82,6 +85,7 @@ Chạy lại pipeline theo đúng thứ tự sau, từ thư mục gốc:
 python phan_tich_nhiet_do/duc/lam_sach_du_lieu.py
 python phan_tich_co2/quan/lam_sach_du_lieu.py
 python mo_hinh_du_doan/nguyen_khang/ghep_du_lieu.py
+python mo_hinh_du_doan/nguyen_khang/tao_co_so_du_lieu.py
 python mo_hinh_du_doan/nguyen_khang/mo_hinh_nhiet_do.py
 ```
 

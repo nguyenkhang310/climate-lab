@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-RAW = Path(__file__).with_name("du_lieu_goc")
-OUT = Path(__file__).with_name("du_lieu_sach")
+RAW = ROOT / "data/du_lieu_goc/quan"
+OUT = ROOT / "data/du_lieu_da_xu_ly/quan"
 
 OWID = RAW / "owid_phat_thai_co2_1750_2024.csv"
 EDGAR = RAW / "edgar_phat_thai_theo_nganh_1970_2025.xlsx"
 RENEW = RAW / "un_ty_trong_nang_luong_tai_tao_1990_2024.csv"
-CONTINENT = ROOT / "tai_lieu/dung_chung/owid_quoc_gia_chau_luc.csv"
+CONTINENT = ROOT / "data/du_lieu_goc/dung_chung/owid_quoc_gia_chau_luc.csv"
 
 EDGAR_EXCLUDE_COUNTRIES = {
     "GLOBAL TOTAL", "EU27", "International Aviation", "International Shipping",
@@ -56,11 +56,6 @@ DATA_DICTIONARY = {
                              "cuối cùng (không phải % điện tái tạo)",
     },
 }
-
-def load_continent():
-    c = pd.read_csv(CONTINENT)
-    cmap = dict(zip(c["Code"], c["World region according to OWID"]))
-    return cmap
 
 def clean_owid(cmap):
     df = pd.read_csv(OWID, low_memory=False)
@@ -208,9 +203,7 @@ def clean_renewable(cmap):
     no_code = sorted(df[df["Code"].isna()]["Entity"].unique().tolist())
     keep = df[~is_agg].copy()
     keep.columns = ["country", "iso_alpha", "year", "renewable_percent"]
-    keep["continent"] = keep["iso_alpha"].map(cmap)
-    out = keep[["country", "iso_alpha", "year", "renewable_percent"]].sort_values(
-        ["iso_alpha", "year"]).reset_index(drop=True)
+    out = keep.sort_values(["iso_alpha", "year"]).reset_index(drop=True)
     unmatched = sorted(out["iso_alpha"][out["iso_alpha"].map(cmap).isna()].unique().tolist())
     cov = out.groupby("year")["iso_alpha"].nunique()
     report = {
@@ -228,7 +221,8 @@ def clean_renewable(cmap):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    cmap = load_continent()
+    continents = pd.read_csv(CONTINENT)
+    cmap = dict(zip(continents["Code"], continents["World region according to OWID"]))
 
     co2_nat, co2_world, r1 = clean_owid(cmap)
     co2_sec, r2 = clean_edgar(cmap)

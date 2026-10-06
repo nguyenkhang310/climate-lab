@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      text{font-family:Arial,sans-serif}.title{font-size:26px;font-weight:700;fill:#172033}.subtitle{font-size:14px;fill:#526076}
+      .group{fill:none;stroke:#9aa5b1;stroke-width:1}.group-title{font-size:16px;font-weight:700;fill:#26364d}
+      .head{fill:#263f60;stroke:#263f60}.body{fill:#fff;stroke:#536170;stroke-width:1.2}
+      .table-name{font-size:15px;font-weight:700;fill:#fff}.field{font-size:14px;fill:#172033}
+      .key{font-size:12px;font-weight:700;fill:#263f60}.type{font-size:12px;fill:#687588}
+      .rule{stroke:#d4d9df;stroke-width:1}.rel{fill:none;stroke:#263f60;stroke-width:2}
+      .card{font-size:13px;font-weight:700;fill:#172033;paint-order:stroke fill;stroke:#fff;stroke-width:7px;stroke-linejoin:round}.note{font-size:13px;fill:#526076}
+    </style>
+  </defs>
+  <rect width="1600" height="1000" fill="#fff"/>
+  <text x="40" y="45" class="title">LƯỢC ĐỒ QUAN HỆ — CLIMATE LAB</text>
+  <text x="40" y="70" class="subtitle">PK = khóa chính · FK = khóa ngoại · 1 = một · 0..N = không hoặc nhiều · 0..1 = không hoặc một</text>
+
+  <rect x="30" y="95" width="990" height="845" class="group"/>
+  <text x="50" y="125" class="group-title">A. DỮ LIỆU THEO QUỐC GIA VÀ NĂM</text>
+  <line x1="300" y1="425" x2="360" y2="220" stroke="#263f60" stroke-width="2"/>
+  <line x1="300" y1="455" x2="360" y2="410" stroke="#263f60" stroke-width="2"/>
+  <line x1="300" y1="485" x2="360" y2="595" stroke="#263f60" stroke-width="2"/>
+  <line x1="300" y1="515" x2="360" y2="790" stroke="#263f60" stroke-width="2"/>
+  <text x="306" y="419" class="card">1</text><text x="306" y="449" class="card">1</text>
+  <text x="306" y="479" class="card">1</text><text x="306" y="509" class="card">1</text>
+  <text x="350" y="214" text-anchor="end" class="card">0..N</text><text x="350" y="404" text-anchor="end" class="card">0..N</text>
+  <text x="350" y="589" text-anchor="end" class="card">0..N</text><text x="350" y="784" text-anchor="end" class="card">0..N</text>
+  <line x1="940" y1="425" x2="690" y2="220" stroke="#263f60" stroke-width="2"/>
+  <line x1="940" y1="455" x2="690" y2="410" stroke="#263f60" stroke-width="2"/>
+  <line x1="940" y1="485" x2="690" y2="595" stroke="#263f60" stroke-width="2"/>
+  <line x1="940" y1="515" x2="690" y2="790" stroke="#263f60" stroke-width="2"/>
+  <text x="950" y="419" class="card">1</text><text x="950" y="449" class="card">1</text>
+  <text x="950" y="479" class="card">1</text><text x="950" y="509" class="card">1</text>
+  <text x="700" y="214" class="card">0..N</text><text x="700" y="404" class="card">0..N</text>
+  <text x="700" y="589" class="card">0..N</text><text x="700" y="784" class="card">0..N</text>
+
+  <g transform="translate(50 395)">
+    <rect width="250" height="150" class="body"/><rect width="250" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">quoc_gia</text>
+    <line x1="0" y1="74" x2="250" y2="74" class="rule"/><line x1="0" y1="112" x2="250" y2="112" class="rule"/>
+    <text x="12" y="61" class="key">PK</text><text x="48" y="61" class="field">iso_alpha</text><text x="196" y="61" class="type">TEXT</text>
+    <text x="48" y="99" class="field">country</text><text x="196" y="99" class="type">TEXT</text>
+    <text x="48" y="137" class="field">continent</text><text x="196" y="137" class="type">TEXT</text>
+  </g>
+  <g transform="translate(740 404)">
+    <rect width="200" height="132" class="body"/><rect width="200" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">nam</text><line x1="0" y1="82" x2="200" y2="82" class="rule"/>
+    <text x="12" y="66" class="key">PK</text><text x="48" y="66" class="field">year</text><text x="151" y="66" class="type">INT</text>
+    <text x="48" y="112" class="field">decade</text><text x="151" y="112" class="type">INT</text>
+  </g>
+  <g transform="translate(360 145)">
+    <rect width="330" height="174" class="body"/><rect width="330" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">nhiet_do_quoc_gia</text>
+    <line x1="0" y1="74" x2="330" y2="74" class="rule"/><line x1="0" y1="112" x2="330" y2="112" class="rule"/>
+    <text x="12" y="61" class="key">PK, FK</text><text x="76" y="61" class="field">iso_alpha</text><text x="274" y="61" class="type">TEXT</text>
+    <text x="12" y="99" class="key">PK, FK</text><text x="76" y="99" class="field">year</text><text x="282" y="99" class="type">INT</text>
+    <text x="76" y="137" class="field">temperature_anomaly</text><text x="270" y="137" class="type">REAL</text>
+    <text x="76" y="163" class="field">source_flag</text><text x="274" y="163" class="type">TEXT</text>
+  </g>
+  <g transform="translate(360 325)">
+    <rect width="330" height="194" class="body"/><rect width="330" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">co2_quoc_gia</text>
+    <line x1="0" y1="70" x2="330" y2="70" class="rule"/><line x1="0" y1="102" x2="330" y2="102" class="rule"/>
+    <text x="12" y="58" class="key">PK, FK</text><text x="76" y="58" class="field">iso_alpha</text><text x="274" y="58" class="type">TEXT</text>
+    <text x="12" y="90" class="key">PK, FK</text><text x="76" y="90" class="field">year</text><text x="282" y="90" class="type">INT</text>
+    <text x="76" y="122" class="field">co2</text><text x="270" y="122" class="type">REAL</text>
+    <text x="76" y="144" class="field">co2_per_capita</text><text x="270" y="144" class="type">REAL</text>
+    <text x="76" y="166" class="field">co2_growth_pct</text><text x="270" y="166" class="type">REAL</text>
+    <text x="76" y="188" class="field">population</text><text x="270" y="188" class="type">REAL</text>
+  </g>
+  <g transform="translate(360 530)">
+    <rect width="330" height="130" class="body"/><rect width="330" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">nang_luong_tai_tao</text>
+    <line x1="0" y1="68" x2="330" y2="68" class="rule"/><line x1="0" y1="98" x2="330" y2="98" class="rule"/>
+    <text x="12" y="57" class="key">PK, FK</text><text x="76" y="57" class="field">iso_alpha</text><text x="274" y="57" class="type">TEXT</text>
+    <text x="12" y="87" class="key">PK, FK</text><text x="76" y="87" class="field">year</text><text x="282" y="87" class="type">INT</text>
+    <text x="76" y="118" class="field">renewable_percent</text><text x="270" y="118" class="type">REAL</text>
+  </g>
+  <g transform="translate(360 700)">
+    <rect width="330" height="180" class="body"/><rect width="330" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">co2_theo_nganh</text>
+    <line x1="0" y1="68" x2="330" y2="68" class="rule"/><line x1="0" y1="98" x2="330" y2="98" class="rule"/><line x1="0" y1="128" x2="330" y2="128" class="rule"/>
+    <text x="12" y="57" class="key">PK, FK</text><text x="76" y="57" class="field">iso_alpha</text><text x="274" y="57" class="type">TEXT</text>
+    <text x="12" y="87" class="key">PK, FK</text><text x="76" y="87" class="field">year</text><text x="282" y="87" class="type">INT</text>
+    <text x="12" y="117" class="key">PK</text><text x="76" y="117" class="field">sector</text><text x="274" y="117" class="type">TEXT</text>
+    <text x="76" y="147" class="field">co2</text><text x="270" y="147" class="type">REAL</text>
+    <text x="76" y="171" class="field">sector_share_percent</text><text x="270" y="171" class="type">REAL</text>
+  </g>
+
+  <rect x="1040" y="95" width="530" height="845" class="group"/>
+  <text x="1060" y="125" class="group-title">B. DỮ LIỆU TOÀN CẦU THEO NĂM</text>
+  <text x="1060" y="148" class="subtitle">Bảng nam được biểu diễn lại để sơ đồ dễ đọc.</text>
+  <line x1="1245" y1="370" x2="1300" y2="250" stroke="#263f60" stroke-width="2"/>
+  <line x1="1245" y1="410" x2="1300" y2="585" stroke="#263f60" stroke-width="2"/>
+  <text x="1253" y="364" class="card">1</text><text x="1253" y="404" class="card">1</text>
+  <text x="1290" y="244" text-anchor="end" class="card">0..1</text><text x="1290" y="579" text-anchor="end" class="card">0..1</text>
+  <g transform="translate(1060 330)">
+    <rect width="185" height="120" class="body"/><rect width="185" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">nam</text><line x1="0" y1="78" x2="185" y2="78" class="rule"/>
+    <text x="12" y="64" class="key">PK</text><text x="48" y="64" class="field">year</text><text x="140" y="64" class="type">INT</text>
+    <text x="48" y="106" class="field">decade</text><text x="140" y="106" class="type">INT</text>
+  </g>
+  <g transform="translate(1300 180)">
+    <rect width="260" height="140" class="body"/><rect width="260" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">nhiet_do_toan_cau</text><line x1="0" y1="80" x2="245" y2="80" class="rule"/>
+    <text x="12" y="65" class="key">PK, FK</text><text x="76" y="65" class="field">year</text><text x="220" y="65" class="type">INT</text>
+    <text x="76" y="106" class="field">temperature_anomaly</text><text x="220" y="128" class="type">REAL</text>
+  </g>
+  <g transform="translate(1300 490)">
+    <rect width="260" height="190" class="body"/><rect width="260" height="36" class="head"/>
+    <text x="12" y="24" class="table-name">co2_toan_cau</text><line x1="0" y1="70" x2="245" y2="70" class="rule"/>
+    <text x="12" y="58" class="key">PK, FK</text><text x="76" y="58" class="field">year</text><text x="220" y="58" class="type">INT</text>
+    <text x="76" y="93" class="field">co2</text><text x="212" y="93" class="type">REAL</text>
+    <text x="76" y="122" class="field">co2_per_capita</text><text x="212" y="122" class="type">REAL</text>
+    <text x="76" y="151" class="field">population</text><text x="212" y="151" class="type">REAL</text>
+    <text x="76" y="180" class="field">cumulative_co2</text><text x="212" y="180" class="type">REAL</text>
+  </g>
+  <text x="40" y="972" class="note">Khóa ghép quốc gia–năm: (iso_alpha, year). Bảng ngành có thêm sector trong khóa chính.</text>
+</svg>

@@ -2,15 +2,12 @@
   --primary: #0878BE;
   --primary-dark: #075A92;
   --background: #F5F8FC;
-  --surface: #FFFFFF;
   --border: #E3EAF2;
   --text: #16324F;
   --secondary: #52677D;
   --temperature: #EF4444;
   --co2: #1689E8;
   --positive: #16A36A;
-  --warning: #F59E0B;
-  --muted: #CBD5E1;
   --header: 68px;
   --sidebar: 208px;
   --font-ui: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
@@ -82,10 +79,6 @@ h1, h2, h3, h4, p {
 
 .green {
   color: var(--positive);
-}
-
-.navy {
-  color: var(--text);
 }
 
 .header {
@@ -566,7 +559,7 @@ h1, h2, h3, h4, p {
   margin: 0;
   padding: 6px 12px;
   display: grid;
-  grid-template-columns: 1fr 1.15fr 1.25fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 14px;
   overflow: visible;
@@ -576,8 +569,8 @@ h1, h2, h3, h4, p {
   box-shadow: 0 4px 18px rgba(40, 93, 137, .035);
 }
 
-.filter-bar.two-filters {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.filter-bar.three-filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .hidden-filter {
@@ -731,15 +724,14 @@ h1, h2, h3, h4, p {
   font-size: 12px;
 }
 
-.chart-grid {
+.chart-grid, .eda-artifact-grid, .forecast-support {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  margin-bottom: 16px;
 }
 
-.chart-grid.single {
-  grid-template-columns: 1fr;
+.chart-grid {
+  margin-bottom: 16px;
 }
 
 .eda-gallery {
@@ -752,10 +744,6 @@ h1, h2, h3, h4, p {
 
 .eda-format-heading {
   margin: 0 2px 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 10px;
 }
 
 .eda-format-heading h3 {
@@ -763,52 +751,26 @@ h1, h2, h3, h4, p {
   font-size: 19px;
 }
 
-.eda-format-heading p,
-.eda-format-heading span {
-  color: var(--secondary);
-  font-size: 12px;
-}
-
-.eda-format-heading p {
-  flex: 1 1 260px;
-}
-
-.eda-format-heading span {
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.eda-artifact-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.eda-artifact-grid.interactive {
-  grid-template-columns: 1fr;
-  gap: 22px;
-}
-
-.eda-format-section.interactive .eda-artifact-heading {
-  padding: 18px 20px;
-  border-left: 4px solid var(--primary);
-  background: linear-gradient(90deg, #F2F9FE, #FFFFFF);
-}
-
-.eda-format-section.interactive .eda-artifact-heading h3 {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.eda-format-section.interactive .eda-artifact-frame {
-  height: 640px;
-}
-
 .eda-artifact-card {
+  min-width: 0;
   overflow: hidden;
 }
 
+.interactive .eda-artifact-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.eda-format-section.static>summary {
+  margin: 18px 0;
+  color: #52677D;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .eda-artifact-heading {
+  min-height: 76px;
   padding: 15px 18px 12px;
   display: flex;
   align-items: center;
@@ -833,20 +795,12 @@ h1, h2, h3, h4, p {
   font-size: 12px;
 }
 
-.eda-artifact-image,
-.eda-artifact-frame {
+.eda-artifact-image {
   width: 100%;
+  height: auto;
   display: block;
   border: 0;
   background: #fff;
-}
-
-.eda-artifact-image {
-  height: auto;
-}
-
-.eda-artifact-frame {
-  height: 500px;
 }
 
 .eda-expand-button {
@@ -876,6 +830,10 @@ h1, h2, h3, h4, p {
   display: grid;
   place-items: center;
   background: rgba(8, 25, 42, .78);
+}
+
+body:has(.eda-modal.open) {
+  overflow: hidden;
 }
 
 .eda-modal-box {
@@ -925,7 +883,7 @@ h1, h2, h3, h4, p {
   font-size: 12px;
 }
 
-.eda-modal-frame,
+.eda-modal-chart,
 .eda-modal-image {
   width: 100%;
   flex: 1 1 auto;
@@ -976,14 +934,6 @@ h1, h2, h3, h4, p {
 
 .overview-map-header h3 {
   font-size: 16px;
-}
-
-.overview-map-header p {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--secondary);
 }
 
 .map-controls {
@@ -1213,11 +1163,6 @@ h1, h2, h3, h4, p {
   font-weight: 600;
 }
 
-.text-link .icon {
-  width: 16px;
-  height: 16px;
-}
-
 .earth-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
@@ -1226,7 +1171,6 @@ h1, h2, h3, h4, p {
 }
 
 .globe-card #globe { height: clamp(300px, 45vw, 580px)!important; }
-.map-note { margin: 0; padding: 10px 16px; color: var(--secondary); font-size: 12px; border-top: 1px solid var(--border); }
 
 .globe-heading {
   display: flex;
@@ -1246,7 +1190,6 @@ h1, h2, h3, h4, p {
 .country-panel .selection-metrics>div { padding-bottom: 16px; border-bottom: 1px solid var(--border); }
 .country-panel .selection-metrics strong { font-size: 30px; }
 .country-panel>.small-meta { color: var(--secondary); font-size: 12px; }
-.country-panel>.small-meta:last-child { margin-top: auto; line-height: 1.6; }
 
 .table-wrap {
   padding: 8px 20px;
@@ -1444,12 +1387,6 @@ h1, h2, h3, h4, p {
   padding: 6px 24px 16px;
 }
 
-.forecast-support {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
 .forecast-support .card-header {
   min-height: 78px;
   padding: 18px 20px 8px;
@@ -1508,24 +1445,20 @@ h1, h2, h3, h4, p {
   .forecast-support { grid-template-columns: 1fr; }
 }
 
-.demo-notice {
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  border: 1px solid #F0E1BF;
-  border-radius: 7px;
-  background: #FFFAEF;
-  color: #8F7646;
-  font-size: 12px;
-}
-
-.insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.insight-card { overflow: hidden; }
-.insight-card:first-child { grid-column: 1 / -1; display: grid; grid-template-columns: .9fr 1.4fr; align-items: center; }
-.insight-copy { padding: 24px; min-height: 210px; }
-.insight-copy small { color: var(--secondary); font-size: 10px; font-weight: 650; letter-spacing: 1.1px; }
-.insight-copy strong { display: block; margin: 8px 0; font-size: 36px; line-height: 1.2; letter-spacing: -1px; }
-.insight-copy h2 { font-size: 16px; font-weight: 650; }
-.insight-copy p { margin-top: 8px; color: var(--secondary); font-size: 12px; line-height: 1.7; }
+.insight-heading h2 { font-size: 18px; color: #153A72; }
+.insight-heading>span { color: var(--secondary); font-size: 13px; }
+.insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.insight-card { min-width: 0; overflow: hidden; border-top: 3px solid #1689E8; }
+.insight-card:first-child { grid-column: 1 / -1; display: grid; grid-template-columns: .85fr 1.3fr; align-items: center; border-top-color: #EF4444; }
+.insight-card:last-child { border-top-color: #169873; }
+.insight-copy { padding: 24px 24px 12px; min-height: 190px; }
+.insight-label { display: flex; align-items: center; justify-content: space-between; color: #74869B; }
+.insight-label small { color: #52677D; font-size: 13px; font-weight: 650; }
+.insight-label>span { font-size: 12px; font-weight: 600; }
+.insight-copy strong { display: block; margin: 12px 0 8px; font-size: 40px; line-height: 1.2; letter-spacing: -1px; }
+.insight-copy h2 { font-size: 17px; line-height: 1.5; font-weight: 650; }
+.insight-copy p { margin-top: 10px; color: var(--secondary); font-size: 12px; line-height: 1.7; }
+.insight-source { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; margin-top: 16px; color: #63758A; font-size: 11px; line-height: 1.7; }
 
 .empty-state {
   padding: 45px;
@@ -1572,17 +1505,8 @@ h1, h2, h3, h4, p {
 }
 
 @media (max-width: 1000px) {
-  .main {
-    padding-right: 20px;
-    padding-left: 20px;
-  }
-
   .chart-grid, .eda-artifact-grid {
     grid-template-columns: 1fr;
-  }
-
-  .eda-format-section.interactive .eda-artifact-frame {
-    height: 540px;
   }
 
   .section-heading {
@@ -1737,18 +1661,16 @@ h1, h2, h3, h4, p {
     font-size: 23px;
   }
 
-  .filter-bar, .filter-bar.two-filters {
-    grid-template-columns: 1fr;
+  .filter-bar, .filter-bar.three-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     padding: 12px;
   }
 
+  .filter-bar.three-filters #country-field { grid-column: 1 / -1; }
+
   .card-header {
     padding: 16px 14px 8px;
-  }
-
-  .eda-artifact-frame {
-    height: 390px;
   }
 
   .chart-title h3 {
@@ -1785,14 +1707,6 @@ h1, h2, h3, h4, p {
     display: none;
   }
 
-  .eda-artifact-frame {
-    height: 300px;
-  }
-
-  .eda-format-section.interactive .eda-artifact-frame {
-    height: 360px;
-  }
-
   .eda-modal.open {
     padding: 8px;
   }
@@ -1811,8 +1725,7 @@ h1, h2, h3, h4, p {
     flex: 1 0 100%;
   }
 
-  .overview-map-header .globe-heading h3,
-  .overview-map-header .globe-heading p {
+  .overview-map-header .globe-heading h3 {
     overflow-wrap: normal;
     word-break: normal;
   }

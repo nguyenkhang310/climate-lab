@@ -1,14 +1,13 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-DUC = ROOT / "phan_tich_nhiet_do/duc/du_lieu_sach"
-QUAN = ROOT / "phan_tich_co2/quan/du_lieu_sach"
-OUT = Path(__file__).with_name("du_lieu")
+DATA = ROOT / "data/du_lieu_da_xu_ly"
+DUC = DATA / "duc"
+QUAN = DATA / "quan"
+OUT = DATA / "nguyen_khang"
 
 START_YEAR = 1970
 END_YEAR = 2024
@@ -27,23 +26,11 @@ def build_country_year() -> tuple[pd.DataFrame, dict]:
     _assert_unique(co2, ["iso_alpha", "year"], "CO₂ quốc gia")
     _assert_unique(renewable, ["iso_alpha", "year"], "Năng lượng tái tạo")
 
-    temperature = temperature.rename(columns={
-        "country": "country_temperature",
-        "continent": "continent_temperature",
-    })[[
-        "iso_alpha", "year", "country_temperature", "continent_temperature",
-        "temperature_anomaly", "source_flag",
-    ]]
-    co2 = co2.rename(columns={
-        "country": "country_co2",
-        "continent": "continent_co2",
-    })[[
-        "iso_alpha", "year", "country_co2", "continent_co2",
-        "co2", "co2_per_capita", "population",
-    ]]
+    co2 = co2[["iso_alpha", "year", "country", "continent", "co2", "co2_per_capita", "population"]]
     renewable = renewable.rename(columns={"country": "country_renewable"})
 
-    merged = temperature.merge(co2, on=["iso_alpha", "year"], how="outer")
+    merged = temperature.merge(co2, on=["iso_alpha", "year"], how="outer",
+                               suffixes=("_temperature", "_co2"))
     merged = merged.merge(renewable, on=["iso_alpha", "year"], how="outer")
     merged["country"] = (
         merged["country_temperature"]
@@ -56,11 +43,8 @@ def build_country_year() -> tuple[pd.DataFrame, dict]:
     merged.loc[merged["iso_alpha"] == "ATA", "continent"] = "Antarctica"
     merged["decade"] = (merged["year"] // 10 * 10).astype(int)
 
-    columns = [
-        "country", "iso_alpha", "continent", "year", "decade",
-        "temperature_anomaly", "co2", "co2_per_capita", "population",
-        "renewable_percent", "source_flag",
-    ]
+    indicators = ["temperature_anomaly", "co2", "co2_per_capita", "population", "renewable_percent"]
+    columns = ["country", "iso_alpha", "continent", "year", "decade"] + indicators + ["source_flag"]
     result = (
         merged.loc[merged["year"].between(START_YEAR, END_YEAR), columns]
         .sort_values(["iso_alpha", "year"])
@@ -76,17 +60,11 @@ def build_country_year() -> tuple[pd.DataFrame, dict]:
         "duplicate_keys": int(result.duplicated(["iso_alpha", "year"]).sum()),
         "coverage_non_null": {
             column: round(float(result[column].notna().mean()), 4)
-            for column in [
-                "temperature_anomaly", "co2", "co2_per_capita",
-                "population", "renewable_percent",
-            ]
+            for column in indicators
         },
         "countries_with_data": {
             column: int(result.loc[result[column].notna(), "iso_alpha"].nunique())
-            for column in [
-                "temperature_anomaly", "co2", "co2_per_capita",
-                "population", "renewable_percent",
-            ]
+            for column in indicators
         },
         "join_strategy": (
             "Full outer join theo iso_alpha + year; giữ null, không nội suy và "
