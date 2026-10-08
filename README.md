@@ -37,7 +37,11 @@ Mở **http://127.0.0.1:8050**. Trên Windows, dùng `.venv\Scripts\activate` đ
 | **Nhận định** | Những điểm đáng chú ý được tính theo phạm vi dữ liệu đang xem. |
 | **Dữ liệu** | Xem bảng và tải CSV theo bộ lọc. |
 
-Bộ lọc năm, châu lục và quốc gia dùng chung cho Tổng quan, Bản đồ khí hậu, Nhiệt độ, CO₂, Nhận định và Dữ liệu. Nhiệt độ và CO₂ mỗi tab có **6 biểu đồ tương tác**, bố trí hai biểu đồ mỗi hàng và có nút mở rộng. Riêng bản đồ trong hai tab này giữ phạm vi toàn cầu, tự chạy lặp qua các mốc **1970, 1980, 1990, 2000, 2010, 2020, 2024**, mỗi mốc 1,5 giây. Bấm **Dừng** hoặc chọn năm trên thanh trượt để xem một mốc; mỗi mốc dùng số liệu của đúng năm đó, không phải trung bình thập kỷ. Năm biểu đồ còn lại cập nhật theo bộ lọc chung. Hình EDA gốc nằm trong mục thu gọn riêng, không áp dụng bộ lọc. Mô hình dự đoán sử dụng dữ liệu toàn cầu và bộ chọn kịch bản riêng.
+Bộ lọc **thập kỷ**, châu lục và quốc gia dùng chung cho các trang dữ liệu. Chọn toàn bộ **1970–2024** hoặc một trong sáu nhóm **1970–1979, 1980–1989, 1990–1999, 2000–2009, 2010–2019, 2020–2024**. Nhóm cuối mới có 5 năm. Nhiệt độ và CO₂ mỗi tab có **6 biểu đồ tương tác**, bố trí hai biểu đồ mỗi hàng và có nút mở rộng; tất cả cùng áp dụng bộ lọc. Bản đồ dùng **trung bình các năm có số liệu của mỗi quốc gia trong từng thập kỷ**, tooltip ghi số năm có dữ liệu. Khi chọn nhiều thập kỷ, bản đồ tự chuyển mỗi 1,5 giây; bấm **Dừng** hoặc kéo thanh thập kỷ để xem một giai đoạn. Các đường xu hướng giữ chi tiết từng năm để xem biến động trong thập kỷ.
+
+Xếp hạng CO₂ dùng **phát thải trung bình năm trong kỳ**, cơ cấu ngành dùng tỷ trọng từ CO₂ trung bình năm theo ngành. Biểu đồ CO₂/người và tái tạo lấy trung bình trên **cùng các năm có đủ hai chỉ số của từng quốc gia**; tái tạo có từ 1990 nên các thập kỷ trước đó hiển thị thiếu dữ liệu. Không thay giá trị thiếu bằng 0 và không lấy riêng năm cuối làm đại diện thập kỷ. Hình EDA gốc nằm trong mục thu gọn riêng, không áp dụng bộ lọc. Mô hình dự đoán sử dụng dữ liệu toàn cầu và bộ chọn kịch bản riêng.
+
+Riêng trang **Nhiệt độ** đọc trực tiếp ba CSV đã xử lý trong `data/du_lieu_da_xu_ly/duc/`: NASA toàn cầu **1880–2025**, FAOSTAT quốc gia **1961–2025** và dữ liệu tháng tương ứng. Bộ lọc thập kỷ mở từ **1880–1889** đến **2020–2025** (nhóm cuối có 6 năm). Trước 1961, biểu đồ toàn cầu và tháng vẫn có số liệu; bản đồ, heatmap và phân bố quốc gia ghi thiếu dữ liệu. CSV tải từ trang Nhiệt độ dùng đúng nguồn và giai đoạn đang xem. Năm 2026 chưa đủ 12 tháng nên script của Đức đã loại khỏi CSV sạch.
 
 ## Dữ liệu và phương pháp
 
@@ -53,7 +57,7 @@ Dữ liệu sạch còn được tổ chức trong [cơ sở dữ liệu SQLite]
 | CO₂ theo ngành | [EDGAR](https://edgar.jrc.ec.europa.eu/report_2026) | Chỉ lấy **CO₂**, không trộn với tổng khí nhà kính quy đổi CO₂. |
 | Năng lượng tái tạo | [UNSD, IEA, IRENA qua OWID](https://ourworldindata.org/grapher/share-of-final-energy-consumption-from-renewable-sources) | Đối chiếu với CO₂ bình quân; độ phủ giữa các nước không đồng đều. |
 
-Chi tiết về tệp gốc, đơn vị và cột dữ liệu nằm trong [tài liệu nguồn dữ liệu](tai_lieu/dung_chung/NGUON_DU_LIEU.md). Các chuỗi có phạm vi năm khác nhau: **1970–2024 là khoảng phân tích chung của dashboard**, không phải khoảng đầy đủ của mọi nguồn.
+Chi tiết về tệp gốc, đơn vị và cột dữ liệu nằm trong [tài liệu nguồn dữ liệu](tai_lieu/dung_chung/NGUON_DU_LIEU.md). Các chuỗi có phạm vi năm khác nhau: **1970–2024 là khoảng phân tích chung của bảng ghép và mô hình**, không phải khoảng đầy đủ của mọi nguồn. Trang Nhiệt độ dùng toàn bộ phạm vi CSV của Đức như mô tả ở trên.
 
 ```mermaid
 flowchart LR

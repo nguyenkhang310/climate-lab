@@ -4,13 +4,15 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+from bang_dieu_khien.nguyen_khang.thap_ky import country_decade_means
+
 ROOT = Path(__file__).resolve().parent
 PROC = ROOT.parents[1] / "data/du_lieu_da_xu_ly/quan"
 OUT = ROOT / "bieu_do/tuong_tac"
 CHARTS = [
     ("01_line_co2_toan_cau", "Lượng CO₂ toàn cầu"),
-    ("02_bar_top15", "Quốc gia có lượng CO₂ cao nhất"),
-    ("03_choropleth_co2pc", "CO₂ bình quân đầu người"),
+    ("02_bar_top15", "Quốc gia có CO₂ trung bình năm cao nhất"),
+    ("03_choropleth_co2pc", "CO₂/người trung bình theo thập kỷ"),
     ("04_stacked_area_nganh", "Lượng CO₂ theo ngành"),
     ("05_treemap_nganh", "Tỷ trọng CO₂ theo ngành"),
     ("06_scatter_co2pc_renewable", "CO₂/người và năng lượng tái tạo"),
@@ -26,28 +28,32 @@ SECTOR_COLORS = dict(zip(sorted(SECTOR_NAMES),
 SECTOR_COLORS.update({name: SECTOR_COLORS[key] for key, name in SECTOR_NAMES.items()})
 
 
-def build_figures(series, countries, sectors, map_countries=None):
-    latest = countries[countries.year == series.year.max()]
-    map_data = countries if map_countries is None else map_countries
-    map_data = map_data.dropna(subset=["co2_per_capita"]).sort_values("year")
-    map_data = map_data[(map_data.year % 10 == 0) | map_data.year.isin([map_data.year.min(), map_data.year.max()])]
+def build_figures(series, countries, sectors):
+    keys = ["iso_alpha", "country", "continent"]
+    averages = countries.groupby(keys, as_index=False, dropna=False).agg(
+        co2=("co2", "mean"), years=("co2", "count"))
+    map_data = country_decade_means(countries, "co2_per_capita")
     labels = {"year": "Năm", "co2": "CO₂ (triệu tấn)", "country": "Quốc gia",
               "continent": "Châu lục", "sector": "Ngành", "co2_per_capita": "CO₂/người (tấn)",
-              "renewable_percent": "Năng lượng tái tạo (%)"}
-    top = latest.dropna(subset=["co2"]).nlargest(15, "co2").sort_values("co2")
+              "renewable_percent": "Năng lượng tái tạo (%)", "period": "Thập kỷ",
+              "years": "Số năm có dữ liệu"}
+    top = averages.dropna(subset=["co2"]).nlargest(15, "co2").sort_values("co2")
     areas = sectors.groupby(["year", "sector"], as_index=False).co2.sum(min_count=1)
-    tree = areas[areas.year == series.year.max()].dropna(subset=["co2"])
+    tree = areas.groupby("sector", as_index=False).co2.mean().dropna(subset=["co2"])
     tree = tree[tree.co2 > 0].assign(share=lambda data: data.co2 / data.co2.sum() * 100)
-    paired = latest.dropna(subset=["co2_per_capita", "renewable_percent"])
+    paired = countries.dropna(subset=["co2_per_capita", "renewable_percent"])
+    paired = paired.groupby(keys, as_index=False, dropna=False).agg(
+        co2_per_capita=("co2_per_capita", "mean"), renewable_percent=("renewable_percent", "mean"),
+        years=("year", "nunique"))
     figures = {
         "01_line_co2_toan_cau": px.area(series.sort_values("year"), x="year", y="co2", labels=labels,
                                        color_discrete_sequence=["#1689E8"]),
         "02_bar_top15": px.bar(top, x="co2", y="country", orientation="h", color="continent",
-                               color_discrete_map=CONTINENT_COLORS, labels=labels),
+                               color_discrete_map=CONTINENT_COLORS, labels=labels, hover_data=["years"]),
         "03_choropleth_co2pc": px.choropleth(
             map_data,
-            locations="iso_alpha", color="co2_per_capita", animation_frame="year", animation_group="iso_alpha",
-            hover_name="country", range_color=[0, 40], color_continuous_scale="YlOrRd", labels=labels),
+            locations="iso_alpha", color="co2_per_capita", animation_frame="period", animation_group="iso_alpha",
+            hover_name="country", hover_data=["period", "years"], range_color=[0, 40], color_continuous_scale="YlOrRd", labels=labels),
         "04_stacked_area_nganh": px.area(areas, x="year", y="co2", color="sector", labels=labels,
                                          color_discrete_map=SECTOR_COLORS),
         "05_treemap_nganh": go.Figure(go.Treemap(
@@ -55,7 +61,7 @@ def build_figures(series, countries, sectors, map_countries=None):
             customdata=tree[["share"]], marker_colors=tree.sector.map(SECTOR_COLORS))),
         "06_scatter_co2pc_renewable": px.scatter(
             paired, x="renewable_percent", y="co2_per_capita", color="continent",
-            hover_name="country", color_discrete_map=CONTINENT_COLORS, labels=labels),
+            hover_name="country", hover_data=["years"], color_discrete_map=CONTINENT_COLORS, labels=labels),
     }
     if len(series) == 1:
         figures["01_line_co2_toan_cau"].update_traces(mode="lines+markers")
@@ -70,7 +76,10 @@ def build_figures(series, countries, sectors, map_countries=None):
     treemap = figures["05_treemap_nganh"]
     treemap.update_traces(
         texttemplate="%{label}<br>%{customdata[0]:.1f}%",
-        hovertemplate="%{label}<br>%{value:,.1f} triệu tấn · %{customdata[0]:.1f}%<extra></extra>")
+        hovertemplate="%{label}<br>TB %{value:,.1f} triệu tấn/năm · %{customdata[0]:.1f}%<extra></extra>")
+    figures["02_bar_top15"].update_xaxes(title="CO₂ trung bình năm (triệu tấn/năm)")
+    figures["06_scatter_co2pc_renewable"].update_xaxes(title="Năng lượng tái tạo trung bình (%)")
+    figures["06_scatter_co2pc_renewable"].update_yaxes(title="CO₂/người trung bình (tấn/người/năm)")
     figures["06_scatter_co2pc_renewable"].update_traces(marker_size=8)
     return figures
 

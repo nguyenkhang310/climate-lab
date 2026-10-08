@@ -1,7 +1,12 @@
+from contextlib import closing
 from pathlib import Path
 import sqlite3
+import sys
 
 import pandas as pd
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data/du_lieu_da_xu_ly"
@@ -114,7 +119,7 @@ def main() -> None:
         frames[name] = pd.read_csv(folder / f"{name}.csv")
     country, year = dimensions(frames)
 
-    with sqlite3.connect(temporary) as connection:
+    with closing(sqlite3.connect(temporary)) as connection, connection:
         connection.executescript(SCHEMA)
         country.to_sql("quoc_gia", connection, if_exists="append", index=False)
         year.to_sql("nam", connection, if_exists="append", index=False)

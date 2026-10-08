@@ -4,25 +4,29 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+from bang_dieu_khien.nguyen_khang.thap_ky import country_decade_means, decade_labels
+
 ROOT = Path(__file__).resolve().parent
 PROC = ROOT.parents[1] / "data/du_lieu_da_xu_ly/duc"
 OUT = ROOT / "bieu_do/tuong_tac"
 CHARTS = [
     ("01_xu_huong_nhiet_do_toan_cau", "Xu hướng nhiệt độ toàn cầu"),
     ("02_nhiet_do_theo_thap_ky", "Nhiệt độ trung bình theo thập kỷ"),
-    ("03_ban_do_nhiet_do", "Bản đồ nhiệt độ theo quốc gia"),
+    ("03_ban_do_nhiet_do", "Bản đồ nhiệt độ trung bình theo thập kỷ"),
     ("04_heatmap_chau_luc_thap_ky", "Nhiệt độ theo châu lục và thập kỷ"),
     ("05_phan_bo_nhiet_do_quoc_gia", "Phân bố nhiệt độ theo thập kỷ"),
     ("06_nhiet_do_theo_thang", "Chênh nhiệt độ theo tháng"),
 ]
 
 
-def build_figures(series, countries, monthly, map_countries=None):
+def build_figures(series, countries, monthly):
     series = series.sort_values("year")
+    periods = decade_labels(countries)
+    map_data = country_decade_means(countries, "temperature_anomaly")
     countries = countries.dropna(subset=["temperature_anomaly"]).copy()
-    countries["decade"] = (countries.year // 10 * 10).astype(str)
+    countries["decade"] = (countries.year // 10 * 10).map(periods)
     labels = {"year": "Năm", "temperature_anomaly": "Chênh nhiệt độ (°C)",
-              "decade": "Thập kỷ", "country": "Quốc gia"}
+              "decade": "Thập kỷ", "country": "Quốc gia", "period": "Thập kỷ", "years": "Số năm có dữ liệu"}
     trend = go.Figure([
         go.Scatter(x=series.year, y=series.temperature_anomaly, name="Hằng năm",
                    mode="lines+markers" if len(series) == 1 else "lines", line=dict(color="#EF6B54", width=1.5)),
@@ -32,7 +36,7 @@ def build_figures(series, countries, monthly, map_countries=None):
     trend.update_layout(xaxis_title="Năm", yaxis_title=labels["temperature_anomaly"], hovermode="x unified")
     trend.add_hline(y=0, line_dash="dot", line_color="#96A7BA")
     trend.update_traces(hovertemplate="%{x}: %{y:+.2f} °C<extra>%{fullData.name}</extra>")
-    decades = series.assign(decade=(series.year // 10 * 10).astype(str)).groupby("decade").agg(
+    decades = series.assign(decade=(series.year // 10 * 10).map(decade_labels(series))).groupby("decade").agg(
         temperature_anomaly=("temperature_anomaly", "mean"), years=("temperature_anomaly", "count"))
     bars = go.Figure(go.Bar(
         x=decades.index, y=decades.temperature_anomaly,
@@ -41,13 +45,10 @@ def build_figures(series, countries, monthly, map_countries=None):
         textposition="outside", cliponaxis=False,
         hovertemplate="%{x} · %{customdata} năm có số liệu<br>%{y:+.2f} °C<extra></extra>"))
     bars.update_layout(xaxis_title="Thập kỷ", yaxis_title=labels["temperature_anomaly"])
-    map_data = countries if map_countries is None else map_countries
-    map_data = map_data.dropna(subset=["temperature_anomaly"]).sort_values("year")
-    map_data = map_data[(map_data.year % 10 == 0) | map_data.year.isin([map_data.year.min(), map_data.year.max()])]
     world_map = px.choropleth(map_data,
                              locations="iso_alpha", color="temperature_anomaly",
-                             animation_frame="year", animation_group="iso_alpha",
-                             hover_name="country", range_color=[-6, 6],
+                             animation_frame="period", animation_group="iso_alpha",
+                             hover_name="country", hover_data=["period", "years"], range_color=[-6, 6],
                              color_continuous_scale="RdBu_r", labels=labels)
     if world_map.frames:
         world_map.update_layout(meta=dict(autoplay=True))

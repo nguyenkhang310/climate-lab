@@ -10,6 +10,8 @@ PROCESSED = ROOT / "data/du_lieu_da_xu_ly"
 OUTPUTS = ROOT / "data/ket_qua_mo_hinh/nguyen_khang"
 DATA = pd.read_csv(PROCESSED / "nguyen_khang/dashboard_quoc_gia_nam.csv")
 GLOBAL_DATA = pd.read_csv(PROCESSED / "nguyen_khang/khi_hau_toan_cau_nam.csv")
+TEMPERATURE_DATA = pd.read_csv(PROCESSED / "duc/nhiet_do_quoc_gia.csv")
+GLOBAL_TEMPERATURE = pd.read_csv(PROCESSED / "duc/nhiet_do_toan_cau.csv")
 SECTOR_DATA = pd.read_csv(PROCESSED / "quan/co2_theo_nganh.csv")
 MONTHLY_DATA = pd.read_csv(PROCESSED / "duc/nhiet_do_theo_thang.csv")
 SCENARIO_DATA = pd.read_csv(OUTPUTS / "kich_ban_2050.csv")
@@ -31,6 +33,7 @@ COUNTRY_NAMES = (
     .set_index("iso_alpha")["country"]
     .to_dict()
 )
+TEMPERATURE_DATA.loc[TEMPERATURE_DATA.iso_alpha.eq("ATA"), "continent"] = "Antarctica"
 
 COORDINATES = {
     "VNM": (108, 16), "CHN": (104, 35), "USA": (-100, 38),
@@ -40,19 +43,29 @@ COORDINATES = {
     "RUS": (95, 60), "IDN": (118, -3), "EGY": (30, 27),
 }
 
-def filter_data(year_range=None, continent="all", country="all") -> pd.DataFrame:
+def year_bounds(year_range, data):
     if isinstance(year_range, str):
-        years = [int(value) for value in year_range.split("-")]
+        return [int(value) for value in year_range.split("-")]
     elif year_range:
-        years = [int(year_range[0]), int(year_range[-1])]
-    else:
-        years = [int(DATA.year.min()), int(DATA.year.max())]
-    frame = DATA[DATA.year.between(*years)]
+        return [int(year_range[0]), int(year_range[-1])]
+    return [int(data.year.min()), int(data.year.max())]
+
+
+def filter_data(year_range=None, continent="all", country="all", *, temperature=False) -> pd.DataFrame:
+    data = TEMPERATURE_DATA if temperature else DATA
+    frame = data[data.year.between(*year_bounds(year_range, data))]
     if continent != "all":
         frame = frame[frame.continent == continent]
     if country != "all":
         frame = frame[frame.iso_alpha == country]
     return frame.copy()
+
+
+def temperature_series(frame, year_range, use_global=False):
+    if use_global:
+        return GLOBAL_TEMPERATURE[GLOBAL_TEMPERATURE.year.between(
+            *year_bounds(year_range, GLOBAL_TEMPERATURE))].copy()
+    return frame.groupby("year", as_index=False).temperature_anomaly.mean()
 
 def aggregate(frame: pd.DataFrame, use_global: bool = False) -> pd.DataFrame:
     columns = ["year", "temperature_anomaly", "co2", "population", "co2_per_capita"]
@@ -82,9 +95,10 @@ def filtered_sectors(frame, use_global=False):
     return data.assign(sector=data.sector.replace(SECTOR_NAMES))
 
 
-def filtered_months(frame, use_global=False):
+def filtered_months(frame, use_global=False, year_range=None):
     codes = ["WLD"] if use_global else frame.iso_alpha.unique()
-    return MONTHLY_DATA[MONTHLY_DATA.year.between(frame.year.min(), frame.year.max()) & MONTHLY_DATA.iso_alpha.isin(codes)]
+    start, end = year_bounds(year_range, MONTHLY_DATA) if year_range is not None else (frame.year.min(), frame.year.max())
+    return MONTHLY_DATA[MONTHLY_DATA.year.between(start, end) & MONTHLY_DATA.iso_alpha.isin(codes)]
 
 
 def sector_totals(frame: pd.DataFrame, use_global=False) -> pd.Series:

@@ -19,9 +19,11 @@ PAGES = {
 
 def check_eda_layout(page, gallery):
     cards = gallery.locator(".interactive .eda-artifact-card")
-    page.wait_for_function("id => document.querySelector('#' + id + ' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.layout?.sliders?.[0]?.active > 0",
-                           arg=gallery.get_attribute("id"))
-    cards.nth(2).get_by_text("■ Dừng", exact=True).click()
+    animated = cards.nth(2).locator(".js-plotly-plot").evaluate("e => !!e._transitionData?._frames?.length")
+    if animated:
+        page.wait_for_function("id => document.querySelector('#' + id + ' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.layout?.sliders?.[0]?.active > 0",
+                               arg=gallery.get_attribute("id"))
+        cards.nth(2).get_by_text("■ Dừng", exact=True).click()
     for width in (1440, 1024, 390, 1440):
         page.set_viewport_size({"width": width, "height": 1000})
         page.wait_for_function("""() => [...document.querySelectorAll('.interactive .js-plotly-plot')].every(p => {
@@ -166,8 +168,8 @@ def check_map(page, map_id, controls, reset):
         page.locator("#metric-filter").get_by_text("Khí thải CO₂", exact=True).click()
         page.wait_for_function("document.querySelector('#globe .js-plotly-plot').data.some(t=>t.name==='CO₂')")
         page.locator("#year-range").click()
-        page.locator("#year-range").get_by_text("1990 – 2023", exact=True).click()
-        page.wait_for_function("document.querySelector('#country-panel .selection-year').textContent==='2023'")
+        page.locator("#year-range").get_by_text("1990–1999", exact=True).click()
+        page.wait_for_function("document.querySelector('#country-panel .selection-year').textContent==='1999'")
         assert page.locator("#country-panel h2").inner_text() == "Argentina"
         assert all(abs(a-b) < .1 for a, b in zip(camera(), saved))
 
@@ -288,7 +290,7 @@ def main() -> None:
         continent_filter = page.locator("#continent-filter")
         continent_filter.click()
         continent_filter.get_by_text("Châu Âu", exact=True).click()
-        page.wait_for_function("document.querySelector('#page-subtitle').textContent==='Châu Âu · 1990–2023'")
+        page.wait_for_function("document.querySelector('#page-subtitle').textContent==='Châu Âu · 1990–1999'")
         assert "Tất cả quốc gia" in country_filter.inner_text()
         assert "nan" not in page.locator(".insight-grid").inner_text().lower()
 
