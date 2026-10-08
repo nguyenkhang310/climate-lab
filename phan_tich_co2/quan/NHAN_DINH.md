@@ -2,6 +2,8 @@
 
 Nguồn: các CSV trong `data/du_lieu_da_xu_ly/quan/` + biểu đồ tương tác
 `bieu_do/tuong_tac/*.html` + EDA tĩnh `bieu_do/tinh/*.png` (cùng thư mục Quân).
+Dashboard và biểu đồ tương tác hiện mở lịch sử CO₂ từ 1850 đến 2024. Những nhận
+định 1970–2024 bên dưới vẫn nói riêng về giai đoạn đó; EDGAR không có trước 1970.
 Đơn vị: OWID `co2` = Mt/năm (không gồm thay đổi sử dụng đất), `co2_per_capita` = tấn/người;
 EDGAR `Substance = CO2` = Mt CO₂; `renewable_percent` = % tái tạo trong **tổng tiêu thụ
 năng lượng cuối cùng** (không phải % điện tái tạo).
@@ -43,8 +45,8 @@ nước) và EDGAR ở đây chỉ tính CO₂, không phải tổng khí nhà k
 - Nông nghiệp (0,4%) + chất thải (0,1%) trong EDGAR chỉ tính CO₂ (không gồm CH₄/N₂O)
   nên tỷ trọng thấp - **không đọc thành "nông nghiệp không đáng kể"** khi nói về KNK tổng.
 - Không dùng sheet `GHG_totals_by_country` dưới nhãn CO₂ (đó là CO₂-tương-đương).
-- Nhìn chart `04_stacked_area_nganh` + `05_treemap_nganh`: điện là đầu mối, phần còn lại
-  chia cho giao thông và công nghiệp.
+- Chart `04_stacked_area_chau_luc` cho thấy diễn biến CO₂ theo châu lục;
+  `05_treemap_nganh` cho thấy điện là đầu mối, tiếp theo là giao thông và công nghiệp.
 
 ## 4. CO₂/người và năng lượng tái tạo (2023, n = 212, r ≈ -0,49)
 - Tương quan âm vừa: quốc gia có tỷ trọng tái tạo cao thường có CO₂/người thấp hơn,
@@ -60,8 +62,13 @@ nước) và EDGAR ở đây chỉ tính CO₂, không phải tổng khí nhà k
 ## 5. Lưu ý chất lượng khi ghép dashboard
 - Ghép bằng `iso_alpha + year`; năm 2024 thiếu năng lượng tái tạo (84/225 nước) nên bộ lọc
   mặc định có tái tạo dùng **1990-2023**.
-- `ATA` (OWID) và `SCG` (EDGAR, Serbia and Montenegro lịch sử) có `continent = null`;
-  giữ lại để left-join từ danh mục quốc gia rồi quyết định hiển thị.
+- `ATA` được phân loại Antarctica. EDGAR chuẩn hóa riêng mã `ANT` có tên Curaçao
+  thành `CUW`, giữ mã nguồn ở `source_iso_alpha`. `SCG` được giữ là thực thể gộp
+  Serbia và Montenegro ở Europe; chỉ tính khi phạm vi có cả hai nước, không gán
+  toàn bộ phát thải chung cho từng nước riêng.
+- Tỷ trọng ngành tính trên tổng các ngành có số liệu; `sectors_available` và
+  `sectors_expected` cho biết nhóm quốc gia–năm còn thiếu giá trị ngành. Tỷ trọng
+  cộng lại 100% không đồng nghĩa có đủ dữ liệu tất cả ngành.
 - Kosovo không có mã ISO ở cả OWID và tái tạo nên tách riêng, không có trong các CSV.
 - Năm 2025 của EDGAR là số sơ bộ, biểu đồ chốt ở 2024.
 - Chi tiết đầy đủ: `data/du_lieu_da_xu_ly/quan/bao_cao_chat_luong.json` (từ điển dữ liệu, missing,

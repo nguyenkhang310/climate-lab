@@ -12,10 +12,12 @@ DATA = pd.read_csv(PROCESSED / "nguyen_khang/dashboard_quoc_gia_nam.csv")
 GLOBAL_DATA = pd.read_csv(PROCESSED / "nguyen_khang/khi_hau_toan_cau_nam.csv")
 TEMPERATURE_DATA = pd.read_csv(PROCESSED / "duc/nhiet_do_quoc_gia.csv")
 GLOBAL_TEMPERATURE = pd.read_csv(PROCESSED / "duc/nhiet_do_toan_cau.csv")
+GLOBAL_CO2 = pd.read_csv(PROCESSED / "quan/co2_toan_cau.csv")
 SECTOR_DATA = pd.read_csv(PROCESSED / "quan/co2_theo_nganh.csv")
 MONTHLY_DATA = pd.read_csv(PROCESSED / "duc/nhiet_do_theo_thang.csv")
 SCENARIO_DATA = pd.read_csv(OUTPUTS / "kich_ban_2050.csv")
 BACKTEST_DATA = pd.read_csv(OUTPUTS / "du_doan_kiem_tra.csv")
+RESIDUAL_DATA = pd.read_csv(OUTPUTS / "phan_du_huan_luyen.csv")
 MODEL_INFO = json.loads((OUTPUTS / "thong_tin_mo_hinh.json").read_text(encoding="utf-8"))
 
 DATA["year"] = DATA["year"].astype(int)
@@ -33,7 +35,6 @@ COUNTRY_NAMES = (
     .set_index("iso_alpha")["country"]
     .to_dict()
 )
-TEMPERATURE_DATA.loc[TEMPERATURE_DATA.iso_alpha.eq("ATA"), "continent"] = "Antarctica"
 
 COORDINATES = {
     "VNM": (108, 16), "CHN": (104, 35), "USA": (-100, 38),
@@ -67,13 +68,14 @@ def temperature_series(frame, year_range, use_global=False):
             *year_bounds(year_range, GLOBAL_TEMPERATURE))].copy()
     return frame.groupby("year", as_index=False).temperature_anomaly.mean()
 
-def aggregate(frame: pd.DataFrame, use_global: bool = False) -> pd.DataFrame:
+def aggregate(frame: pd.DataFrame, use_global: bool = False, *, co2_only=False) -> pd.DataFrame:
     columns = ["year", "temperature_anomaly", "co2", "population", "co2_per_capita"]
     if frame.empty:
         return pd.DataFrame(columns=columns)
     if use_global:
         start, end = int(frame.year.min()), int(frame.year.max())
-        return GLOBAL_DATA[GLOBAL_DATA.year.between(start, end)].copy()
+        source = GLOBAL_CO2 if co2_only else GLOBAL_DATA
+        return source[source.year.between(start, end)].copy()
     if frame.iso_alpha.nunique() == 1:
         return frame[columns].sort_values("year").copy()
 
@@ -91,7 +93,10 @@ def aggregate(frame: pd.DataFrame, use_global: bool = False) -> pd.DataFrame:
 def filtered_sectors(frame, use_global=False):
     data = SECTOR_DATA[SECTOR_DATA.year.between(frame.year.min(), frame.year.max())]
     if not use_global:
-        data = data[data.iso_alpha.isin(frame.iso_alpha)]
+        codes = set(frame.iso_alpha)
+        if {"SRB", "MNE"}.issubset(codes):
+            codes.add("SCG")
+        data = data[data.iso_alpha.isin(codes)]
     return data.assign(sector=data.sector.replace(SECTOR_NAMES))
 
 

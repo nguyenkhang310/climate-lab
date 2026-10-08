@@ -10,15 +10,20 @@ from dash.exceptions import MissingCallbackContextException
 from flask import send_from_directory
 from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import kich_ban
 from phan_tich_nhiet_do.duc.tao_bieu_do_plotly import CHARTS, build_figures as temperature_figures
-from phan_tich_co2.quan.tao_bieu_do_plotly import CHARTS as CO2_CHARTS, build_figures as co2_figures
+from phan_tich_co2.quan.tao_bieu_do_plotly import (
+    CHARTS as CO2_CHARTS, build_figures as co2_figures,
+    renewable_coverage_note, sector_coverage_note,
+)
 
 from .bieu_do import (
     SCENARIO_COLORS,
     create_backtest_chart,
     create_co2_chart,
+    create_continent_donut,
     create_sector_chart,
     create_globe,
     create_ranking_chart,
+    create_residual_chart,
     create_scenario_co2_chart,
     create_scenario_temperature_chart,
     create_temperature_chart,
@@ -33,8 +38,10 @@ from .du_lieu import (
     COUNTRY_NAMES,
     DATA,
     GLOBAL_DATA,
-    GLOBAL_TEMPERATURE,
+    GLOBAL_CO2,
+    TEMPERATURE_DATA,
     MODEL_INFO,
+    RESIDUAL_DATA,
     SCENARIO_DATA,
     aggregate,
     filter_data,
@@ -155,6 +162,12 @@ def update_map(snapshot, selected, metric, mode, resets, current, reset=False):
         rotation = {"lon": 105, "lat": 15}
     return create_globe(snapshot, selected, metric, resets or 0, rotation, view_mode=mode or "globe")
 
+def map_snapshot(frame, year):
+    snapshot = DATA[DATA.year.eq(year)].copy()
+    snapshot["outside_scope"] = ~snapshot.iso_alpha.isin(frame.iso_alpha)
+    snapshot.loc[snapshot.outside_scope, ["co2", "temperature_anomaly"]] = float("nan")
+    return snapshot
+
 def map_header(view_id, reset_id):
     return html.Div([
         html.Div([icon("globe"), html.H3("Bản đồ thế giới")], className="globe-heading"),
@@ -186,7 +199,7 @@ def create_header():
             icon("calendar"),
             html.Div([
                 html.Span("Phạm vi dữ liệu"),
-                html.Strong(f"{int(DATA.year.min())}–{int(DATA.year.max())}", id="header-data-range"),
+                html.Strong(f"{int(TEMPERATURE_DATA.year.min())}–{int(GLOBAL_DATA.year.max())}", id="header-data-range"),
             ]),
         ], className="header-data-range"),
         html.Button([icon("download"), html.Span("Tải CSV")], id="header-export",
@@ -224,7 +237,7 @@ def create_sidebar():
     ]
 
 def create_filters():
-    start, end = int(DATA.year.min()), int(DATA.year.max())
+    start, end = int(TEMPERATURE_DATA.year.min()), int(GLOBAL_DATA.year.max())
     return html.Div([
         _select_field("Thập kỷ", "year-range", decade_options(start, end),
                       f"{start}-{end}", symbol="calendar", field_class="filter-years", searchable=False),
@@ -308,7 +321,7 @@ def create_eda_artifact_card(title, subtitle, path, figure=None):
     ], className="card eda-artifact-card")
 
 
-def create_member_eda_gallery(artifacts, gallery_id, figures, notes, scope, period, data_note):
+def create_member_eda_gallery(artifacts, gallery_id, figures, notes, scope, period):
     cards = []
     fields = {"choropleth": "z", "heatmap": "z", "treemap": "values"}
     interactive = [item for item in artifacts if item[2].endswith(".html")]
@@ -320,7 +333,7 @@ def create_member_eda_gallery(artifacts, gallery_id, figures, notes, scope, peri
         chart_scope = f"{scope} · {period} · {note}"
         style_chart(figure, 380)
         figure.update_layout(title=None,
-                             meta=dict(scope=chart_scope, autoplay=bool(figure.frames)),
+                             meta=dict(scope=chart_scope),
                              showlegend=len(figure.data) > 1 and not path.endswith("05_phan_bo_nhiet_do_quoc_gia.html"),
                              legend=dict(y=-.23, yanchor="top", font_size=10, title=None),
                              margin=dict(l=16, r=24, t=16, b=90))
@@ -331,7 +344,7 @@ def create_member_eda_gallery(artifacts, gallery_id, figures, notes, scope, peri
         if figure.frames:
             note = chart_scope
             figure.update_layout(margin_b=105)
-            figure.layout.sliders[0].update(x=0, len=1, pad=dict(t=48, b=0),
+            figure.layout.sliders[0].update(x=.05, len=1, pad=dict(t=48, b=0),
                                             currentvalue=dict(prefix="Thập kỷ: ", xanchor="right", font_size=12))
             figure.layout.updatemenus[0].update(x=0, xanchor="left", pad=dict(t=8, r=0))
         for trace in figure.data:
@@ -344,17 +357,12 @@ def create_member_eda_gallery(artifacts, gallery_id, figures, notes, scope, peri
         html.Div([
             html.Div([
                 html.H3("Biểu đồ tương tác"),
-                html.P(
-                    f"Phạm vi {period} · Bản đồ dùng trung bình theo thập kỷ; "
-                    f"{data_note} Biểu đồ xu hướng giữ chi tiết từng năm. "
-                    "Giá trị thiếu không được thay bằng 0.",
-                    className="small-meta",
-                ),
+                html.P(f"{scope} · {period}", className="small-meta"),
             ], className="eda-format-heading"),
             html.Div(cards, className="eda-artifact-grid interactive"),
         ], className="eda-format-section interactive"),
         html.Details([
-            html.Summary("Biểu đồ tĩnh · EDA toàn bộ dữ liệu (không áp dụng bộ lọc)"),
+            html.Summary("Biểu đồ tĩnh · Toàn bộ dữ liệu, không áp dụng bộ lọc"),
             html.Div([create_eda_artifact_card(*item) for item in artifacts if item[2].endswith(".png")],
                      className="eda-artifact-grid static"),
         ], className="eda-format-section static"),
@@ -401,7 +409,7 @@ def overview_details(frame, selected, year, scope):
     else:
         region = CONTINENT_NAMES.get(chosen.iloc[0].continent, "")
     metrics = [
-        ("Chênh lệch nhiệt độ", format_number(row.temperature_anomaly, "+.2f"), "°C so với trung bình 1951–1980", "red"),
+        ("Chênh lệch nhiệt độ", format_number(row.temperature_anomaly, "+.2f"), "°C so với 1951–1980", "red"),
         ("Lượng CO₂", format_number(row.co2, ",.1f"), "triệu tấn", "blue"),
         ("CO₂ mỗi người", format_number(row.co2_per_capita, ".2f"), "tấn/người", "blue"),
     ]
@@ -422,28 +430,36 @@ def overview_details(frame, selected, year, scope):
             for label, value, unit, tone in metrics
         ], className="selection-metrics"),
     ]
-    temperature = create_temperature_chart(series, 200)
+    temperature = (empty_chart("Nhiệt độ quốc gia chỉ có từ 1961", 200)
+                   if series.year.max() < 1961 and series.temperature_anomaly.isna().all()
+                   else create_temperature_chart(series, 200))
     co2 = create_co2_chart(series, 200)
     for figure in (temperature, co2):
         figure.add_vline(x=year, line_width=1, line_dash="dot", line_color="#8496AA")
     return summary, temperature, co2, f"{scope} · {period}"
 
-def overview_comparison(frame, selected, year, scope):
+def overview_comparison(frame, selected, year):
     snapshot = frame[frame.year == year]
-    chosen = snapshot if selected == "all" else snapshot[snapshot.iso_alpha == selected]
+    world = DATA[DATA.year == year]
+    highlighted = "all"
+    if selected != "all":
+        highlighted = snapshot.loc[snapshot.iso_alpha.eq(selected), "continent"].iloc[0]
+    elif frame.continent.nunique() == 1:
+        highlighted = frame.continent.iloc[0]
     return html.Div([
         create_chart_card("Quốc gia thải CO₂ nhiều nhất", f"Top 5{' & quốc gia đang chọn' if selected != 'all' else ''} · {year} · OWID/GCP",
-                          create_ranking_chart(snapshot, selected, limit=5),
+                          create_ranking_chart(snapshot, selected, limit=5, height=350),
                           "compare", "overview-ranking"),
-        create_chart_card("CO₂ đến từ ngành nào?", f"{COUNTRY_NAMES.get(selected, 'Phạm vi đang xem')} · {year} · EDGAR",
-                          create_sector_chart(sector_totals(chosen, use_global=scope == "Toàn cầu")), "cloud", "overview-sectors"),
+        create_chart_card("CO₂ theo châu lục", f"Tổng quốc gia có dữ liệu · {year} · OWID/GCP",
+                          create_continent_donut(world, CONTINENT_NAMES, highlighted),
+                          "globe", "overview-continents"),
     ], className="chart-grid")
 
 
 def create_overview(frame, selected, scope, metric):
     years = map_years(frame, selected)
     year = years[-1]
-    snapshot = frame[frame.year == year]
+    snapshot = map_snapshot(frame, year)
     lon, lat = COORDINATES.get(selected, (105, 15))
     globe = create_globe(
         snapshot,
@@ -510,13 +526,13 @@ def create_overview(frame, selected, scope, metric):
     ], className="card")
     return html.Div([
         html.Div([summary_card, map_card, temperature_card, co2_card], className="overview-grid"),
-        html.Div(overview_comparison(frame, selected, year, scope), id="overview-comparison"),
+        html.Div(overview_comparison(frame, selected, year), id="overview-comparison"),
         forecast,
     ], className="overview-page")
 
 def earth_details(frame, selected, scope):
     summary, temperature, co2, subtitle = overview_details(frame, selected, int(frame.year.max()), scope)
-    panel = [html.P("Phạm vi đang xem", className="small-meta"), *summary]
+    panel = summary
     charts = [
         create_chart_card(title, subtitle, figure.update_layout(height=260), symbol)
         for title, figure, symbol in [("Nhiệt độ qua các năm", temperature, "thermometer"),
@@ -527,7 +543,7 @@ def earth_details(frame, selected, scope):
 def create_earth(frame, selected, metric, scope):
     panel, charts = earth_details(frame, selected, scope)
     lon, lat = COORDINATES.get(selected, (105, 15))
-    figure = create_globe(frame[frame.year == frame.year.max()], selected, metric,
+    figure = create_globe(map_snapshot(frame, int(frame.year.max())), selected, metric,
                           rotation={"lon": lon, "lat": lat})
     return [
         html.Div([
@@ -607,15 +623,30 @@ def create_scenario_page():
         create_chart_card("Mô hình sát thực tế đến đâu?",
                           f"Kiểm tra 2015–2024 · Sai số trung bình {MODEL_INFO['mae_test']:.3f} °C",
                           create_backtest_chart(BACKTEST_DATA), "scatter", "scenario-backtest-chart"),
+        create_chart_card("Phần dư có ngẫu nhiên không?",
+                          f"Train {MODEL_INFO['train_period'][0]}–{MODEL_INFO['train_period'][1]} · "
+                          f"DW {MODEL_INFO['train_durbin_watson']:.2f} · "
+                          f"{MODEL_INFO['train_influential_count']} điểm cần xem",
+                          create_residual_chart(RESIDUAL_DATA), "scatter", "scenario-residual-chart"),
     ], className="forecast-support")
 
     method = html.Details([
         html.Summary("Dữ liệu & phương pháp"),
         html.Div([
-            html.P("NASA GISTEMP + OWID/GCP · Toàn cầu 1970–2024."),
-            html.P(f"Hồi quy tuyến tính CO₂ tích lũy → nhiệt độ TB 5 năm. R²: {MODEL_INFO['r2_test']:.3f} · "
-                   f"MAE 2015–2024: {MODEL_INFO['mae_test']:.3f} °C."),
-            html.P("Khoảng 90% theo giả định hồi quy; chưa gồm bất định về CO₂ trong tương lai."),
+            html.P(f"NASA GISTEMP + OWID/GCP · Toàn cầu {MODEL_INFO['source_period'][0]}–{MODEL_INFO['source_period'][1]}."),
+            html.P(f"Hồi quy CO₂ tích lũy → nhiệt độ trung bình 5 năm. R²: {MODEL_INFO['r2_test']:.3f} · "
+                   f"MAE: {MODEL_INFO['mae_test']:.3f} °C · MSE: {MODEL_INFO['mse_test']:.4f} °C² · "
+                   f"RMSE: {MODEL_INFO['rmse_test']:.3f} °C trên {MODEL_INFO['test_size']} giá trị "
+                   "trung bình 5 năm chồng lấn."),
+            html.P(f"So sánh lịch sử 1880, 1961, 1970 trên bốn giai đoạn 1995–2014: "
+                   f"chọn {MODEL_INFO['selected_history_start']}, MAE {MODEL_INFO['rolling_validation_mae']:.3f} °C."),
+            html.P(f"Mỗi 1.000 Gt CO₂ tích lũy đi cùng khoảng "
+                   f"{MODEL_INFO['coefficient'] * 1000:.2f} °C theo mô hình. Phần dư còn tự tương quan "
+                   f"(DW {MODEL_INFO['train_durbin_watson']:.2f}) và phương sai chưa đều "
+                   f"(p={MODEL_INFO['train_breusch_pagan_p']:.3f}), nên không diễn giải đây là quan hệ nhân quả."),
+            html.P(f"Kịch bản có điều kiện theo CO₂ và ngoại suy vượt miền dữ liệu đến 2024. "
+                   f"Dải 5%–95% dùng bootstrap theo khối {MODEL_INFO['bootstrap_block_length']} năm; "
+                   "chưa gồm bất định phát thải và không bảo đảm độ phủ tương lai 90%."),
         ]),
     ], className="forecast-method")
     return html.Div([controls, main, support, method,
@@ -655,11 +686,12 @@ def create_insights_page(frame, series, scope):
          co2_note, create_co2_chart(series, 290), "blue"),
         ("03", "CO₂ theo ngành", format_number(share, ".1f") + "%" if pd.notna(share) else "—",
          f"{totals.index[0]} chiếm tỷ trọng cao nhất" if pd.notna(share) else "Chưa có dữ liệu theo ngành",
-         f"{end} · Tổng CO₂ theo ngành: {totals.sum():,.1f} triệu tấn" if pd.notna(share) else str(end),
+         (f"{end} · Tổng các ngành có số liệu: {totals.sum():,.1f} triệu tấn · "
+          + sector_coverage_note(filtered_sectors(frame[frame.year.eq(end)], scope == "Toàn cầu"))) if pd.notna(share) else str(end),
          create_sector_chart(totals), "green"),
     ]
     source = ("NASA GISTEMP · Chênh nhiệt độ so với 1951–1980" if scope == "Toàn cầu"
-              else "FAOSTAT · Chênh nhiệt độ so với 1951–1980" +
+              else "FAOSTAT · Trung bình đủ 12 tháng của năm lịch · Mốc 1951–1980" +
               (" · Trung bình các nước có số liệu" if frame.iso_alpha.nunique() > 1 else ""))
     return [
         html.Div([html.H2("Kết quả phân tích"), html.Span(f"{scope} · {start}–{end}")],
@@ -771,6 +803,7 @@ eda_modal = html.Div(
 
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
+    dcc.Store(id="filter-store", data={}),
     dcc.Download(id="download-data"),
     dcc.Download(id="download-scenarios"),
     create_header(),
@@ -829,37 +862,80 @@ def toggle_eda_modal(open_clicks, _, route, years, continent, country, figures, 
         media,
     ]
 
+def page_period(route):
+    if route == "#temperature":
+        return int(TEMPERATURE_DATA.year.min()), int(TEMPERATURE_DATA.year.max())
+    if route == "#co2":
+        return max(1850, int(GLOBAL_CO2.year.min())), int(GLOBAL_CO2.year.max())
+    if route == "#scenario":
+        return tuple(MODEL_INFO["source_period"])
+    return int(TEMPERATURE_DATA.year.min()), int(GLOBAL_DATA.year.max())
+
+
 @app.callback(
     Output("year-range", "options"),
     Output("year-range", "value"),
     Output("header-data-range", "children"),
-    Input("url", "hash"),
-    State("year-range", "value"),
-)
-def update_year_options(route, selected):
-    data = GLOBAL_TEMPERATURE if route == "#temperature" else DATA
-    options = decade_options(int(data.year.min()), int(data.year.max()))
-    value = selected if selected in {option["value"] for option in options} else options[0]["value"]
-    return options, value, f"{int(data.year.min())}–{int(data.year.max())}"
-
-
-@app.callback(
+    Output("filter-store", "data"),
     Output("country-filter", "options"),
     Output("country-filter", "value"),
-    Input("continent-filter", "value"),
-    Input("year-range", "value"),
-    State("country-filter", "value"),
+    Output("continent-filter", "value"),
+    Output("metric-filter", "value"),
     Input("url", "hash"),
+    Input("year-range", "value"),
+    Input("continent-filter", "value"),
+    Input("country-filter", "value"),
+    Input("metric-filter", "value"),
+    Input("overview-globe", "clickData", allow_optional=True),
+    Input("globe", "clickData", allow_optional=True),
+    Input({"type": "eda-chart", "path": ALL}, "clickData"),
+    State("filter-store", "data"),
+    State({"type": "eda-chart", "path": ALL}, "id"),
 )
-def update_country_options(continent, years, selected, route=None):
-    temperature = route == "#temperature"
-    available = filter_data(None if temperature else years, continent, temperature=temperature)[
-        ["iso_alpha", "country"]].drop_duplicates().sort_values("country")
-    options = [{"label": "Tất cả quốc gia", "value": "all"}] + [
-        {"label": row.country, "value": row.iso_alpha}
-        for row in available.itertuples()
+def update_filters(route, years, continent, country, metric, overview_click=None,
+                   earth_click=None, eda_clicks=None, saved=None, eda_ids=None):
+    route = route if route in {"#" + key for key in PAGE_INFO} else "#overview"
+    saved = saved or {}
+    choices = dict(saved.get("pages", {}))
+    previous = saved.get("page")
+    current = dict(years=years, continent=continent, country=country, metric=metric)
+    start, end = page_period(route)
+    year_options = decade_options(start, end)
+    if previous != route:
+        if previous:
+            choices[previous] = current
+        current = choices.get(route, dict(years=year_options[0]["value"],
+                                         continent="all", country="all", metric="temperature")).copy()
+    years, continent, country, metric = (current[key] for key in ("years", "continent", "country", "metric"))
+    if years not in {option["value"] for option in year_options}:
+        years = year_options[0]["value"]
+    available = filter_data(years, temperature=route == "#temperature")[
+        ["iso_alpha", "country", "continent"]].drop_duplicates().sort_values("country")
+    try:
+        trigger = ctx.triggered_id
+    except MissingCallbackContextException:
+        trigger = None
+    if trigger in ("overview-globe", "globe") or isinstance(trigger, dict):
+        click = earth_click if trigger == "globe" else overview_click
+        if isinstance(trigger, dict):
+            click = next((value for graph_id, value in zip(eda_ids or [], eda_clicks or [])
+                          if graph_id == trigger and Path(graph_id["path"]).name.startswith("03_")), None)
+        selected = country_from_click(click, set(available.iso_alpha))
+        if not selected or selected == country:
+            return (no_update,) * 8
+        country = selected
+        if continent != "all":
+            continent = available.loc[available.iso_alpha.eq(country), "continent"].iloc[0]
+    if continent != "all":
+        available = available[available.continent.eq(continent)]
+    country_options = [{"label": "Tất cả quốc gia", "value": "all"}] + [
+        {"label": row.country, "value": row.iso_alpha} for row in available.itertuples()
     ]
-    return options, selected if selected in available.iso_alpha.values else "all"
+    if country not in set(available.iso_alpha):
+        country = "all"
+    choices[route] = dict(years=years, continent=continent, country=country, metric=metric)
+    return (year_options, years, f"{start}–{end}", {"page": route, "pages": choices},
+            country_options, country, continent, metric)
 
 @app.callback(
     Output("page-content", "children"),
@@ -906,7 +982,7 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     frame = filter_data(years, continent, country_filter, temperature=page == "temperature")
     use_global = country_filter == "all" and continent == "all"
     series = (temperature_series(frame, years, use_global) if page == "temperature"
-              else aggregate(frame, use_global=use_global))
+              else aggregate(frame, use_global=use_global, co2_only=page == "co2"))
 
     invalid_country = is_map and country != "all" and country not in frame.iso_alpha.values
     if page == "scenario":
@@ -914,7 +990,7 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
     elif series.empty or invalid_country:
         content = html.Div([
             html.H2("Chưa có dữ liệu trong phạm vi này"),
-            html.P("Chọn quốc gia hoặc khoảng năm khác trong bộ lọc phía trên."),
+            html.P("Nhiệt độ quốc gia: 1961–2025." if page == "temperature" else ""),
         ], className="card empty-state")
     elif page == "overview":
         content = create_overview(frame, country, scope, metric)
@@ -924,29 +1000,33 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
         source = "NASA GISTEMP" if scope == "Toàn cầu" else "FAOSTAT"
         if frame.iso_alpha.nunique() > 1 and scope != "Toàn cầu":
             source += " · Trung bình các nước có số liệu"
-        notes = [f"{source} · Mốc 1951–1980 · TB 5 năm trong kỳ", "Trung bình các năm có số liệu",
-                 "FAOSTAT · Trung bình các năm có số liệu trong từng thập kỷ",
-                 "FAOSTAT · Trung bình các quốc gia–năm có số liệu", "FAOSTAT · Các giá trị quốc gia–năm",
-                 f"{source} · Trung bình tháng trong kỳ · Mốc 1951–1980"]
+        year_basis = "Năm lịch" if use_global else "Năm khí tượng (tháng 12–11)"
+        notes = [f"{source} · {year_basis} · Mốc 1951–1980", "Trung bình các năm có số liệu",
+                 "FAOSTAT · Trung bình thập kỷ · Năm khí tượng",
+                 "FAOSTAT · Trung bình quốc gia–năm", "FAOSTAT · Theo quốc gia–năm",
+                 f"{source} · Trung bình tháng · Mốc 1951–1980"]
         if frame.empty:
             notes[2:5] = ["FAOSTAT · Nhiệt độ theo quốc gia chỉ có từ 1961"] * 3
         content = create_member_eda_gallery(DUC_TEMPERATURE_ARTIFACTS, "duc-eda-gallery",
                                             temperature_figures(series, frame, filtered_months(frame, use_global, years)),
-                                            notes, scope, years.replace("-", "–"),
-                                            "NASA: 1880–2025; quốc gia: 1961–2025. Nhóm 2020–2025 mới có 6 năm.")
+                                            notes, scope, years.replace("-", "–"))
     elif page == "co2":
         period = years.replace("-", "–")
         paired = frame.dropna(subset=["co2_per_capita", "renewable_percent"])
-        notes = ["OWID / Global Carbon Project · Chi tiết hằng năm",
-                 f"{period} · CO₂ trung bình năm · Tối đa 15 quốc gia có số liệu",
-                 "OWID / Global Carbon Project · Trung bình các năm có số liệu trong từng thập kỷ",
-                 "EDGAR · Chi tiết hằng năm · Chỉ tính CO₂",
-                 f"{period} · Tỷ trọng từ CO₂ trung bình năm theo ngành · EDGAR",
-                 f"{period} · {paired.iso_alpha.nunique()} quốc gia · Trung bình trên các năm có đủ hai chỉ số · "
-                 "Tái tạo: % tiêu thụ năng lượng cuối cùng (có từ 1990)"]
+        sectors = filtered_sectors(frame, scope == "Toàn cầu")
+        coverage = sector_coverage_note(sectors)
+        if sectors.empty and frame.iso_alpha.isin(["SRB", "MNE"]).any():
+            coverage = "EDGAR chỉ có chuỗi Serbia và Montenegro gộp chung; không có số liệu ngành riêng từng nước"
+        notes = ["OWID / GCP · Hằng năm",
+                 "CO₂ trung bình năm · Tối đa 15 quốc gia",
+                 "OWID / GCP · Trung bình thập kỷ",
+                 "OWID / GCP · Tổng quốc gia có dữ liệu theo châu lục · Hằng năm",
+                 "EDGAR từ 1970 · Tỷ trọng CO₂ trung bình năm · " + coverage,
+                 f"{paired.iso_alpha.nunique()} quốc gia · Các năm có đủ hai chỉ số · "
+                 "Tái tạo: % tiêu thụ năng lượng cuối cùng · " + renewable_coverage_note(frame)]
         content = create_member_eda_gallery(QUAN_ARTIFACTS, "quan-eda-gallery",
-                                            co2_figures(series, frame, filtered_sectors(frame, scope == "Toàn cầu")),
-                                            notes, scope, period, "Nhóm 2020–2024 mới có 5 năm.")
+                                            co2_figures(series, frame, sectors),
+                                            notes, scope, period)
     elif page == "insights":
         content = create_insights_page(frame, series, scope)
     else:
@@ -973,20 +1053,6 @@ def render_page(route, years, continent, country, metric, overview_id=None, eart
         {} if is_map else {"display": "none"},
         filter_class,
     )
-
-@app.callback(
-    Output("country-filter", "value", allow_duplicate=True),
-    Input("overview-globe", "clickData", allow_optional=True),
-    Input("globe", "clickData", allow_optional=True),
-    State("continent-filter", "value"),
-    State("country-filter", "value"),
-    prevent_initial_call=True,
-)
-def select_map_country(overview_click, earth_click, continent, current_country):
-    click = earth_click if ctx.triggered_id == "globe" else overview_click
-    available = set(filter_data(continent=continent).iso_alpha)
-    selected = country_from_click(click, available)
-    return selected if selected and selected != current_country else no_update
 
 @app.callback(
     Output("overview-summary", "children"),
@@ -1021,8 +1087,10 @@ def update_overview(year_range, continent, selected, metric, map_view, year, res
         return (no_update,) * 13
 
     years = map_years(frame, selected)
-    year = max(years[0], min(year or years[-1], years[-1]))
-    figure = update_map(frame[frame.year == year], selected, metric, map_view, resets,
+    year = years[-1] if ctx.triggered_id == "year-range" else max(
+        years[0], min(year or years[-1], years[-1])
+    )
+    figure = update_map(map_snapshot(frame, year), selected, metric, map_view, resets,
                         current_figure, reset=ctx.triggered_id == "overview-reset")
 
     if ctx.triggered_id in ("overview-map-view", "overview-reset", "metric-filter"):
@@ -1032,7 +1100,7 @@ def update_overview(year_range, continent, selected, metric, map_view, year, res
     return (
         summary, temperature, co2, subtitle, subtitle, figure, scope,
         years[0], years[-1], slider_marks(years), year, str(year),
-        overview_comparison(frame, selected, year, scope),
+        overview_comparison(frame, selected, year),
     )
 
 @app.callback(
@@ -1055,7 +1123,7 @@ def update_earth(selected, metric, years, continent, resets, map_view, current_f
     frame = filter_data(years, continent)
     if frame.empty or (selected != "all" and selected not in frame.iso_alpha.values):
         return (no_update,) * 3
-    figure = update_map(frame[frame.year == frame.year.max()], selected, metric, map_view,
+    figure = update_map(map_snapshot(frame, int(frame.year.max())), selected, metric, map_view,
                         resets, current_figure, reset=ctx.triggered_id == "reset-globe")
     if ctx.triggered_id in ("earth-map-view", "reset-globe", "metric-filter"):
         return no_update, no_update, figure
@@ -1099,7 +1167,8 @@ def update_scenario_page(scenario_id, annual_rate, milestone):
         create_scenario_temperature_chart(GLOBAL_DATA, scenarios, scenario_id, milestone),
         create_scenario_co2_chart(scenarios, scenario_id, milestone),
         f"{point.temperature_prediction:+.2f} °C",
-        f"{milestone} · Khoảng 90%: {point.lower_90:.2f}–{point.upper_90:.2f} °C",
+        f"{milestone} · Khoảng 90%: {point.lower_90:.2f}–{point.upper_90:.2f} °C · "
+        f"Ngoại suy CO₂ {point.extrapolation_ratio:.2f}× mức 2024",
         f"{difference:+.2f} °C" if abs(difference) >= .005 else "0.00 °C",
         comparison,
         f"{point.co2 / 1000:.1f} tỷ tấn",
@@ -1139,6 +1208,12 @@ def export_data(header_clicks, page_clicks, years, continent, country, route=Non
     frame = filter_data(years, continent, country, temperature=route == "#temperature")
     if route == "#temperature" and continent == country == "all":
         frame = temperature_series(frame, years, use_global=True)
+    elif route == "#co2" and continent == country == "all":
+        start, end = map(int, years.split("-"))
+        frame = GLOBAL_CO2[GLOBAL_CO2.year.between(start, end)]
+    elif route in ("#overview", "") and continent == country == "all":
+        start, end = map(int, years.split("-"))
+        frame = GLOBAL_DATA[GLOBAL_DATA.year.between(start, end)]
     return dcc.send_data_frame(
         frame.to_csv,
         "nhiet-do.csv" if route == "#temperature" else "du-lieu-khi-hau.csv",

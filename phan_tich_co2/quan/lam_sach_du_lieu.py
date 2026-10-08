@@ -22,7 +22,7 @@ DATA_DICTIONARY = {
     "co2_quoc_gia.csv": {
         "country": "Tên quốc gia/lãnh thổ (OWID)",
         "iso_alpha": "Mã ISO3, khóa ghép cùng year",
-        "continent": "Châu lục theo OWID (null nếu không ghép được: ATA)",
+        "continent": "Châu lục theo OWID; ATA được gán Antarctica",
         "year": "Năm (1750–2024; phân tích chính 1970–2024)",
         "decade": "Thập kỷ = floor(year/10)*10 (2020–2024 là giai đoạn chưa đủ 10 năm)",
         "co2": "Phát thải CO₂ Mt/năm, không gồm thay đổi sử dụng đất (GCP qua OWID); null là thiếu",
@@ -41,12 +41,17 @@ DATA_DICTIONARY = {
     },
     "co2_theo_nganh.csv": {
         "country": "Tên quốc gia (EDGAR)",
-        "iso_alpha": "Mã quốc gia EDGAR (tương đương ISO3), khóa ghép cùng year",
+        "iso_alpha": "ISO3 đã chuẩn hóa (Curaçao: ANT nguồn -> CUW); SCG là thực thể Serbia và Montenegro gộp chung",
         "year": "Năm (1970–2025 dạng long; phân tích chính 1970–2024, 2025 là số sơ bộ)",
         "sector": "Ngành EDGAR: Power Industry, Industrial Combustion, Transport, "
                   "Buildings, Fuel Production, Agriculture, Processes, Waste",
         "co2": "Phát thải CO₂ Mt/năm của ngành (đã lọc Substance = CO2)",
-        "sector_share_percent": "Tỷ trọng ngành trong tổng CO₂ quốc gia–năm (%)",
+        "sector_share_percent": "Tỷ trọng ngành trong tổng CO₂ của các ngành có số liệu quốc gia–năm (%); không khẳng định đủ ngành",
+        "source_iso_alpha": "Mã EDGAR gốc trước khi chuẩn hóa",
+        "entity_type": "country hoặc combined_region (SCG); không phân bổ SCG cho SRB/MNE",
+        "sectors_available": "Số dòng ngành có CO₂ trong quốc gia–năm",
+        "sectors_expected": "Số dòng ngành tồn tại trong nguồn của quốc gia–năm",
+        "continent": "Châu lục; SCG nằm ở Europe",
     },
     "nang_luong_tai_tao.csv": {
         "country": "Tên quốc gia",
@@ -72,6 +77,7 @@ def clean_owid(cmap):
     keep = df[df["iso_code"].notna()].copy()
     keep = keep.rename(columns={"iso_code": "iso_alpha"})
     keep["continent"] = keep["iso_alpha"].map(cmap)
+    keep.loc[keep.iso_alpha.eq("ATA"), "continent"] = "Antarctica"
     keep["decade"] = (keep["year"] // 10 * 10).astype(int)
     keep = keep.sort_values(["iso_alpha", "year"])
     negative_co2_count = int((keep["co2"] < 0).sum())
@@ -173,12 +179,23 @@ def clean_edgar(cmap):
         "Country": "country", "EDGAR Country Code": "iso_alpha",
         "Sector": "sector",
     })
-    total = long.groupby(["iso_alpha", "year"])["co2"].transform("sum")
+    long["source_iso_alpha"] = long.iso_alpha
+    curacao = long.iso_alpha.eq("ANT") & long.country.eq("Curaçao")
+    long.loc[curacao, "iso_alpha"] = "CUW"
+    long["entity_type"] = np.where(long.iso_alpha.eq("SCG"), "combined_region", "country")
+    if long.duplicated(["iso_alpha", "year", "sector"]).any():
+        raise ValueError("EDGAR có khóa quốc gia–năm–ngành trùng sau chuẩn hóa.")
+    grouped = long.groupby(["iso_alpha", "year"])["co2"]
+    total = grouped.transform(lambda values: values.sum(min_count=1))
+    long["sectors_available"] = grouped.transform("count")
+    long["sectors_expected"] = grouped.transform("size")
     long["sector_share_percent"] = long["co2"] / total * 100
     long["continent"] = long["iso_alpha"].map(cmap)
+    long.loc[long.iso_alpha.eq("SCG"), "continent"] = "Europe"
     unmatched = sorted(long[long["continent"].isna()]["iso_alpha"].unique().tolist())
     out = long[["country", "iso_alpha", "year", "sector", "co2",
-                "sector_share_percent"]].sort_values(
+                "sector_share_percent", "source_iso_alpha", "entity_type", "continent",
+                "sectors_available", "sectors_expected"]].sort_values(
         ["iso_alpha", "year", "sector"]).reset_index(drop=True)
 
     report = {
@@ -192,6 +209,12 @@ def clean_edgar(cmap):
         "missing_rate": {k: round(float(v), 4) for k, v in out.isna().mean().to_dict().items()},
         "continent_unmatched_iso": unmatched,
         "sector_share_check_max": round(float(out["sector_share_percent"].max()), 2),
+        "code_normalizations": [{"source_iso_alpha": "ANT", "iso_alpha": "CUW",
+                                 "country": "Curaçao", "rows": int(curacao.sum())}],
+        "combined_entities": ["SCG: Serbia and Montenegro; không tự phân bổ cho SRB/MNE"],
+        "incomplete_country_years": int(out.loc[
+            out.sectors_available.lt(out.sectors_expected), ["iso_alpha", "year"]
+        ].drop_duplicates().shape[0]),
     }
     return out, report
 
@@ -246,8 +269,10 @@ def main():
             "Giai đoạn phân tích chính 1970–2024; có năng lượng tái tạo thì 1990–2023 "
             "(năm 2024 chỉ có 84 quốc gia). Năm 2025 của EDGAR là số sơ bộ, "
             "biểu đồ chốt ở 2024.",
-            "Quốc gia phát thải cao không bị xóa; SCG (Serbia and Montenegro) giữ "
-            "continent = null và báo unmatched để quyết định khi ghép bảng.",
+            "Quốc gia phát thải cao không bị xóa. EDGAR Curaçao chuẩn hóa ANT sang CUW "
+            "và giữ mã gốc; SCG giữ riêng như vùng Serbia và Montenegro gộp chung ở Europe.",
+            "Tỷ trọng ngành chỉ dùng tổng các ngành có số liệu; sectors_available và "
+            "sectors_expected cho biết nhóm có thiếu dữ liệu hay không.",
         ],
     }
     (OUT / "bao_cao_chat_luong.json").write_text(

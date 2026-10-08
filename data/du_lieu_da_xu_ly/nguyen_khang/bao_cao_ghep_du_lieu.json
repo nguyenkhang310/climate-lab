@@ -1,9 +1,9 @@
 {
   "period": [
-    1970,
+    1850,
     2024
   ],
-  "rows": 13296,
+  "rows": 39643,
   "countries_or_territories": 244,
   "continents": [
     "Africa",
@@ -16,11 +16,11 @@
   ],
   "duplicate_keys": 0,
   "coverage_non_null": {
-    "temperature_anomaly": 0.8832,
-    "co2": 0.8673,
-    "co2_per_capita": 0.861,
-    "population": 0.8935,
-    "renewable_percent": 0.5771
+    "temperature_anomaly": 0.3344,
+    "co2": 0.5666,
+    "co2_per_capita": 0.5612,
+    "population": 0.9062,
+    "renewable_percent": 0.1936
   },
   "countries_with_data": {
     "temperature_anomaly": 236,
@@ -29,5 +29,6 @@
     "population": 216,
     "renewable_percent": 230
   },
-  "join_strategy": "Full outer join theo iso_alpha + year; giữ null, không nội suy và không thay giá trị thiếu bằng 0."
+  "join_strategy": "Full outer join theo iso_alpha + year; giữ null, không nội suy và không thay giá trị thiếu bằng 0.",
+  "temperature_year_basis": "January–December; đủ 12 tháng FAOSTAT; cùng năm lịch với CO2 và tái tạo."
 }

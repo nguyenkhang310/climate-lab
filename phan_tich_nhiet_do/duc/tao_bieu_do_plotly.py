@@ -1,10 +1,17 @@
 from pathlib import Path
+import sys
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from bang_dieu_khien.nguyen_khang.thap_ky import country_decade_means, decade_labels
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from bang_dieu_khien.nguyen_khang.thap_ky import (  # noqa: E402
+    country_decade_means,
+    decade_labels,
+)
 
 ROOT = Path(__file__).resolve().parent
 PROC = ROOT.parents[1] / "data/du_lieu_da_xu_ly/duc"
@@ -51,9 +58,9 @@ def build_figures(series, countries, monthly):
                              hover_name="country", hover_data=["period", "years"], range_color=[-6, 6],
                              color_continuous_scale="RdBu_r", labels=labels)
     if world_map.frames:
-        world_map.update_layout(meta=dict(autoplay=True))
-        world_map.layout.updatemenus[0].buttons = [
-            dict(label="■ Dừng", method="relayout", args=[{"meta.autoplay": False}])]
+        for button, label in zip(world_map.layout.updatemenus[0].buttons, ("▶ Phát", "■ Dừng")):
+            button.update(label=label, execute=False)
+        world_map.layout.sliders[0].update(x=.05, len=1)
     pivot = countries.pivot_table(index="continent", columns="decade", values="temperature_anomaly")
     heatmap = (px.imshow(pivot, text_auto=".2f", aspect="auto", range_color=[-2.5, 2.5],
                         color_continuous_scale="RdBu_r",
@@ -81,9 +88,9 @@ def main():
     for name, title in CHARTS:
         figure = figures[name]
         figure.update_layout(template="plotly_white", title=title)
-        animation = (ROOT.parents[1] / "bang_dieu_khien/nguyen_khang/tai_nguyen/eda.js").read_text() if figure.frames else None
+        controls = (ROOT.parents[1] / "bang_dieu_khien/nguyen_khang/tai_nguyen/eda.js").read_text(encoding="utf-8") if figure.frames else None
         figure.write_html(OUT / f"{name}.html", include_plotlyjs="cdn", config={"scrollZoom": False},
-                          auto_play=False, post_script=animation)
+                          auto_play=False, post_script=controls)
     print("Plotly OK:", list(figures))
 
 

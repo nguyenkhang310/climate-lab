@@ -727,6 +727,8 @@ h1, h2, h3, h4, p {
   gap: 16px;
 }
 
+.forecast-support { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
 .chart-grid {
   margin-bottom: 16px;
 }
@@ -1398,6 +1400,8 @@ body:has(.eda-modal.open) {
   .forecast-controls > div:first-child { grid-column: 1 / -1; }
   .forecast-metrics > div { padding: 16px; }
   .forecast-metrics small { font-size: 11px; }
+  .forecast-support { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .forecast-support > :last-child { grid-column: 1 / -1; }
 }
 
 @media (max-width: 700px) {
@@ -1416,6 +1420,7 @@ body:has(.eda-modal.open) {
   .forecast-legend { gap: 8px 12px; }
   .forecast-chart-key { padding: 6px 14px 14px; }
   .forecast-support { grid-template-columns: 1fr; }
+  .forecast-support > :last-child { grid-column: auto; }
 }
 
 .insight-heading h2 { font-size: 18px; color: #153A72; }

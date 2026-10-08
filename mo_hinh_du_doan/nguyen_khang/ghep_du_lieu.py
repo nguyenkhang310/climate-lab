@@ -9,7 +9,9 @@ DUC = DATA / "duc"
 QUAN = DATA / "quan"
 OUT = DATA / "nguyen_khang"
 
-START_YEAR = 1970
+# Bảng chung giữ CO₂ từ 1850; từng trang tự chọn giai đoạn phù hợp.
+# Phép ghép toàn cầu chỉ giữ những năm có cả NASA và CO₂ (từ 1880).
+START_YEAR = 1850
 END_YEAR = 2024
 
 def _assert_unique(frame: pd.DataFrame, keys: list[str], name: str) -> None:
@@ -18,7 +20,7 @@ def _assert_unique(frame: pd.DataFrame, keys: list[str], name: str) -> None:
         raise ValueError(f"{name} có {duplicates} khóa trùng trên {keys}")
 
 def build_country_year() -> tuple[pd.DataFrame, dict]:
-    temperature = pd.read_csv(DUC / "nhiet_do_quoc_gia.csv")
+    temperature = pd.read_csv(DUC / "nhiet_do_quoc_gia_nam_lich.csv")
     co2 = pd.read_csv(QUAN / "co2_quoc_gia.csv")
     renewable = pd.read_csv(QUAN / "nang_luong_tai_tao.csv")
 
@@ -36,7 +38,8 @@ def build_country_year() -> tuple[pd.DataFrame, dict]:
         merged.country_temperature.fillna(merged.country_co2).fillna(merged.country_renewable)
     )
     merged["continent"] = merged.continent_temperature.fillna(merged.continent_co2)
-    regions = pd.read_csv(ROOT / "data/du_lieu_goc/dung_chung/un_m49_iso3.csv").set_index("iso_alpha").continent
+    reference = ROOT / "data/du_lieu_goc/dung_chung/un_m49_iso3.csv"
+    regions = pd.read_csv(reference).set_index("iso_alpha").continent
     merged["continent"] = merged.continent.fillna(merged.iso_alpha.map(regions))
     merged.loc[merged["iso_alpha"] == "ATA", "continent"] = "Antarctica"
     merged["decade"] = (merged["year"] // 10 * 10).astype(int)
@@ -68,13 +71,18 @@ def build_country_year() -> tuple[pd.DataFrame, dict]:
             "Full outer join theo iso_alpha + year; giữ null, không nội suy và "
             "không thay giá trị thiếu bằng 0."
         ),
+        "temperature_year_basis": (
+            "January–December; đủ 12 tháng FAOSTAT; cùng năm lịch với CO2 và tái tạo."
+        ),
     }
     return result, report
 
 def build_global_year() -> pd.DataFrame:
     temperature = pd.read_csv(DUC / "nhiet_do_toan_cau.csv")
     co2 = pd.read_csv(QUAN / "co2_toan_cau.csv")
-    result = temperature.merge(co2, on=["year", "decade"], how="inner")
+    _assert_unique(temperature, ["year"], "Nhiệt độ toàn cầu")
+    _assert_unique(co2, ["year"], "CO₂ toàn cầu")
+    result = temperature.merge(co2, on=["year", "decade"], how="inner", validate="one_to_one")
     result = result[result["year"].between(START_YEAR, END_YEAR)].copy()
     _assert_unique(result, ["year"], "Chuỗi toàn cầu")
     return result.sort_values("year").reset_index(drop=True)

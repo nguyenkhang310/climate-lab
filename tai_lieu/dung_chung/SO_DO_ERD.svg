@@ -76,14 +76,18 @@
     <text x="76" y="118" class="field">renewable_percent</text><text x="270" y="118" class="type">REAL</text>
   </g>
   <g transform="translate(360 700)">
-    <rect width="330" height="180" class="body"/><rect width="330" height="36" class="head"/>
+    <rect width="330" height="232" class="body"/><rect width="330" height="36" class="head"/>
     <text x="12" y="24" class="table-name">co2_theo_nganh</text>
-    <line x1="0" y1="68" x2="330" y2="68" class="rule"/><line x1="0" y1="98" x2="330" y2="98" class="rule"/><line x1="0" y1="128" x2="330" y2="128" class="rule"/>
+    <line x1="0" y1="68" x2="330" y2="68" class="rule"/><line x1="0" y1="88" x2="330" y2="88" class="rule"/><line x1="0" y1="108" x2="330" y2="108" class="rule"/>
     <text x="12" y="57" class="key">PK, FK</text><text x="76" y="57" class="field">iso_alpha</text><text x="274" y="57" class="type">TEXT</text>
-    <text x="12" y="87" class="key">PK, FK</text><text x="76" y="87" class="field">year</text><text x="282" y="87" class="type">INT</text>
-    <text x="12" y="117" class="key">PK</text><text x="76" y="117" class="field">sector</text><text x="274" y="117" class="type">TEXT</text>
-    <text x="76" y="147" class="field">co2</text><text x="270" y="147" class="type">REAL</text>
-    <text x="76" y="171" class="field">sector_share_percent</text><text x="270" y="171" class="type">REAL</text>
+    <text x="12" y="77" class="key">PK, FK</text><text x="76" y="77" class="field">year</text><text x="282" y="77" class="type">INT</text>
+    <text x="12" y="97" class="key">PK</text><text x="76" y="97" class="field">sector</text><text x="274" y="97" class="type">TEXT</text>
+    <text x="76" y="126" class="field">co2</text><text x="270" y="126" class="type">REAL</text>
+    <text x="76" y="145" class="field">sector_share_percent</text><text x="270" y="145" class="type">REAL</text>
+    <text x="76" y="164" class="field">source_iso_alpha</text><text x="274" y="164" class="type">TEXT</text>
+    <text x="76" y="183" class="field">entity_type</text><text x="274" y="183" class="type">TEXT</text>
+    <text x="76" y="202" class="field">sectors_available</text><text x="282" y="202" class="type">INT</text>
+    <text x="76" y="221" class="field">sectors_expected</text><text x="282" y="221" class="type">INT</text>
   </g>
 
   <rect x="1040" y="95" width="530" height="845" class="group"/>

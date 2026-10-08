@@ -12,16 +12,21 @@ Ký hiệu `PK` là khóa chính, `FK` là khóa ngoại. `1 — 0..N` nghĩa l�
 
 | Bảng | Số dòng | Khóa chính | Nội dung |
 | --- | ---: | --- | --- |
-| `quoc_gia` | 246 | `iso_alpha` | Tên quốc gia và châu lục |
+| `quoc_gia` | 245 | `iso_alpha` | Tên quốc gia/vùng và châu lục |
 | `nam` | 276 | `year` | Năm và thập kỷ |
-| `nhiet_do_quoc_gia` | 14.263 | `iso_alpha, year` | Chênh lệch nhiệt độ theo quốc gia |
+| `nhiet_do_quoc_gia` | 14.263 | `iso_alpha, year` | Nhiệt độ năm lịch, chỉ tính từ đủ 12 tháng |
 | `co2_quoc_gia` | 42.480 | `iso_alpha, year` | CO₂, CO₂/người và dân số |
 | `nang_luong_tai_tao` | 7.673 | `iso_alpha, year` | Tỷ lệ năng lượng tái tạo |
-| `co2_theo_nganh` | 82.040 | `iso_alpha, year, sector` | CO₂ theo quốc gia và ngành |
+| `co2_theo_nganh` | 82.040 | `iso_alpha, year, sector` | CO₂ theo ngành, mã nguồn và số ngành có dữ liệu |
 | `nhiet_do_toan_cau` | 146 | `year` | Nhiệt độ toàn cầu |
 | `co2_toan_cau` | 275 | `year` | CO₂ toàn cầu |
 
-Hai bảng danh mục giữ toàn bộ phạm vi của dữ liệu sạch, kể cả mã quốc gia lịch sử và các năm ngoài khoảng hiển thị. Vì vậy `quoc_gia` có 246 mã, còn dashboard sau khi giới hạn giai đoạn 1970–2024 có 244 mã.
+Hai bảng danh mục giữ toàn bộ dữ liệu sạch. `quoc_gia` có 245 mã (gồm `SCG`), bảng dashboard **1850–2024** có **39.643 dòng, 244 mã**. View toàn cầu có 145 năm 1880–2024 cho mô hình; Tổng quan lọc 1961–2024. Mã EDGAR `ANT` của Curaçao chuẩn hóa thành `CUW`, mã gốc giữ riêng ở `source_iso_alpha`.
+
+`nhiet_do_quoc_gia` được nạp từ `duc/nhiet_do_quoc_gia_nam_lich.csv`, không dùng
+trực tiếp năm khí tượng FAOSTAT để ghép với CO₂ năm lịch. Bảng năm khí tượng gốc
+vẫn giữ riêng cho trang Nhiệt độ và notebook. `SCG` là chuỗi vùng Serbia–Montenegro,
+không coi là ISO3 của một quốc gia hiện tại và không tự phân bổ cho từng nước.
 
 Khóa `iso_alpha` là mã ISO3 nên ổn định hơn tên quốc gia. Khóa ghép `iso_alpha + year` bảo đảm mỗi quốc gia chỉ có một dòng trong một năm. Bảng ngành cần thêm `sector` vì một quốc gia có nhiều ngành trong cùng năm.
 
@@ -44,7 +49,7 @@ JOIN nam n USING (year)
 LEFT JOIN nhiet_do_quoc_gia t USING (iso_alpha, year)
 LEFT JOIN co2_quoc_gia c USING (iso_alpha, year)
 LEFT JOIN nang_luong_tai_tao r USING (iso_alpha, year)
-WHERE k.year BETWEEN 1970 AND 2024;
+WHERE k.year BETWEEN 1850 AND 2024;
 ```
 
 Không nối trực tiếp `co2_theo_nganh` vào bảng quốc gia–năm nếu chưa tổng hợp theo ngành, vì quan hệ một–nhiều sẽ làm lặp dữ liệu nhiệt độ và dân số.

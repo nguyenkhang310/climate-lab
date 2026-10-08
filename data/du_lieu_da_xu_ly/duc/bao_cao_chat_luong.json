@@ -15,11 +15,21 @@
     "nhiet_do_quoc_gia.csv": {
       "country": "Tên quốc gia / lãnh thổ chuẩn hóa (theo danh mục OWID / ISO-3166).",
       "iso_alpha": "Mã quốc gia chuẩn ISO-3166-1 alpha-3 (3 ký tự viết hoa), dùng làm khóa ghép bảng chính cùng cột year.",
-      "continent": "Châu lục theo OWID; bổ sung từ danh mục UN M49 khi thiếu, null nếu chưa phân loại (ATA).",
-      "year": "Năm quan sát (1961–2025; phân tích chính 1970–2024).",
+      "continent": "Châu lục theo OWID và UN M49; ATA được gán Antarctica.",
+      "year": "Năm khí tượng (tháng 12 năm trước đến tháng 11 năm đang xét), 1961–2025.",
       "decade": "Thập kỷ quan sát = (year // 10) * 10.",
       "temperature_anomaly": "Độ lệch nhiệt độ trên đất liền (°C) so với thời kỳ cơ sở 1951–1980 (FAOSTAT Temperature change on land, Meteorological year).",
-      "source_flag": "Cờ chất lượng nguồn dữ liệu từ FAO: 'E' = Estimated value, null = Giá trị quan sát trực tiếp hoặc thiếu."
+      "source_flag": "Cờ FAOSTAT giữ nguyên: E = Estimated value. Cờ trống không chứng minh quan sát trực tiếp."
+    },
+    "nhiet_do_quoc_gia_nam_lich.csv": {
+      "year": "Năm lịch tháng 1–12, dùng khi ghép với CO₂ và năng lượng tái tạo.",
+      "temperature_anomaly": "Trung bình chênh nhiệt độ 12 tháng FAOSTAT so với 1951–1980; null nếu thiếu bất kỳ tháng nào.",
+      "months_available": "Số tháng có giá trị, từ 0 đến 12; chỉ tính nhiệt độ năm khi đủ 12 tháng.",
+      "source_flag": "Các cờ FAOSTAT của 12 tháng dùng để tính năm; trống nếu không đủ 12 tháng.",
+      "country": "Tên quốc gia giống bảng năm khí tượng.",
+      "iso_alpha": "ISO3, khóa ghép cùng year.",
+      "continent": "Châu lục giống bảng năm khí tượng.",
+      "decade": "Thập kỷ = (year // 10) * 10."
     }
   },
   "duc_nhiet_do_toan_cau": {
@@ -103,15 +113,13 @@
     "missing_rate": {
       "country": 0.0,
       "iso_alpha": 0.0,
-      "continent": 0.0046,
+      "continent": 0.0,
       "year": 0.0,
       "decade": 0.0,
       "temperature_anomaly": 0.0348,
       "source_flag": 0.0
     },
-    "continent_unmatched_iso": [
-      "ATA"
-    ],
+    "continent_unmatched_iso": [],
     "flag_distribution": {
       "E": 13767,
       "O": 495,
@@ -210,9 +218,18 @@
     ],
     "outlier_interpretation": "Trong 199 quan sát ngoại lai theo ngưỡng IQR ([-1.33°C, 2.42°C]), có 178 điểm ngoại lai nóng (> 2.42°C) tập trung nhiều tại các vùng vĩ độ cao sau năm 2010 và 21 điểm ngoại lai lạnh (< -1.33°C) chủ yếu ở các thập niên trước. Tất cả các điểm này mang cờ FAO 'E' (Estimated), vì vậy được giữ nguyên nhưng phải diễn giải thận trọng; cờ 'E' không tự chứng minh giá trị là quan sát trực tiếp hay không có sai số."
   },
+  "duc_nhiet_do_quoc_gia_nam_lich": {
+    "rows_output": 14263,
+    "year_min": 1961,
+    "year_max": 2025,
+    "complete_years": 13459,
+    "incomplete_years": 804,
+    "year_basis": "January–December; required 12 valid monthly values; no imputation"
+  },
   "methodology_notes": {
     "m49_to_iso3": "Dùng bảng UN M49 numeric sang ISO3. 156 (China, mainland) -> CHN ('China'). Tách riêng HKG, MAC, TWN và 52 vùng tổng hợp.",
     "baseline": "Baseline 1951–1980 (0°C) cho cả NASA GISTEMP và FAOSTAT.",
-    "join_key": "iso_alpha + year"
+    "join_key": "iso_alpha + year",
+    "year_basis": "NASA J-D và bảng năm lịch: tháng 1–12. FAOSTAT Meteorological year: tháng 12 năm trước đến tháng 11. Bảng ghép dùng nhiet_do_quoc_gia_nam_lich.csv."
   }
 }

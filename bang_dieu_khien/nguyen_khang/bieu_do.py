@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 
 RED, BLUE, TEXT, MUTED = "#EF4444", "#1689E8", "#16324F", "#52677D"
+MAP_BORDER = "#8EA4B2"
 FONT_FAMILY = (
     "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, "
     "Roboto, Helvetica, Arial, sans-serif"
@@ -135,11 +136,13 @@ def create_globe(
         fig.add_choropleth(
             locations=rows.iso_alpha, z=rows[field] if has_data else [0] * len(rows),
             locationmode="ISO-3", customdata=rows[["country", "year"]],
-            text=rows[field].map(("{:,.2f}" if is_co2 else "{:+.2f}").format) if has_data else None,
+            text=(rows[field].map(("{:,.2f}" if is_co2 else "{:+.2f}").format) if has_data else
+                  ["Ngoài châu lục đang chọn" if outside else "Chưa có số liệu"
+                   for outside in rows.get("outside_scope", [False] * len(rows))]),
             colorscale=colorscale if has_data else [[0, "#dce3eb"], [1, "#dce3eb"]],
             zmin=zmin, zmax=zmax, showscale=has_data,
-            marker_line_color=["#FFD54A" if iso == selected else "#edf1ed" for iso in rows.iso_alpha],
-            marker_line_width=[3 if iso == selected else .45 for iso in rows.iso_alpha],
+            marker_line_color=["#FFD54A" if iso == selected else MAP_BORDER for iso in rows.iso_alpha],
+            marker_line_width=[3 if iso == selected else .75 for iso in rows.iso_alpha],
             name=("CO₂" if is_co2 else "Nhiệt độ") if has_data else "Chưa có dữ liệu",
             colorbar={
                 "title": {"text": "CO₂ (triệu tấn)" if is_co2 else "Chênh nhiệt độ (°C)",
@@ -149,7 +152,7 @@ def create_globe(
                 "tickfont": {"size": 10, "color": MUTED}, "outlinewidth": 0,
             },
             hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
-                          + (value_label if has_data else "Chưa có số liệu") + "<extra></extra>",
+                          + (value_label if has_data else "%{text}") + "<extra></extra>",
         )
 
     is_flat = view_mode == "flat"
@@ -160,17 +163,18 @@ def create_globe(
         projection_rotation=initial_rotation, projection_scale=1,
         center={"lon": initial_rotation["lon"], "lat": initial_rotation["lat"]},
         fitbounds=False,
-        resolution=110, showcoastlines=True, coastlinecolor="#d2e5ef",
-        coastlinewidth=.4, showland=True, landcolor="#dce3eb",
+        resolution=110, showcoastlines=True, coastlinecolor="#7893A3",
+        coastlinewidth=.7, showcountries=True, countrycolor=MAP_BORDER, countrywidth=.75,
+        showland=True, landcolor="#dce3eb",
         showocean=True, oceancolor="#163E5C", showlakes=False,
-        showrivers=False, showcountries=False, bgcolor="rgba(0,0,0,0)",
+        showrivers=False, bgcolor="rgba(0,0,0,0)",
         showframe=True, framecolor="#87ACBB", framewidth=1,
 
         lonaxis={"showgrid": False, "range": [-180, 180]},
         lataxis={"showgrid": False, "range": [-90, 90]},
     )
     fig.update_layout(
-        height=height, margin={"l": 4, "r": 4, "t": 4, "b": 52},
+        height=height, margin={"l": 4, "r": 4, "t": 4, "b": 60, "autoexpand": False},
         paper_bgcolor="white", font={"family": FONT_FAMILY, "color": MUTED},
         showlegend=False, geo_uirevision=f"{view_mode}-{reset}", clickmode="event",
         dragmode="pan", hovermode="closest", transition={"duration": 0},
@@ -195,6 +199,63 @@ def create_sector_chart(totals, height=290):
     fig.update_layout(margin={"l": 12, "r": 40, "t": 12, "b": 35})
     fig.update_xaxes(range=[0, shares.max() * 1.25], ticksuffix="%", nticks=4)
     fig.update_yaxes(showgrid=False, tickfont_size=11)
+    return fig
+
+
+def create_continent_donut(snapshot, continent_names, selected="all", height=350):
+    totals = (
+        snapshot.dropna(subset=["continent", "co2"])
+        .groupby("continent").co2.sum(min_count=1)
+        .loc[lambda values: values > 0]
+        .sort_values(ascending=False)
+    )
+    if totals.empty:
+        return empty_chart("Năm này chưa có dữ liệu CO₂", height)
+    labels = [continent_names.get(name, name) for name in totals.index]
+    colors = {
+        "Africa": "#00A881", "Asia": "#E9604D", "Europe": "#9563CC",
+        "North America": "#5575CE", "Oceania": "#19A5B8",
+        "South America": "#E89741", "Antarctica": "#96A7BA",
+    }
+    fig = go.Figure(go.Pie(
+        labels=labels,
+        values=totals.values,
+        hole=.52,
+        sort=False,
+        direction="clockwise",
+        rotation=-45,
+        domain={"x": [0, 1], "y": [.20, 1]},
+        marker={
+            "colors": [colors.get(name, "#96A7BA") for name in totals.index],
+            "line": {"color": "white", "width": 3},
+        },
+        pull=[.04 if name == selected else 0 for name in totals.index],
+        textinfo="percent",
+        textposition="inside",
+        textfont={"size": 13, "color": "white"},
+        insidetextorientation="horizontal",
+        hovertemplate="%{label}<br><b>%{value:,.1f} triệu tấn</b><br>%{percent}<extra></extra>",
+    ))
+    style_chart(fig, height)
+    fig.update_layout(
+        margin={"l": 28, "r": 28, "t": 8, "b": 8},
+        showlegend=True,
+        uniformtext={"minsize": 11, "mode": "hide"},
+        legend={
+            "orientation": "h", "x": .5, "xanchor": "center",
+            "y": .02, "yanchor": "bottom", "font": {"size": 11, "color": TEXT},
+            "itemclick": False, "itemdoubleclick": False,
+        },
+        annotations=[{
+            "text": (
+                "<span style='font-size:10px;color:#6B7F93'>TỔNG CO₂</span><br>"
+                f"<b>{totals.sum() / 1000:,.1f}</b><br>"
+                "<span style='font-size:11px;color:#6B7F93'>tỷ tấn</span>"
+            ),
+            "x": .5, "y": .60, "showarrow": False,
+            "font": {"size": 24, "color": TEXT},
+        }],
+    )
     return fig
 
 
@@ -254,13 +315,13 @@ def create_scenario_temperature_chart(history, scenarios, active_id, milestone=2
         showarrow=True, arrowhead=0, arrowcolor=color, ax=-45, ay=-35,
         bgcolor="white", bordercolor=color, borderpad=6, font_color=color,
     )
-    for x, label in ((1995, "THỰC TẾ"), (2037, "DỰ ĐOÁN")):
+    start = int(history.year.min())
+    for x, label in (((start + history.year.max()) / 2, "THỰC TẾ"), (2037, "DỰ ĐOÁN")):
         fig.add_annotation(x=x, y=1.06, yref="paper", text=label,
                            showarrow=False, font={"size": 10, "color": MUTED})
     fig.update_layout(hovermode="x unified", margin={"l": 52, "r": 20, "t": 30, "b": 35})
-    fig.update_xaxes(range=[1970, 2052], tickvals=[1970, 1990, 2010, 2030, 2050], showgrid=False)
-    ticks = [i / 2 for i in range(int(scenarios.upper_90.max() * 2) + 2)]
-    fig.update_yaxes(tickvals=ticks, ticktext=[f"{v:.1f}°" for v in ticks], rangemode="tozero")
+    fig.update_xaxes(range=[start, 2052], tickvals=[*range(start, 2050, 40), 2050], showgrid=False)
+    fig.update_yaxes(dtick=.5, tickformat=".1f", ticksuffix="°")
     return fig
 
 
@@ -306,4 +367,33 @@ def create_backtest_chart(backtest):
     high = backtest[["temperature_trend_5y", "temperature_prediction"]].max().max()
     ticks = [i / 10 for i in range(int(low * 10), int(high * 10) + 2)]
     fig.update_yaxes(tickvals=ticks, ticktext=[f"{v:.1f}°" for v in ticks])
+    return fig
+
+
+def create_residual_chart(residuals):
+    """Biểu đồ phần dư theo thời gian để nhận ra mẫu sai số và điểm ảnh hưởng."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=residuals.year, y=residuals.residual, mode="lines",
+        line={"color": "#CBD5E1", "width": 1}, hoverinfo="skip", showlegend=False,
+    ))
+    for influential, name, color in (
+        (False, "Thông thường", BLUE), (True, "Cần xem", "#E89741")
+    ):
+        data = residuals[residuals.influential == influential]
+        fig.add_trace(go.Scatter(
+            x=data.year, y=data.residual, name=name, mode="markers",
+            customdata=data[["cooks_distance"]],
+            marker={"color": color, "size": 7 if influential else 5},
+            hovertemplate=("Năm %{x}<br>Phần dư: <b>%{y:+.3f} °C</b>"
+                           "<br>Khoảng cách Cook: %{customdata[0]:.3f}<extra>%{fullData.name}</extra>"),
+        ))
+    style_chart(fig, 230)
+    fig.add_hline(y=0, line_color="#64748B", line_width=1)
+    fig.update_layout(
+        showlegend=True, legend={"orientation": "h", "y": 1.02, "x": 0, "font_size": 11},
+        margin={"l": 45, "r": 20, "t": 30, "b": 35},
+    )
+    fig.update_xaxes(dtick=20, showgrid=False)
+    fig.update_yaxes(title="Phần dư (°C)", tickformat=".2f")
     return fig

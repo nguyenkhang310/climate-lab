@@ -43,6 +43,13 @@ Trong tệp FAOSTAT, lọc:
 
 Giữ các cột `Area`, `Area Code (M49)`, `Year`, `Value`, `Unit`, `Flag`. `Value` là độ lệch nhiệt độ trên đất liền so với **1951–1980**. Không trộn các dòng `Standard Deviation`, tháng và mùa vào chuỗi nhiệt độ năm.
 
+`Meteorological year` gồm tháng 12 năm trước đến tháng 11 năm đang xét; giữ nguyên
+trong `duc/nhiet_do_quoc_gia.csv` để EDA. Khi ghép với CO₂ và năng lượng tái tạo
+theo năm lịch, dùng **`duc/nhiet_do_quoc_gia_nam_lich.csv`**: trung bình tháng 1–12
+của FAOSTAT, chỉ có giá trị khi đủ 12 tháng. `months_available` ghi số tháng thực tế;
+không nội suy hoặc tính năm từ một phần số tháng. Cờ trống không chứng minh quan sát
+trực tiếp. Nam Cực (`ATA`) được gán châu lục `Antarctica` ngay ở bước làm sạch.
+
 Biểu đồ **Chênh nhiệt độ theo tháng** dùng bảng riêng `duc/nhiet_do_theo_thang.csv`, khóa `(iso_alpha, year, month)`. Toàn cầu (`WLD`) lấy 12 cột `Jan`–`Dec` của NASA; quốc gia lấy `January`–`December` và `Element = Temperature change` của FAOSTAT, giữ cờ `Flag`. Không dùng dòng mùa hoặc suy ra số liệu tháng từ trung bình năm. Giá trị là chênh lệch so với cùng tháng trong giai đoạn **1951–1980**. Bộ lọc châu lục lấy trung bình các nước có số liệu từng tháng–năm, sau đó trung bình các năm trong kỳ; đây không phải trung bình có trọng số diện tích. Không thay số liệu thiếu bằng 0 và không dùng năm 2026.
 
 ### 3. Phát thải CO₂
@@ -64,9 +71,15 @@ Trong workbook EDGAR, dùng sheet `GHG_by_sector_and_country`. Nếu dashboard g
 
 Không dùng trực tiếp sheet `GHG_totals_by_country` dưới nhãn CO₂ vì sheet này là tổng khí nhà kính quy đổi sang **CO₂ tương đương**. Các dòng `GLOBAL TOTAL`, `EU27`, `International Aviation` và `International Shipping` phải được tách khỏi danh sách quốc gia.
 
+Trong workbook hiện tại, dòng có tên `Curaçao` và mã EDGAR `ANT` được chuẩn hóa
+thành `CUW`; `source_iso_alpha` giữ mã gốc để đối chiếu. `SCG` giữ nguyên là thực thể
+Serbia và Montenegro gộp chung (`entity_type = combined_region`, châu lục Europe),
+không chia hoặc gán số liệu cho `SRB`/`MNE`. Tỷ trọng ngành tính trên tổng các ngành
+có giá trị, với `sectors_available`/`sectors_expected` công khai phần thiếu.
+
 ### 5. Năng lượng tái tạo
 
-Chỉ số này là tỷ lệ năng lượng tái tạo trong **tổng tiêu thụ năng lượng cuối cùng**, đơn vị %. Đây không phải tỷ lệ điện tái tạo. Năm 2023 có độ phủ quốc gia tốt hơn năm 2024 trong bản hiện tại.
+Chỉ số này là tỷ lệ năng lượng tái tạo trong **tổng tiêu thụ năng lượng cuối cùng**, đơn vị %. Đây không phải tỷ lệ điện tái tạo. Năm 2023 có 225 quốc gia, năm 2024 có 84 trong bản hiện tại. Dashboard ghi số quốc gia và phạm vi độ phủ theo năm. Khi so sánh trung bình của nhiều quốc gia giữa các năm, cần giữ cùng tập quốc gia; biểu đồ scatter chỉ so sánh hai chỉ số trên cùng các năm có dữ liệu của từng nước.
 
 ## Quy tắc làm sạch bắt buộc
 
@@ -74,7 +87,7 @@ Chỉ số này là tỷ lệ năng lượng tái tạo trong **tổng tiêu th�
 2. Giữ giá trị thiếu là `null`; không thay bằng 0. Giữ cột `Flag` hoặc tạo cột ghi rõ dữ liệu được nội suy.
 3. Giữ riêng các bảng nguồn để chứng minh bước join/merge theo barem. Không inner join tất cả bảng vì sẽ làm mất quốc gia có một chỉ số bị thiếu.
 4. Không coi quốc gia phát thải cao là outlier cần xóa. Chỉ xử lý giá trị bất thường khi đã kiểm tra cờ và tài liệu nguồn.
-5. Phân tích chính nên dùng giai đoạn **1970–2024**. Nếu bắt buộc có năng lượng tái tạo, kiểm tra độ phủ trong giai đoạn **1990–2023**.
+5. Tổng quan chọn **1961–2024** để có cả chuỗi nhiệt độ quốc gia và CO₂. Trang Nhiệt độ dùng **1961–2025**, CO₂ dùng **1850–2024**; ngành chỉ có từ 1970, tái tạo từ 1990. Chuỗi toàn cầu ghép **1880–2024** giữ đầy đủ cho mô hình; mốc học được so sánh trên các cửa sổ trước 2015, tách khỏi bộ lọc trang. Nếu bắt buộc có năng lượng tái tạo, kiểm tra độ phủ trong **1990–2023**.
 6. Khi tổng hợp theo thập kỷ: nhiệt độ dùng trung bình các năm; CO₂ phải ghi rõ là trung bình phát thải năm hay tổng phát thải cả thập kỷ. Giai đoạn 2020–2024 là giai đoạn chưa đủ 10 năm.
 7. Chuỗi toàn cầu dùng trực tiếp NASA cho nhiệt độ và dòng `World` của nguồn CO₂ đã chọn. Không lấy trung bình nhiệt độ các quốc gia theo dân số để gọi là nhiệt độ toàn cầu.
 

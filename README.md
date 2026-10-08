@@ -37,15 +37,28 @@ Mở **http://127.0.0.1:8050**. Trên Windows, dùng `.venv\Scripts\activate` đ
 | **Nhận định** | Những điểm đáng chú ý được tính theo phạm vi dữ liệu đang xem. |
 | **Dữ liệu** | Xem bảng và tải CSV theo bộ lọc. |
 
-Bộ lọc **thập kỷ**, châu lục và quốc gia dùng chung cho các trang dữ liệu. Chọn toàn bộ **1970–2024** hoặc một trong sáu nhóm **1970–1979, 1980–1989, 1990–1999, 2000–2009, 2010–2019, 2020–2024**. Nhóm cuối mới có 5 năm. Nhiệt độ và CO₂ mỗi tab có **6 biểu đồ tương tác**, bố trí hai biểu đồ mỗi hàng và có nút mở rộng; tất cả cùng áp dụng bộ lọc. Bản đồ dùng **trung bình các năm có số liệu của mỗi quốc gia trong từng thập kỷ**, tooltip ghi số năm có dữ liệu. Khi chọn nhiều thập kỷ, bản đồ tự chuyển mỗi 1,5 giây; bấm **Dừng** hoặc kéo thanh thập kỷ để xem một giai đoạn. Các đường xu hướng giữ chi tiết từng năm để xem biến động trong thập kỷ.
+Bộ lọc nhớ riêng **thập kỷ, châu lục, quốc gia và chỉ số bản đồ** của từng trang: Nhiệt độ **1961–2025**, CO₂ **1850–2024**, Tổng quan/Bản đồ/Nhận định/Dữ liệu **1961–2024**. Mô hình dùng lịch sử toàn cầu **1880–2024**, được chọn qua đánh giá theo thời gian, và có điều khiển kịch bản riêng. Nhiệt độ và CO₂ mỗi tab có **6 biểu đồ tương tác**, bố trí hai biểu đồ mỗi hàng và có nút mở rộng. Tổng quan dùng donut CO₂ theo châu lục; tab CO₂ dùng area chart theo châu lục. Bản đồ dùng trung bình từng thập kỷ, tooltip ghi số năm có dữ liệu; dùng nút **Phát/Dừng** hoặc thanh thập kỷ để đổi giai đoạn. Bấm quốc gia trên địa cầu hoặc bản đồ EDA cập nhật bộ lọc; khi bấm sang châu lục khác trên địa cầu, châu lục đổi theo quốc gia. Đổi khoảng năm đưa địa cầu về năm cuối của khoảng; góc nhìn vẫn được giữ.
 
 Xếp hạng CO₂ dùng **phát thải trung bình năm trong kỳ**, cơ cấu ngành dùng tỷ trọng từ CO₂ trung bình năm theo ngành. Biểu đồ CO₂/người và tái tạo lấy trung bình trên **cùng các năm có đủ hai chỉ số của từng quốc gia**; tái tạo có từ 1990 nên các thập kỷ trước đó hiển thị thiếu dữ liệu. Không thay giá trị thiếu bằng 0 và không lấy riêng năm cuối làm đại diện thập kỷ. Hình EDA gốc nằm trong mục thu gọn riêng, không áp dụng bộ lọc. Mô hình dự đoán sử dụng dữ liệu toàn cầu và bộ chọn kịch bản riêng.
 
-Riêng trang **Nhiệt độ** đọc trực tiếp ba CSV đã xử lý trong `data/du_lieu_da_xu_ly/duc/`: NASA toàn cầu **1880–2025**, FAOSTAT quốc gia **1961–2025** và dữ liệu tháng tương ứng. Bộ lọc thập kỷ mở từ **1880–1889** đến **2020–2025** (nhóm cuối có 6 năm). Trước 1961, biểu đồ toàn cầu và tháng vẫn có số liệu; bản đồ, heatmap và phân bố quốc gia ghi thiếu dữ liệu. CSV tải từ trang Nhiệt độ dùng đúng nguồn và giai đoạn đang xem. Năm 2026 chưa đủ 12 tháng nên script của Đức đã loại khỏi CSV sạch.
+Trang **Nhiệt độ** đọc trực tiếp các CSV đã xử lý của Đức. Bộ lọc mở từ **1961–1969** (9 năm) đến **2020–2025** (6 năm), để chuỗi toàn cầu và quốc gia có cùng giai đoạn hiển thị. File NASA vẫn giữ **1880–2025** cho phân tích lịch sử và mô hình. CSV tải xuống dùng đúng nguồn và giai đoạn đang xem. Năm 2026 chưa đủ 12 tháng nên không đưa vào dữ liệu năm sạch.
 
 ## Dữ liệu và phương pháp
 
-Dữ liệu được làm sạch theo từng chủ đề rồi ghép bằng khóa **mã quốc gia ISO3 + năm**. Bảng dùng cho dashboard bao phủ **1970–2024**, gồm **13.296 dòng và 244 mã quốc gia/vùng lãnh thổ**; không có khóa trùng theo [báo cáo ghép dữ liệu](data/du_lieu_da_xu_ly/nguyen_khang/bao_cao_ghep_du_lieu.json). Giá trị thiếu được giữ nguyên, không tự thay bằng 0.
+Dữ liệu ghép bằng khóa **mã quốc gia ISO3 + năm**. Bảng quốc gia giữ **1850–2024**, gồm **39.643 dòng và 244 mã quốc gia/vùng lãnh thổ**; không có khóa trùng theo [báo cáo ghép dữ liệu](data/du_lieu_da_xu_ly/nguyen_khang/bao_cao_ghep_du_lieu.json). Giá trị thiếu được giữ nguyên. Chuỗi toàn cầu NASA + OWID đủ **145 năm 1880–2024**; Tổng quan lấy **64 năm 1961–2024** có đủ hai chỉ số. Trong bảng quốc gia cùng giai đoạn, **11.520/15.456** dòng có cả nhiệt độ và CO₂; không coi mọi quốc gia đều đầy đủ. Trang CO₂ toàn cầu đọc riêng `quan/co2_toan_cau.csv` để giữ được 1850–1879.
+
+`START_YEAR = 1850` giữ lịch sử CO₂ cho dashboard; phép ghép toàn cầu tự bắt đầu ở 1880 theo NASA. Chốt 2024 theo năm cuối có CO₂.
+Nhiệt độ quốc gia trước 1961 giữ null, không thay bằng nhiệt độ toàn cầu.
+Bảng ghép và SQLite dùng **`duc/nhiet_do_quoc_gia_nam_lich.csv`**:
+trung bình tháng 1–12, chỉ tính khi đủ 12 giá trị. Bảng FAOSTAT năm khí tượng
+`nhiet_do_quoc_gia.csv` vẫn giữ nguyên giá trị nguồn (tháng 12 năm trước đến tháng 11)
+và được dùng trên trang Nhiệt độ. Hai bảng có thể khác giá trị do khác cửa sổ 12 tháng.
+
+EDGAR chuẩn hóa mã Curaçao từ `ANT` sang `CUW`, giữ mã nguồn trong `source_iso_alpha`.
+`SCG` là chuỗi Serbia và Montenegro gộp chung: tính khi xem tổng/toàn châu Âu,
+không gán cho từng nước. Biểu đồ ngành ghi rõ tỷ trọng trong các ngành có số liệu;
+`sectors_available` và `sectors_expected` chỉ ra nhóm thiếu dữ liệu. Biểu đồ tái tạo
+hiển thị độ phủ theo năm và chỉ lấy các năm có đủ cặp chỉ số cho mỗi quốc gia.
 
 Dữ liệu sạch còn được tổ chức trong [cơ sở dữ liệu SQLite](data/du_lieu_da_xu_ly/nguyen_khang/climate_lab.db), gồm **8 bảng có khóa chính, khóa ngoại và 2 view kết nối dữ liệu**. Xem [sơ đồ ERD và câu lệnh JOIN](tai_lieu/dung_chung/SO_DO_DU_LIEU.md).
 
@@ -57,7 +70,7 @@ Dữ liệu sạch còn được tổ chức trong [cơ sở dữ liệu SQLite]
 | CO₂ theo ngành | [EDGAR](https://edgar.jrc.ec.europa.eu/report_2026) | Chỉ lấy **CO₂**, không trộn với tổng khí nhà kính quy đổi CO₂. |
 | Năng lượng tái tạo | [UNSD, IEA, IRENA qua OWID](https://ourworldindata.org/grapher/share-of-final-energy-consumption-from-renewable-sources) | Đối chiếu với CO₂ bình quân; độ phủ giữa các nước không đồng đều. |
 
-Chi tiết về tệp gốc, đơn vị và cột dữ liệu nằm trong [tài liệu nguồn dữ liệu](tai_lieu/dung_chung/NGUON_DU_LIEU.md). Các chuỗi có phạm vi năm khác nhau: **1970–2024 là khoảng phân tích chung của bảng ghép và mô hình**, không phải khoảng đầy đủ của mọi nguồn. Trang Nhiệt độ dùng toàn bộ phạm vi CSV của Đức như mô tả ở trên.
+Chi tiết nguồn, đơn vị và cột nằm trong [tài liệu nguồn dữ liệu](tai_lieu/dung_chung/NGUON_DU_LIEU.md). EDGAR chỉ có từ 1970, tái tạo từ 1990 và nhiệt độ quốc gia từ 1961; khi lọc CO₂ về trước các mốc này, biểu đồ phụ ghi thiếu dữ liệu, không tự dùng số liệu của năm khác.
 
 ```mermaid
 flowchart LR
@@ -71,9 +84,9 @@ flowchart LR
 
 ### Mô hình dự đoán
 
-Mô hình **hồi quy tuyến tính** liên hệ lượng CO₂ tích lũy toàn cầu với độ lệch nhiệt độ trung bình trượt 5 năm. Dữ liệu **1974–2014** dùng để huấn luyện, **2015–2024** để kiểm tra theo thời gian; sau đó mô hình được huấn luyện lại trên **1974–2024** để tạo kịch bản **2025–2050**. Kết quả kiểm tra lưu trong [thông số mô hình](data/ket_qua_mo_hinh/nguyen_khang/thong_tin_mo_hinh.json): **R² = 0,835**, **MAE = 0,031 °C**.
+Mô hình **hồi quy tuyến tính** liên hệ lượng CO₂ tích lũy toàn cầu với độ lệch nhiệt độ trung bình trượt 5 năm. Dữ liệu nguồn bắt đầu **1880**; trung bình đủ 5 năm bắt đầu **1884**. Dữ liệu **1884–2014** dùng để huấn luyện, **2015–2024** để kiểm tra theo thời gian; sau đó mô hình được huấn luyện lại trên **1884–2024** để tạo kịch bản **2025–2050**. Kết quả kiểm tra lưu trong [thông số mô hình](data/ket_qua_mo_hinh/nguyen_khang/thong_tin_mo_hinh.json): **R² = 0,823**, **MAE = 0,031 °C**.
 
-Dashboard cho phép so sánh mức CO₂ tiếp diễn xu hướng, giữ nguyên, giảm 5% mỗi năm hoặc tốc độ do người dùng chọn. Đây là **mô phỏng thống kê theo giả định**, không phải dự báo khí hậu chính thức. Dải 90% trên biểu đồ chỉ phản ánh bất định của mô hình hồi quy theo các giả định thống kê, chưa bao gồm bất định của kịch bản hay toàn bộ yếu tố vật lý khí hậu. Xem [giải thích mô hình](mo_hinh_du_doan/nguyen_khang/GIAI_THICH.md).
+So sánh ba mốc bắt đầu 1880, 1961, 1970 trên cùng bốn giai đoạn **1995–2014** chọn lịch sử 1880 (MAE **0,036°C**). Tập **2015–2024** dành cho đánh giá cuối, không dùng chọn lịch sử. Dashboard mô phỏng CO₂ tiếp diễn, giữ nguyên, giảm 5% hoặc mức tùy chỉnh. Mục tiêu là **nhiệt độ trung bình 5 năm**, không phải nhiệt độ từng năm. Dải phân vị 5%–95% dùng bootstrap theo khối; chưa gồm sai số nguồn, bất định phát thải hay toàn bộ yếu tố vật lý và không bảo đảm độ phủ tương lai 90%. Xem [giải thích và bảng so sánh mô hình](mo_hinh_du_doan/nguyen_khang/GIAI_THICH.md).
 
 ## Cấu trúc dự án
 

@@ -34,11 +34,21 @@ DATA_DICTIONARY = {
     "nhiet_do_quoc_gia.csv": {
         "country": "Tên quốc gia / lãnh thổ chuẩn hóa (theo danh mục OWID / ISO-3166).",
         "iso_alpha": "Mã quốc gia chuẩn ISO-3166-1 alpha-3 (3 ký tự viết hoa), dùng làm khóa ghép bảng chính cùng cột year.",
-        "continent": "Châu lục theo OWID; bổ sung từ danh mục UN M49 khi thiếu, null nếu chưa phân loại (ATA).",
-        "year": "Năm quan sát (1961–2025; phân tích chính 1970–2024).",
+        "continent": "Châu lục theo OWID và UN M49; ATA được gán Antarctica.",
+        "year": "Năm khí tượng (tháng 12 năm trước đến tháng 11 năm đang xét), 1961–2025.",
         "decade": "Thập kỷ quan sát = (year // 10) * 10.",
         "temperature_anomaly": "Độ lệch nhiệt độ trên đất liền (°C) so với thời kỳ cơ sở 1951–1980 (FAOSTAT Temperature change on land, Meteorological year).",
-        "source_flag": "Cờ chất lượng nguồn dữ liệu từ FAO: 'E' = Estimated value, null = Giá trị quan sát trực tiếp hoặc thiếu."
+        "source_flag": "Cờ FAOSTAT giữ nguyên: E = Estimated value. Cờ trống không chứng minh quan sát trực tiếp."
+    },
+    "nhiet_do_quoc_gia_nam_lich.csv": {
+        "year": "Năm lịch tháng 1–12, dùng khi ghép với CO₂ và năng lượng tái tạo.",
+        "temperature_anomaly": "Trung bình chênh nhiệt độ 12 tháng FAOSTAT so với 1951–1980; null nếu thiếu bất kỳ tháng nào.",
+        "months_available": "Số tháng có giá trị, từ 0 đến 12; chỉ tính nhiệt độ năm khi đủ 12 tháng.",
+        "source_flag": "Các cờ FAOSTAT của 12 tháng dùng để tính năm; trống nếu không đủ 12 tháng.",
+        "country": "Tên quốc gia giống bảng năm khí tượng.",
+        "iso_alpha": "ISO3, khóa ghép cùng year.",
+        "continent": "Châu lục giống bảng năm khí tượng.",
+        "decade": "Thập kỷ = (year // 10) * 10."
     }
 }
 
@@ -97,6 +107,7 @@ def clean_faostat() -> tuple[pd.DataFrame, dict]:
     df_clean["country"] = df_clean["iso_alpha"].map(iso_to_name).fillna(df_clean["m49_clean"].map(m49_to_name)).fillna(df_clean["Area"])
     df_clean["continent"] = df_clean["iso_alpha"].map(iso_to_cont).fillna(
         df_clean["iso_alpha"].map(m49_df.set_index("iso_alpha")["continent"]))
+    df_clean.loc[df_clean.iso_alpha.eq("ATA"), "continent"] = "Antarctica"
     df_clean["year"] = pd.to_numeric(df_clean["Year"], errors="coerce").astype(int)
     df_clean["temperature_anomaly"] = pd.to_numeric(df_clean["Value"], errors="coerce")
     df_clean["source_flag"] = df_clean["Flag"]
@@ -172,15 +183,45 @@ def clean_monthly() -> pd.DataFrame:
     return out
 
 
-def export_quality_report(nasa_stats: dict, fao_stats: dict) -> None:
+def clean_calendar_year(countries: pd.DataFrame, monthly: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    national = monthly[monthly.iso_alpha.ne("WLD")]
+    if national.duplicated(["iso_alpha", "year", "month"]).any():
+        raise ValueError("Không thể tính năm lịch từ các tháng trùng khóa.")
+    if not national.month.between(1, 12).all():
+        raise ValueError("Tháng phải nằm trong khoảng 1–12.")
+    annual = national.groupby(["iso_alpha", "year"], as_index=False).agg(
+        temperature_anomaly=("temperature_anomaly", "mean"),
+        months_available=("temperature_anomaly", "count"),
+        source_flag=("source_flag", lambda flags: ",".join(sorted(flags.dropna().unique()))),
+    )
+    complete = annual.months_available.eq(12)
+    annual["temperature_anomaly"] = annual.temperature_anomaly.where(complete)
+    annual["source_flag"] = annual.source_flag.where(complete)
+    out = countries[["country", "iso_alpha", "continent", "year", "decade"]].merge(
+        annual, on=["iso_alpha", "year"], how="left", validate="one_to_one",
+    ).sort_values(["iso_alpha", "year"]).reset_index(drop=True)
+    out["months_available"] = out.months_available.fillna(0).astype(int)
+    out.to_csv(OUT / "nhiet_do_quoc_gia_nam_lich.csv", index=False)
+    stats = {
+        "rows_output": len(out), "year_min": int(out.year.min()), "year_max": int(out.year.max()),
+        "complete_years": int(out.temperature_anomaly.notna().sum()),
+        "incomplete_years": int(out.temperature_anomaly.isna().sum()),
+        "year_basis": "January–December; required 12 valid monthly values; no imputation",
+    }
+    return out, stats
+
+
+def export_quality_report(nasa_stats: dict, fao_stats: dict, calendar_stats: dict | None = None) -> None:
     report = {
         "data_dictionary": DATA_DICTIONARY,
         "duc_nhiet_do_toan_cau": nasa_stats,
         "duc_nhiet_do_quoc_gia": fao_stats,
+        "duc_nhiet_do_quoc_gia_nam_lich": calendar_stats,
         "methodology_notes": {
             "m49_to_iso3": "Dùng bảng UN M49 numeric sang ISO3. 156 (China, mainland) -> CHN ('China'). Tách riêng HKG, MAC, TWN và 52 vùng tổng hợp.",
             "baseline": "Baseline 1951–1980 (0°C) cho cả NASA GISTEMP và FAOSTAT.",
-            "join_key": "iso_alpha + year"
+            "join_key": "iso_alpha + year",
+            "year_basis": "NASA J-D và bảng năm lịch: tháng 1–12. FAOSTAT Meteorological year: tháng 12 năm trước đến tháng 11. Bảng ghép dùng nhiet_do_quoc_gia_nam_lich.csv."
         }
     }
     with open(OUT / "bao_cao_chat_luong.json", "w", encoding="utf-8") as f:
@@ -191,8 +232,9 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     df_nasa, nasa_stats = clean_nasa()
     df_fao, fao_stats = clean_faostat()
-    clean_monthly()
-    export_quality_report(nasa_stats, fao_stats)
+    monthly = clean_monthly()
+    _, calendar_stats = clean_calendar_year(df_fao, monthly)
+    export_quality_report(nasa_stats, fao_stats, calendar_stats)
     print(f"OK: NASA ({len(df_nasa)} dòng), FAOSTAT ({len(df_fao)} dòng, {df_fao['iso_alpha'].nunique()} nước). Đã xuất bao_cao_chat_luong.json.")
 
 

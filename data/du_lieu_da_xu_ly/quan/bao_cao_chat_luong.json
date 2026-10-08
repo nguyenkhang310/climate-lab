@@ -3,7 +3,7 @@
     "co2_quoc_gia.csv": {
       "country": "Tên quốc gia/lãnh thổ (OWID)",
       "iso_alpha": "Mã ISO3, khóa ghép cùng year",
-      "continent": "Châu lục theo OWID (null nếu không ghép được: ATA)",
+      "continent": "Châu lục theo OWID; ATA được gán Antarctica",
       "year": "Năm (1750–2024; phân tích chính 1970–2024)",
       "decade": "Thập kỷ = floor(year/10)*10 (2020–2024 là giai đoạn chưa đủ 10 năm)",
       "co2": "Phát thải CO₂ Mt/năm, không gồm thay đổi sử dụng đất (GCP qua OWID); null là thiếu",
@@ -21,11 +21,16 @@
     },
     "co2_theo_nganh.csv": {
       "country": "Tên quốc gia (EDGAR)",
-      "iso_alpha": "Mã quốc gia EDGAR (tương đương ISO3), khóa ghép cùng year",
+      "iso_alpha": "ISO3 đã chuẩn hóa (Curaçao: ANT nguồn -> CUW); SCG là thực thể Serbia và Montenegro gộp chung",
       "year": "Năm (1970–2025 dạng long; phân tích chính 1970–2024, 2025 là số sơ bộ)",
       "sector": "Ngành EDGAR: Power Industry, Industrial Combustion, Transport, Buildings, Fuel Production, Agriculture, Processes, Waste",
       "co2": "Phát thải CO₂ Mt/năm của ngành (đã lọc Substance = CO2)",
-      "sector_share_percent": "Tỷ trọng ngành trong tổng CO₂ quốc gia–năm (%)"
+      "sector_share_percent": "Tỷ trọng ngành trong tổng CO₂ của các ngành có số liệu quốc gia–năm (%); không khẳng định đủ ngành",
+      "source_iso_alpha": "Mã EDGAR gốc trước khi chuẩn hóa",
+      "entity_type": "country hoặc combined_region (SCG); không phân bổ SCG cho SRB/MNE",
+      "sectors_available": "Số dòng ngành có CO₂ trong quốc gia–năm",
+      "sectors_expected": "Số dòng ngành tồn tại trong nguồn của quốc gia–năm",
+      "continent": "Châu lục; SCG nằm ở Europe"
     },
     "nang_luong_tai_tao.csv": {
       "country": "Tên quốc gia",
@@ -82,7 +87,7 @@
     "missing_rate": {
       "country": 0.0,
       "iso_alpha": 0.0,
-      "continent": 0.0065,
+      "continent": 0.0,
       "year": 0.0,
       "decade": 0.0,
       "co2": 0.449,
@@ -90,9 +95,7 @@
       "co2_growth_pct": 0.4769,
       "population": 0.0976
     },
-    "continent_unmatched_iso": [
-      "ATA"
-    ],
+    "continent_unmatched_iso": [],
     "co2_yoy_median_pct": 3.85,
     "co2_yoy_p99_pct": 163.636,
     "top_co2_2023": [
@@ -745,12 +748,27 @@
       "year": 0.0,
       "sector": 0.0,
       "co2": 0.0331,
-      "sector_share_percent": 0.0331
+      "sector_share_percent": 0.0331,
+      "source_iso_alpha": 0.0,
+      "entity_type": 0.0,
+      "continent": 0.0,
+      "sectors_available": 0.0,
+      "sectors_expected": 0.0
     },
-    "continent_unmatched_iso": [
-      "SCG"
+    "continent_unmatched_iso": [],
+    "sector_share_check_max": 97.06,
+    "code_normalizations": [
+      {
+        "source_iso_alpha": "ANT",
+        "iso_alpha": "CUW",
+        "country": "Curaçao",
+        "rows": 336
+      }
     ],
-    "sector_share_check_max": 97.06
+    "combined_entities": [
+      "SCG: Serbia and Montenegro; không tự phân bổ cho SRB/MNE"
+    ],
+    "incomplete_country_years": 2420
   },
   "quan_nang_luong_tai_tao": {
     "rows_raw": 8309,
@@ -831,6 +849,7 @@
     "co2 OWID đơn vị Mt/năm (không gồm thay đổi sử dụng đất); co2_per_capita tính bằng tấn/người; EDGAR Substance = CO2 đơn vị Mt CO₂.",
     "renewable_percent là tỷ lệ năng lượng tái tạo trong tổng tiêu thụ năng lượng cuối cùng (%), không phải tỷ lệ điện tái tạo.",
     "Giai đoạn phân tích chính 1970–2024; có năng lượng tái tạo thì 1990–2023 (năm 2024 chỉ có 84 quốc gia). Năm 2025 của EDGAR là số sơ bộ, biểu đồ chốt ở 2024.",
-    "Quốc gia phát thải cao không bị xóa; SCG (Serbia and Montenegro) giữ continent = null và báo unmatched để quyết định khi ghép bảng."
+    "Quốc gia phát thải cao không bị xóa. EDGAR Curaçao chuẩn hóa ANT sang CUW và giữ mã gốc; SCG giữ riêng như vùng Serbia và Montenegro gộp chung ở Europe.",
+    "Tỷ trọng ngành chỉ dùng tổng các ngành có số liệu; sectors_available và sectors_expected cho biết nhóm có thiếu dữ liệu hay không."
   ]
 }

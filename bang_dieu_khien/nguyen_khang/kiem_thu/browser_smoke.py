@@ -17,10 +17,35 @@ PAGES = {
     "data": "Dữ liệu",
 }
 
+def check_eda_country_click(page, gallery):
+    field = page.locator("#country-filter")
+    previous = field.inner_text().strip()
+    field.click()
+    field.locator("input").fill("Tất cả quốc gia")
+    field.locator("input").press("Enter")
+    plot = gallery.locator(".interactive .eda-artifact-card").nth(2).locator(".js-plotly-plot")
+    page.wait_for_function("id => document.querySelector('#'+id+' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.data?.some(t=>t.locations?.includes('AUS'))", arg=gallery.get_attribute("id"))
+    plot.scroll_into_view_if_needed()
+    x, y = plot.evaluate("""e => {
+        const [x,y]=e._fullLayout.geo._subplot.projection([134,-25]), b=e.getBoundingClientRect();
+        return [x+b.x,y+b.y];
+    }""")
+    page.mouse.move(x, y)
+    page.wait_for_timeout(150)
+    page.mouse.click(x, y)
+    page.wait_for_function("document.querySelector('#country-filter').innerText.trim()==='Australia'")
+    page.wait_for_function("document.querySelector('#page-subtitle').textContent.startsWith('Australia ·')")
+    page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot')?.layout.meta.scope.startsWith('Australia ·')", arg=gallery.get_attribute("id"))
+    field.click()
+    field.locator("input").fill(previous)
+    field.locator("input").press("Enter")
+    page.wait_for_function("([id,name]) => document.querySelector('#'+id+' .js-plotly-plot')?.layout.meta.scope.startsWith(name+' ·')", arg=[gallery.get_attribute("id"), "Toàn cầu" if previous == "Tất cả quốc gia" else previous])
+
 def check_eda_layout(page, gallery):
     cards = gallery.locator(".interactive .eda-artifact-card")
     animated = cards.nth(2).locator(".js-plotly-plot").evaluate("e => !!e._transitionData?._frames?.length")
     if animated:
+        cards.nth(2).get_by_text("▶ Phát", exact=True).click()
         page.wait_for_function("id => document.querySelector('#' + id + ' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.layout?.sliders?.[0]?.active > 0",
                                arg=gallery.get_attribute("id"))
         cards.nth(2).get_by_text("■ Dừng", exact=True).click()
@@ -104,7 +129,7 @@ def check_year_slider(page):
             page.mouse.down()
             page.mouse.move(rail["x"] + rail["width"] * (i % 2), rail["y"], steps=12)
             page.mouse.up()
-        year = 1970 if i % 2 == 0 else 2024
+        year = 1961 if i % 2 == 0 else 2024
         page.wait_for_function("y => document.querySelector('#overview-year-label').textContent===String(y) && document.querySelector('#overview-globe .js-plotly-plot').data.every(t=>t.customdata.every(r=>r[1]===y))", arg=year)
         after = frame()
         assert abs(after[0] - after[1]) < 1, (i, after)
@@ -140,6 +165,10 @@ def check_map(page, map_id, controls, reset):
         page.wait_for_timeout(150)
         page.mouse.click(x, y)
         page.wait_for_function("([id,code]) => document.querySelector('#'+id+' .js-plotly-plot').layout.meta.selected===code", arg=[map_id, code])
+        name = globe.evaluate("(e,code) => {const t=e.data.find(t=>t.locations.includes(code));return t.customdata[t.locations.indexOf(code)][0];}", code)
+        page.wait_for_function("name => document.querySelector('#country-filter').innerText.trim()===name", arg=name)
+        summary = "overview-summary" if map_id == "overview-globe" else "country-panel"
+        page.wait_for_function("([id,name]) => document.querySelector('#'+id+' h2').textContent===name", arg=[summary, name])
 
     selected = globe.evaluate("e => e.layout.meta.selected")
     before = camera()
@@ -162,6 +191,23 @@ def check_map(page, map_id, controls, reset):
     page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot')._fullLayout.geo.projection.rotation.lon===105", arg=map_id)
     assert globe.evaluate("e => e.layout.meta.selected") == "ARG"
     assert "Argentina" in page.locator("#country-filter").inner_text()
+    page.locator("#continent-filter").click()
+    page.locator("#continent-filter").get_by_text("Châu Á", exact=True).click()
+    page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot').layout.meta.selected==='all'", arg=map_id)
+    before = camera()
+    select_country([134, -25], "AUS")
+    assert "Châu Đại Dương" in page.locator("#continent-filter").inner_text()
+    select_country([105, 35], "CHN")
+    assert "Châu Á" in page.locator("#continent-filter").inner_text()
+    assert all(abs(a-b) < .1 for a, b in zip(camera(), before))
+    page.locator("#continent-filter").click()
+    page.locator("#continent-filter").get_by_text("Tất cả châu lục", exact=True).click()
+    page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot').data.some(t=>t.locations.includes('ARG')&&t.showscale)", arg=map_id)
+    page.locator(f"#{controls} label").filter(has_text="Bản đồ phẳng").click()
+    page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot')._fullLayout.geo.projection.type==='natural earth'", arg=map_id)
+    select_country([-64, -34], "ARG")
+    page.locator(f"#{controls} label").filter(has_text="Địa cầu").click()
+    page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot')._fullLayout.geo.projection.type==='orthographic'", arg=map_id)
     if map_id == "globe":
         saved = camera()
         page.locator("#metric-filter").click()
@@ -195,6 +241,27 @@ def main() -> None:
         page.goto(BASE_URL, wait_until="networkidle")
         page.add_style_tag(content="::-webkit-scrollbar { width: 15px; height: 15px; }")
         page.locator("#page-title").wait_for(state="visible")
+
+        page.wait_for_function("document.querySelector('#overview-temperature .js-plotly-plot')?._fullData[0].x[0]===1961")
+        page.locator("#year-range").click()
+        page.locator("#year-range").get_by_text("1961–1969 (chưa đủ 10 năm)", exact=True).click()
+        page.wait_for_function("document.querySelector('#page-subtitle')?.textContent==='Toàn cầu · 1961–1969'")
+        page.wait_for_function("document.querySelector('#overview-temperature .js-plotly-plot')?._fullData[0].x.length===9")
+        page.wait_for_function("document.querySelector('#overview-continents .js-plotly-plot')?.data[0]?.type==='pie'")
+        page.locator('a[href="#co2"]').first.click()
+        page.wait_for_function("document.querySelector('#quan-eda-gallery .js-plotly-plot')?._fullData[0].x[0]===1850")
+        page.locator('a[href="#overview"]').first.click()
+        page.wait_for_function("document.querySelector('#page-subtitle')?.textContent==='Toàn cầu · 1961–1969'")
+        page.wait_for_function("document.querySelector('#overview-temperature .js-plotly-plot')?._fullData[0].x.length===9")
+        page.locator("#year-range").click()
+        page.locator("#year-range").get_by_text("Toàn bộ · 1961–2024", exact=True).click()
+        page.wait_for_function("document.querySelector('#overview-temperature .js-plotly-plot')?._fullData[0].x.length===64")
+        page.wait_for_function("document.querySelector('#overview-year-label')?.textContent==='2024'")
+        page.wait_for_function("document.querySelector('#overview-globe .js-plotly-plot').data.every(t=>t.customdata.every(r=>r[1]===2024))")
+        page.wait_for_function("document.querySelector('#overview-continents .js-plotly-plot')?.data[0]?.type==='pie'")
+        page.locator('#overview-year [role="slider"]').press("End")
+        page.wait_for_function("document.querySelector('#overview-year-label')?.textContent==='2024'")
+        checked["independent_decades"] = {"overview": "1961–2024", "co2": "1850–2024", "restored": "1961–1969"}
 
         check_map(page, "overview-globe", "overview-map-view", "overview-reset")
         check_year_slider(page)
@@ -258,9 +325,17 @@ def main() -> None:
             raise AssertionError("Trang CO₂ chưa hiển thị đủ 5 biểu đồ tĩnh của Quân")
         if quan_gallery.locator(".js-plotly-plot").count() != 6:
             raise AssertionError("Trang CO₂ chưa hiển thị đủ 6 biểu đồ tương tác của Quân")
+        page.wait_for_function("""() => {
+            const card = document.querySelectorAll('#quan-eda-gallery .interactive .eda-artifact-card')[3];
+            const plot = card?.querySelector('.js-plotly-plot');
+            return card?.textContent.includes('Lượng CO₂ theo châu lục')
+                && plot?._fullData.length > 0
+                && plot._fullData.every(trace => trace.stackgroup === 'one');
+        }""")
         assert page.locator("#filter-bar").is_visible()
-        page.wait_for_function("document.querySelector('#quan-eda-gallery .js-plotly-plot')._fullData[0].x[0]===1990")
-        assert "Vietnam" in page.locator("#page-subtitle").inner_text()
+        page.wait_for_function("document.querySelector('#quan-eda-gallery .js-plotly-plot')._fullData[0].x[0]===1850")
+        assert "Toàn cầu" in page.locator("#page-subtitle").inner_text()
+        check_eda_country_click(page, quan_gallery)
         check_eda_layout(page, quan_gallery)
 
         page.locator('a[href="#temperature"]').first.click()
@@ -272,6 +347,7 @@ def main() -> None:
         if section_titles != ["Biểu đồ tương tác"]:
             raise AssertionError(f"Sai thứ tự nhóm biểu đồ: {section_titles}")
         interactive_card = duc_gallery.locator(".eda-artifact-grid.interactive .eda-artifact-card").first
+        check_eda_country_click(page, duc_gallery)
         check_eda_layout(page, duc_gallery)
         if not interactive_card.locator(".eda-artifact-heading h3").inner_text().strip():
             raise AssertionError("Biểu đồ tương tác bị mất tiêu đề")
@@ -290,12 +366,15 @@ def main() -> None:
         continent_filter = page.locator("#continent-filter")
         continent_filter.click()
         continent_filter.get_by_text("Châu Âu", exact=True).click()
-        page.wait_for_function("document.querySelector('#page-subtitle').textContent==='Châu Âu · 1990–1999'")
+        page.wait_for_function("document.querySelector('#page-subtitle').textContent==='Châu Âu · 1961–2024'")
         assert "Tất cả quốc gia" in country_filter.inner_text()
         assert "nan" not in page.locator(".insight-grid").inner_text().lower()
 
         page.locator('a[href="#scenario"]').first.click()
         page.locator("#scenario-temperature-chart").wait_for()
+        page.wait_for_function("document.querySelector('#scenario-temperature-chart .js-plotly-plot')?._fullLayout.xaxis.range[0]===1880")
+        assert page.locator("#header-data-range").inner_text() == "1880–2024"
+        assert page.locator("#scenario-temperature-chart .js-plotly-plot").evaluate("p => p._fullLayout.yaxis.range[0] < 0")
         if page.locator("#page-content .js-plotly-plot").count() != 3:
             raise AssertionError("Trang kịch bản phải có nhiệt độ, CO₂ và kiểm tra mô hình")
         page.locator("#scenario-choice label").filter(has_text="Giảm 5%/năm").click()

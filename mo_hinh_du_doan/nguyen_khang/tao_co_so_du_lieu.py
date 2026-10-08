@@ -24,7 +24,8 @@ COLUMNS = {
         "year", "co2", "co2_per_capita", "population", "cumulative_co2"
     ],
     "nang_luong_tai_tao": ["iso_alpha", "year", "renewable_percent"],
-    "co2_theo_nganh": ["iso_alpha", "year", "sector", "co2", "sector_share_percent"],
+    "co2_theo_nganh": ["iso_alpha", "year", "sector", "co2", "sector_share_percent",
+                       "source_iso_alpha", "entity_type", "sectors_available", "sectors_expected"],
 }
 
 SCHEMA = """
@@ -58,6 +59,8 @@ CREATE TABLE nang_luong_tai_tao (
 CREATE TABLE co2_theo_nganh (
     iso_alpha TEXT NOT NULL, year INTEGER NOT NULL, sector TEXT NOT NULL,
     co2 REAL, sector_share_percent REAL,
+    source_iso_alpha TEXT NOT NULL, entity_type TEXT NOT NULL,
+    sectors_available INTEGER NOT NULL, sectors_expected INTEGER NOT NULL,
     PRIMARY KEY (iso_alpha, year, sector),
     FOREIGN KEY (iso_alpha) REFERENCES quoc_gia (iso_alpha),
     FOREIGN KEY (year) REFERENCES nam (year)
@@ -86,14 +89,14 @@ JOIN nam n USING (year)
 LEFT JOIN nhiet_do_quoc_gia t USING (iso_alpha, year)
 LEFT JOIN co2_quoc_gia c USING (iso_alpha, year)
 LEFT JOIN nang_luong_tai_tao r USING (iso_alpha, year)
-WHERE k.year BETWEEN 1970 AND 2024;
+WHERE k.year BETWEEN 1850 AND 2024;
 CREATE VIEW khi_hau_toan_cau_nam AS
 SELECT t.year, n.decade, t.temperature_anomaly, c.co2,
        c.co2_per_capita, c.population, c.cumulative_co2
 FROM nhiet_do_toan_cau t
 JOIN co2_toan_cau c USING (year)
 JOIN nam n USING (year)
-WHERE t.year BETWEEN 1970 AND 2024;
+WHERE t.year BETWEEN 1880 AND 2024;
 """
 
 
@@ -101,10 +104,12 @@ def dimensions(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFr
     countries = [frame.reindex(columns=["iso_alpha", "country", "continent"])
                  for frame in frames.values() if "iso_alpha" in frame]
     country = pd.concat(countries).groupby("iso_alpha", as_index=False).first()
-    regions = pd.read_csv(ROOT / "data/du_lieu_goc/dung_chung/un_m49_iso3.csv").set_index("iso_alpha").continent
+    reference = ROOT / "data/du_lieu_goc/dung_chung/un_m49_iso3.csv"
+    regions = pd.read_csv(reference).set_index("iso_alpha").continent
     country["continent"] = country.continent.fillna(country.iso_alpha.map(regions))
     country.loc[country["iso_alpha"] == "ATA", "continent"] = "Antarctica"
-    year = pd.concat([frame[["year"]] for frame in frames.values()]).drop_duplicates().sort_values("year")
+    year = pd.concat([frame[["year"]] for frame in frames.values()])
+    year = year.drop_duplicates().sort_values("year")
     year["decade"] = year["year"] // 10 * 10
     return country, year
 
@@ -116,7 +121,8 @@ def main() -> None:
     frames = {}
     for name in COLUMNS:
         folder = DUC if name.startswith("nhiet_do") else QUAN
-        frames[name] = pd.read_csv(folder / f"{name}.csv")
+        filename = "nhiet_do_quoc_gia_nam_lich" if name == "nhiet_do_quoc_gia" else name
+        frames[name] = pd.read_csv(folder / f"{filename}.csv")
     country, year = dimensions(frames)
 
     with closing(sqlite3.connect(temporary)) as connection, connection:
