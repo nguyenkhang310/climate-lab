@@ -7,7 +7,7 @@ FONT_FAMILY = (
     "Roboto, Helvetica, Arial, sans-serif"
 )
 
-def style_chart(fig, height=280):
+def tao_kieu_bieu_do(fig, height=280):
     fig.update_layout(
         template="plotly_white", height=height, autosize=True,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="white",
@@ -32,9 +32,9 @@ def style_chart(fig, height=280):
     )
     return fig
 
-def empty_chart(message="Chưa có dữ liệu", height=280):
+def tao_bieu_do_trong(message="Chưa có dữ liệu", height=280):
     fig = go.Figure()
-    style_chart(fig, height)
+    tao_kieu_bieu_do(fig, height)
     fig.add_annotation(
         text=message, x=.5, y=.5, xref="paper", yref="paper",
         showarrow=False, font={"size": 14, "color": MUTED},
@@ -43,17 +43,17 @@ def empty_chart(message="Chưa có dữ liệu", height=280):
     fig.update_yaxes(visible=False)
     return fig
 
-def _trend_line(series, field, *, color, marker, fill, name, hover, y_title, y_axis, height):
+def _tao_duong_xu_huong(series, field, *, color, marker, fill, name, hover, y_title, y_axis, height):
     data = series.sort_values("year")
     if not data[field].notna().any():
-        return empty_chart(height=height)
+        return tao_bieu_do_trong(height=height)
     fig = go.Figure(go.Scatter(
         x=data.year, y=data[field], mode="lines+markers",
         text=data[field].map(("{:+.2f}" if field == "temperature_anomaly" else "{:,.1f}").format),
         line={"color": color, "width": 2.4}, marker=marker,
         fill="tozeroy", fillcolor=fill, name=name, hovertemplate=hover,
     ))
-    style_chart(fig, height)
+    tao_kieu_bieu_do(fig, height)
     if height <= 200:
         fig.update_layout(margin={"l": 39, "r": 10, "t": 6, "b": 29}, font_size=12)
     fig.update_xaxes(dtick=10, tickformat="d", title=None)
@@ -61,8 +61,8 @@ def _trend_line(series, field, *, color, marker, fill, name, hover, y_title, y_a
     fig.update_layout(hovermode="x unified")
     return fig
 
-def create_temperature_chart(series, height=270):
-    return _trend_line(
+def tao_bieu_do_nhiet_do(series, height=270):
+    return _tao_duong_xu_huong(
         series, "temperature_anomaly", color=RED,
         marker={"size": 5, "color": "white", "line": {"width": 2, "color": RED}},
         fill="rgba(239,68,68,.045)", name="Nhiệt độ ghi nhận",
@@ -70,8 +70,8 @@ def create_temperature_chart(series, height=270):
         y_title="Chênh lệch (°C)", y_axis={"tickformat": ".1f", "nticks": 5}, height=height,
     )
 
-def create_co2_chart(series, height=270):
-    return _trend_line(
+def tao_bieu_do_co2(series, height=270):
+    return _tao_duong_xu_huong(
         series, "co2", color=BLUE, marker={"size": 4, "color": BLUE},
         fill="rgba(22,137,232,.10)", name="Lượng CO₂ ghi nhận",
         hover=("%{x}<br>Lượng CO₂: <b>%{text} triệu tấn</b><extra>OWID / Global Carbon Project</extra>"),
@@ -79,10 +79,10 @@ def create_co2_chart(series, height=270):
         height=height,
     )
 
-def create_ranking_chart(snapshot, selected="all", limit=7, height=290):
+def tao_bieu_do_xep_hang(snapshot, selected="all", limit=7, height=290):
     valid = snapshot.dropna(subset=["co2"])
     if valid.empty:
-        return empty_chart(height=height)
+        return tao_bieu_do_trong(height=height)
     data = valid.nlargest(limit, "co2").sort_values("co2")
     if selected != "all" and selected in set(valid.iso_alpha):
         selected_codes = set(data.iso_alpha) | {selected}
@@ -98,7 +98,7 @@ def create_ranking_chart(snapshot, selected="all", limit=7, height=290):
             "%{y}<br>CO₂: <b>%{text} triệu tấn</b><extra>OWID / GCP</extra>"
         ),
     ))
-    style_chart(fig, max(height, len(data) * 28 + 70))
+    tao_kieu_bieu_do(fig, max(height, len(data) * 28 + 70))
     fig.update_layout(
         margin={"l": 14, "r": 60, "t": 8, "b": 48},
         uniformtext={"minsize": 12, "mode": "show"},
@@ -111,7 +111,7 @@ def create_ranking_chart(snapshot, selected="all", limit=7, height=290):
     return fig
 
 
-def create_globe(
+def tao_ban_do_the_gioi(
     snapshot, selected="VNM", metric="temperature", reset=0, rotation=None,
     height=520, view_mode="globe",
 ):
@@ -184,9 +184,9 @@ def create_globe(
     return fig
 
 
-def create_sector_chart(totals, height=290):
+def tao_bieu_do_nganh(totals, height=290):
     if totals.empty or totals.sum() <= 0:
-        return empty_chart("Năm này chưa có dữ liệu theo ngành", height)
+        return tao_bieu_do_trong("Năm này chưa có dữ liệu theo ngành", height)
     shares = (totals / totals.sum() * 100).sort_values()
     fig = go.Figure(go.Bar(
         y=shares.index, x=shares, orientation="h", width=.55,
@@ -195,14 +195,14 @@ def create_sector_chart(totals, height=290):
         texttemplate="%{text}", textposition="outside",
         cliponaxis=False, hovertemplate="%{y}: <b>%{text}</b><extra>EDGAR · CO₂</extra>",
     ))
-    style_chart(fig, height)
+    tao_kieu_bieu_do(fig, height)
     fig.update_layout(margin={"l": 12, "r": 40, "t": 12, "b": 35})
     fig.update_xaxes(range=[0, shares.max() * 1.25], ticksuffix="%", nticks=4)
     fig.update_yaxes(showgrid=False, tickfont_size=11)
     return fig
 
 
-def create_continent_donut(snapshot, continent_names, selected="all", height=350):
+def tao_bieu_do_ty_trong_chau_luc(snapshot, continent_names, selected="all", height=350):
     totals = (
         snapshot.dropna(subset=["continent", "co2"])
         .groupby("continent").co2.sum(min_count=1)
@@ -210,7 +210,7 @@ def create_continent_donut(snapshot, continent_names, selected="all", height=350
         .sort_values(ascending=False)
     )
     if totals.empty:
-        return empty_chart("Năm này chưa có dữ liệu CO₂", height)
+        return tao_bieu_do_trong("Năm này chưa có dữ liệu CO₂", height)
     labels = [continent_names.get(name, name) for name in totals.index]
     colors = {
         "Africa": "#00A881", "Asia": "#E9604D", "Europe": "#9563CC",
@@ -236,7 +236,7 @@ def create_continent_donut(snapshot, continent_names, selected="all", height=350
         insidetextorientation="horizontal",
         hovertemplate="%{label}<br><b>%{value:,.1f} triệu tấn</b><br>%{percent}<extra></extra>",
     ))
-    style_chart(fig, height)
+    tao_kieu_bieu_do(fig, height)
     fig.update_layout(
         margin={"l": 28, "r": 28, "t": 8, "b": 8},
         showlegend=True,
@@ -265,7 +265,7 @@ SCENARIO_COLORS = {
 }
 
 
-def create_scenario_temperature_chart(history, scenarios, active_id, milestone=2050):
+def tao_bieu_do_du_bao_nhiet_do(history, scenarios, active_id, milestone=2050):
     active = scenarios[scenarios.scenario_id == active_id]
     point = active[active.year == milestone].iloc[0]
     color = SCENARIO_COLORS[active_id]
@@ -299,7 +299,7 @@ def create_scenario_temperature_chart(history, scenarios, active_id, milestone=2
                            "<br>Khoảng ước tính 90%: %{customdata[1]} – %{customdata[2]}"
                            "<extra>%{fullData.name}</extra>"),
         ))
-    style_chart(fig, 350)
+    tao_kieu_bieu_do(fig, 350)
     fig.add_vrect(x0=2024.5, x1=2051, fillcolor="#F2F6FA", opacity=.6,
                   line_width=0, layer="below")
     fig.add_vline(x=2024.5, line_color="#A5B4C4", line_dash="dot")
@@ -325,7 +325,7 @@ def create_scenario_temperature_chart(history, scenarios, active_id, milestone=2
     return fig
 
 
-def create_scenario_co2_chart(scenarios, active_id, milestone=2050):
+def tao_bieu_do_kich_ban_co2(scenarios, active_id, milestone=2050):
     fig = go.Figure()
     for scenario_id, group in scenarios.groupby("scenario_id", sort=False):
         fig.add_trace(go.Scatter(
@@ -336,7 +336,7 @@ def create_scenario_co2_chart(scenarios, active_id, milestone=2050):
             opacity=1 if scenario_id == active_id else .65,
             hovertemplate="<b>%{text} tỷ tấn CO₂</b><extra>%{fullData.name}</extra>",
         ))
-    style_chart(fig, 230)
+    tao_kieu_bieu_do(fig, 230)
     fig.add_vline(x=milestone, line_color="#A5B4C4", line_dash="dot")
     fig.update_layout(hovermode="x unified", margin={"l": 45, "r": 20, "t": 12, "b": 35})
     fig.update_xaxes(dtick=10, range=[2024, 2051], showgrid=False)
@@ -344,7 +344,7 @@ def create_scenario_co2_chart(scenarios, active_id, milestone=2050):
     return fig
 
 
-def create_backtest_chart(backtest):
+def tao_bieu_do_kiem_tra_du_bao(backtest):
     fig = go.Figure()
     for field, name, color, dash in (
         ("temperature_trend_5y", "Thực tế", TEXT, "solid"),
@@ -356,7 +356,7 @@ def create_backtest_chart(backtest):
             line={"color": color, "width": 2, "dash": dash}, marker_size=5,
             hovertemplate="<b>%{text} °C</b><extra>%{fullData.name}</extra>",
         ))
-    style_chart(fig, 230)
+    tao_kieu_bieu_do(fig, 230)
     fig.update_layout(
         hovermode="x unified", showlegend=True,
         legend={"orientation": "h", "y": 1.02, "x": 0, "font_size": 11},
@@ -370,7 +370,7 @@ def create_backtest_chart(backtest):
     return fig
 
 
-def create_residual_chart(residuals):
+def tao_bieu_do_phan_du(residuals):
     """Biểu đồ phần dư theo thời gian để nhận ra mẫu sai số và điểm ảnh hưởng."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -388,7 +388,7 @@ def create_residual_chart(residuals):
             hovertemplate=("Năm %{x}<br>Phần dư: <b>%{y:+.3f} °C</b>"
                            "<br>Khoảng cách Cook: %{customdata[0]:.3f}<extra>%{fullData.name}</extra>"),
         ))
-    style_chart(fig, 230)
+    tao_kieu_bieu_do(fig, 230)
     fig.add_hline(y=0, line_color="#64748B", line_width=1)
     fig.update_layout(
         showlegend=True, legend={"orientation": "h", "y": 1.02, "x": 0, "font_size": 11},

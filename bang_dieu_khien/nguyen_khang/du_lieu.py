@@ -44,7 +44,7 @@ COORDINATES = {
     "RUS": (95, 60), "IDN": (118, -3), "EGY": (30, 27),
 }
 
-def year_bounds(year_range, data):
+def gioi_han_nam(year_range, data):
     if isinstance(year_range, str):
         return [int(value) for value in year_range.split("-")]
     elif year_range:
@@ -52,9 +52,9 @@ def year_bounds(year_range, data):
     return [int(data.year.min()), int(data.year.max())]
 
 
-def filter_data(year_range=None, continent="all", country="all", *, temperature=False) -> pd.DataFrame:
+def loc_du_lieu(year_range=None, continent="all", country="all", *, temperature=False) -> pd.DataFrame:
     data = TEMPERATURE_DATA if temperature else DATA
-    frame = data[data.year.between(*year_bounds(year_range, data))]
+    frame = data[data.year.between(*gioi_han_nam(year_range, data))]
     if continent != "all":
         frame = frame[frame.continent == continent]
     if country != "all":
@@ -62,13 +62,13 @@ def filter_data(year_range=None, continent="all", country="all", *, temperature=
     return frame.copy()
 
 
-def temperature_series(frame, year_range, use_global=False):
+def chuoi_nhiet_do(frame, year_range, use_global=False):
     if use_global:
         return GLOBAL_TEMPERATURE[GLOBAL_TEMPERATURE.year.between(
-            *year_bounds(year_range, GLOBAL_TEMPERATURE))].copy()
+            *gioi_han_nam(year_range, GLOBAL_TEMPERATURE))].copy()
     return frame.groupby("year", as_index=False).temperature_anomaly.mean()
 
-def aggregate(frame: pd.DataFrame, use_global: bool = False, *, co2_only=False) -> pd.DataFrame:
+def tong_hop_du_lieu(frame: pd.DataFrame, use_global: bool = False, *, co2_only=False) -> pd.DataFrame:
     columns = ["year", "temperature_anomaly", "co2", "population", "co2_per_capita"]
     if frame.empty:
         return pd.DataFrame(columns=columns)
@@ -90,7 +90,7 @@ def aggregate(frame: pd.DataFrame, use_global: bool = False, *, co2_only=False) 
     result["co2_per_capita"] = result.year.map(totals.co2 * 1_000_000 / totals.population)
     return result
 
-def filtered_sectors(frame, use_global=False):
+def loc_du_lieu_nganh(frame, use_global=False):
     data = SECTOR_DATA[SECTOR_DATA.year.between(frame.year.min(), frame.year.max())]
     if not use_global:
         codes = set(frame.iso_alpha)
@@ -100,12 +100,12 @@ def filtered_sectors(frame, use_global=False):
     return data.assign(sector=data.sector.replace(SECTOR_NAMES))
 
 
-def filtered_months(frame, use_global=False, year_range=None):
+def loc_du_lieu_thang(frame, use_global=False, year_range=None):
     codes = ["WLD"] if use_global else frame.iso_alpha.unique()
-    start, end = year_bounds(year_range, MONTHLY_DATA) if year_range is not None else (frame.year.min(), frame.year.max())
+    start, end = gioi_han_nam(year_range, MONTHLY_DATA) if year_range is not None else (frame.year.min(), frame.year.max())
     return MONTHLY_DATA[MONTHLY_DATA.year.between(start, end) & MONTHLY_DATA.iso_alpha.isin(codes)]
 
 
-def sector_totals(frame: pd.DataFrame, use_global=False) -> pd.Series:
-    data = filtered_sectors(frame, use_global)
+def tong_co2_theo_nganh(frame: pd.DataFrame, use_global=False) -> pd.Series:
+    data = loc_du_lieu_nganh(frame, use_global)
     return data[data.year.eq(frame.year.max())].groupby("sector").co2.sum(min_count=1).dropna().sort_values(ascending=False)

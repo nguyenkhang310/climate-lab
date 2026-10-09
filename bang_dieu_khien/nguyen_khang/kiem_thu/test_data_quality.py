@@ -9,7 +9,7 @@ import nbformat
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error
 
-from bang_dieu_khien.nguyen_khang.du_lieu import DATA, MODEL_INFO, SECTOR_DATA, filter_data, filtered_sectors
+from bang_dieu_khien.nguyen_khang.du_lieu import DATA, MODEL_INFO, SECTOR_DATA, loc_du_lieu, loc_du_lieu_nganh
 from mo_hinh_du_doan.nguyen_khang import mo_hinh_nhiet_do as model
 from phan_tich_co2.quan import lam_sach_du_lieu as quan
 from phan_tich_co2.quan.tao_bieu_do_plotly import renewable_coverage_note, sector_coverage_note
@@ -90,13 +90,13 @@ class QuanQualityTests(unittest.TestCase):
         pd.testing.assert_frame_equal(actual[["year", "sector", "co2"]], expected[["year", "sector", "co2"]],
                                       check_dtype=False, check_exact=False, rtol=1e-12, atol=1e-12)
         self.assertTrue(actual.source_iso_alpha.eq("ANT").all())
-        self.assertFalse(filtered_sectors(filter_data("2020-2024", country="CUW")).empty)
+        self.assertFalse(loc_du_lieu_nganh(loc_du_lieu("2020-2024", country="CUW")).empty)
 
     def test_combined_region_is_not_assigned_to_either_country(self):
         for code in ["SRB", "MNE"]:
-            selected = filtered_sectors(filter_data("1970-2024", country=code))
+            selected = loc_du_lieu_nganh(loc_du_lieu("1970-2024", country=code))
             self.assertFalse(selected.iso_alpha.eq("SCG").any())
-        europe = filtered_sectors(filter_data("1970-2024", continent="Europe"))
+        europe = loc_du_lieu_nganh(loc_du_lieu("1970-2024", continent="Europe"))
         self.assertTrue(europe.iso_alpha.eq("SCG").any())
         combined = SECTOR_DATA[SECTOR_DATA.iso_alpha.eq("SCG")]
         self.assertTrue(combined.entity_type.eq("combined_region").all())
@@ -125,19 +125,19 @@ class QuanQualityTests(unittest.TestCase):
 
 class ModelTimeDependenceTests(unittest.TestCase):
     def test_block_bootstrap_is_reproducible_and_changes_independent_error_band(self):
-        scenario = model.kich_ban(MODEL_INFO, MODEL_INFO["recent_annual_rate"])
+        scenario = model.tao_kich_ban(MODEL_INFO, MODEL_INFO["recent_annual_rate"])
         x = scenario.cumulative_co2.to_numpy() / 1000
-        first = model.prediction_interval(MODEL_INFO, x)
-        second = model.prediction_interval(MODEL_INFO, x)
+        first = model.tinh_khoang_du_doan(MODEL_INFO, x)
+        second = model.tinh_khoang_du_doan(MODEL_INFO, x)
         np.testing.assert_array_equal(first, second)
-        independent = model.prediction_interval({**MODEL_INFO, "bootstrap_block_length": 1}, x)
+        independent = model.tinh_khoang_du_doan({**MODEL_INFO, "bootstrap_block_length": 1}, x)
         self.assertGreater(first[1, -1] - first[0, -1], independent[1, -1] - independent[0, -1])
         np.testing.assert_allclose(scenario.temperature_prediction,
                                    MODEL_INFO["intercept"] + MODEL_INFO["coefficient"] * x)
         self.assertEqual(MODEL_INFO["interval_method"], "circular_block_residual_bootstrap")
         self.assertEqual(
             MODEL_INFO["bootstrap_block_length"],
-            model.choose_block_length(MODEL_INFO["bootstrap_residuals"]),
+            model.chon_do_dai_khoi(MODEL_INFO["bootstrap_residuals"]),
         )
 
     def test_backtest_intervals_use_training_residuals_only(self):
@@ -147,10 +147,10 @@ class ModelTimeDependenceTests(unittest.TestCase):
         train, test = data[data.year.le(2014)], data[data.year.gt(2014)]
         x = train[["cumulative_co2"]].to_numpy() / 1000
         fitted = LinearRegression().fit(x, train.target)
-        info = model.interval_parameters(x, train.target, fitted)
+        info = model.tao_thong_so_khoang_du_doan(x, train.target, fitted)
         self.assertEqual(info["sample_size"], 131)
         self.assertLess(max(info["bootstrap_x"]), min(test.cumulative_co2 / 1000))
-        bounds = model.prediction_interval(info, test.cumulative_co2.to_numpy() / 1000)
+        bounds = model.tinh_khoang_du_doan(info, test.cumulative_co2.to_numpy() / 1000)
         saved = pd.read_csv(model.OUTPUT / "du_doan_kiem_tra.csv")
         np.testing.assert_allclose(saved[["lower_90", "upper_90"]].to_numpy().T, bounds)
 
@@ -175,10 +175,10 @@ class ModelTimeDependenceTests(unittest.TestCase):
         data = pd.read_csv(model.INPUT)
         data["temperature_trend_5y"] = data.temperature_anomaly.rolling(5).mean()
         data = data.dropna(subset=["temperature_trend_5y"])
-        selected, comparison, _ = model.select_history(data)
+        selected, comparison, _ = model.chon_giai_doan_huan_luyen(data)
         changed = data.copy()
         changed.loc[changed.year.gt(model.NAM_CHIA), "temperature_trend_5y"] = 999
-        repeated, same, _ = model.select_history(changed)
+        repeated, same, _ = model.chon_giai_doan_huan_luyen(changed)
         self.assertEqual(selected, repeated)
         pd.testing.assert_frame_equal(comparison, same)
         self.assertEqual(selected, MODEL_INFO["selected_history_start"])

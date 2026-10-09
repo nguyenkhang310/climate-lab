@@ -23,18 +23,18 @@ from bang_dieu_khien.nguyen_khang.du_lieu import (
     RESIDUAL_DATA,
     SCENARIO_DATA,
     SECTOR_DATA,
-    aggregate,
-    filter_data,
-    filtered_months,
-    filtered_sectors,
-    sector_totals,
-    temperature_series,
+    tong_hop_du_lieu,
+    loc_du_lieu,
+    loc_du_lieu_thang,
+    loc_du_lieu_nganh,
+    tong_co2_theo_nganh,
+    chuoi_nhiet_do,
 )
 from mo_hinh_du_doan.nguyen_khang.ghep_du_lieu import build_country_year, build_global_year
-from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import kich_ban
+from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import tao_kich_ban
 
 def current_filters(continent, years, country, route="#overview", **clicks):
-    return app.update_filters(route, years, continent, country, "temperature",
+    return app.cap_nhat_bo_loc(route, years, continent, country, "temperature",
                               saved={"page": route}, **clicks)
 
 class ClimateDataTests(unittest.TestCase):
@@ -70,7 +70,7 @@ class ClimateDataTests(unittest.TestCase):
                     mask &= DATA.continent.eq(continent)
                 if country != "all":
                     mask &= DATA.iso_alpha.eq(country)
-                pd.testing.assert_frame_equal(filter_data(years, continent, country), DATA[mask])
+                pd.testing.assert_frame_equal(loc_du_lieu(years, continent, country), DATA[mask])
 
     def test_dashboard_key_and_period(self):
         self.assertEqual(int(DATA.year.min()), 1850)
@@ -79,8 +79,8 @@ class ClimateDataTests(unittest.TestCase):
         self.assertGreaterEqual(DATA.iso_alpha.nunique(), 200)
 
     def test_global_aggregation_uses_official_world_series(self):
-        frame = filter_data("1970-2024")
-        result = aggregate(frame, use_global=True).set_index("year")
+        frame = loc_du_lieu("1970-2024")
+        result = tong_hop_du_lieu(frame, use_global=True).set_index("year")
         official = GLOBAL_DATA.set_index("year")
         self.assertAlmostEqual(result.loc[2023, "co2"], official.loc[2023, "co2"])
         self.assertAlmostEqual(
@@ -89,7 +89,7 @@ class ClimateDataTests(unittest.TestCase):
         )
 
     def test_country_filter_keeps_real_annual_series(self):
-        vietnam = filter_data("1970-2024", country="VNM")
+        vietnam = loc_du_lieu("1970-2024", country="VNM")
         self.assertEqual(vietnam.iso_alpha.unique().tolist(), ["VNM"])
         self.assertEqual(vietnam.year.nunique(), 55)
         self.assertGreater(vietnam.co2.notna().sum(), 40)
@@ -143,7 +143,7 @@ class ClimateDataTests(unittest.TestCase):
         fields = ["temperature_anomaly", "co2", "co2_per_capita", "population"]
         for code, frame in DATA.groupby("iso_alpha"):
             with self.subTest(country=code):
-                actual = aggregate(frame).set_index("year")[fields]
+                actual = tong_hop_du_lieu(frame).set_index("year")[fields]
                 expected = frame.set_index("year")[fields]
                 pd.testing.assert_frame_equal(actual, expected)
 
@@ -153,7 +153,7 @@ class ClimateDataTests(unittest.TestCase):
         paired = frame.dropna(subset=["co2", "population"])
         paired = paired[paired.population > 0]
         expected = paired.co2.sum() * 1_000_000 / paired.population.sum()
-        self.assertAlmostEqual(aggregate(frame).co2_per_capita.iloc[0], expected)
+        self.assertAlmostEqual(tong_hop_du_lieu(frame).co2_per_capita.iloc[0], expected)
 
 
 class ScenarioModelTests(unittest.TestCase):
@@ -161,7 +161,7 @@ class ScenarioModelTests(unittest.TestCase):
         from mo_hinh_du_doan.nguyen_khang import mo_hinh_nhiet_do as model
 
         with TemporaryDirectory() as folder, patch.object(model, "OUTPUT", Path(folder)):
-            model.main()
+            model.chay_mo_hinh()
             actual_info = json.loads((Path(folder) / "thong_tin_mo_hinh.json").read_text(encoding="utf-8"))
             self.assertEqual(actual_info.keys(), MODEL_INFO.keys())
             for key, expected in MODEL_INFO.items():
@@ -179,13 +179,13 @@ class ScenarioModelTests(unittest.TestCase):
 
     def test_custom_rates_and_prediction_intervals(self):
         for rate in (-1, -.1, 0, .05):
-            frame = kich_ban(MODEL_INFO, rate)
+            frame = tao_kich_ban(MODEL_INFO, rate)
             self.assertTrue(np.isfinite(frame.select_dtypes("number")).all().all())
             self.assertTrue((frame.lower_90 <= frame.temperature_prediction).all())
             self.assertTrue((frame.upper_90 >= frame.temperature_prediction).all())
         for rate in (np.nan, np.inf, -1.01):
             with self.assertRaises(ValueError):
-                kich_ban(MODEL_INFO, rate)
+                tao_kich_ban(MODEL_INFO, rate)
 
     def test_global_model_input_matches_sources(self):
         pd.testing.assert_frame_equal(build_global_year(), GLOBAL_DATA, check_dtype=False)
@@ -201,7 +201,7 @@ class ScenarioModelTests(unittest.TestCase):
         self.assertTrue(np.isfinite(GLOBAL_DATA[["co2", "cumulative_co2", "temperature_anomaly"]]).all().all())
 
     def test_model_history_includes_1880_and_negative_temperatures(self):
-        figure = app.create_scenario_temperature_chart(GLOBAL_DATA, SCENARIO_DATA, "trend")
+        figure = app.tao_bieu_do_du_bao_nhiet_do(GLOBAL_DATA, SCENARIO_DATA, "trend")
         np.testing.assert_array_equal(figure.data[2].x, np.arange(1880, 2025))
         np.testing.assert_allclose(figure.data[2].y, GLOBAL_DATA.temperature_anomaly.rolling(5).mean(), equal_nan=True)
         self.assertEqual(figure.layout.xaxis.range[0], 1880)
@@ -221,14 +221,14 @@ class ScenarioModelTests(unittest.TestCase):
 
     def test_custom_and_exported_scenarios_use_identical_math(self):
         for _, expected in SCENARIO_DATA.groupby("scenario_id"):
-            actual = kich_ban(MODEL_INFO, expected.annual_change_pct.iloc[0] / 100)
+            actual = tao_kich_ban(MODEL_INFO, expected.annual_change_pct.iloc[0] / 100)
             columns = ["year", "co2", "cumulative_co2", "extrapolation_ratio",
                        "temperature_prediction", "lower_90", "upper_90"]
             np.testing.assert_allclose(actual[columns], expected[columns], rtol=1e-12)
             np.testing.assert_allclose(actual.cumulative_co2, MODEL_INFO["last_cumulative_co2"] + actual.co2.cumsum())
 
     def test_selected_year_changes_chart_marker_and_kpis(self):
-        result = app.update_scenario_page("decline", -5, 2030)
+        result = app.cap_nhat_trang_du_doan("decline", -5, 2030)
         self.assertTrue(result[3].startswith("2030"))
         self.assertIn("Thấp hơn", result[5])
         self.assertEqual(result[0].data[-1].x[0], 2030)
@@ -259,25 +259,25 @@ class ScenarioModelTests(unittest.TestCase):
             year_2050.loc["decline", "temperature_prediction"],
             year_2050.loc["trend", "temperature_prediction"],
         )
-        custom = kich_ban(MODEL_INFO, -.10)
+        custom = tao_kich_ban(MODEL_INFO, -.10)
         self.assertTrue(custom.cumulative_co2.is_monotonic_increasing)
         self.assertGreater(custom.lower_90.min(), -1)
 
     def test_custom_scenario_callback_is_serializable(self):
-        result = app.update_scenario_page("custom", -7.5, 2050)
+        result = app.cap_nhat_trang_du_doan("custom", -7.5, 2050)
         self.assertEqual(len(result), 9)
         self.assertEqual(len(result[-1]), 104)
         json.dumps(result, cls=PlotlyJSONEncoder)
 
 class DashboardSmokeTests(unittest.TestCase):
     def test_overview_year_stays_inside_selected_country_data(self):
-        frame = filter_data("1970-2024")
-        current = app.create_globe(frame[frame.year.eq(1970)]).to_plotly_json()
+        frame = loc_du_lieu("1970-2024")
+        current = app.tao_ban_do_the_gioi(frame[frame.year.eq(1970)]).to_plotly_json()
         with patch.object(app, "ctx") as context:
             context.triggered_id = "country-filter"
             for code, first in [("BLM", 2011), ("GUM", 1990), ("MNP", 1992)]:
-                self.assertEqual(app.map_years(frame, code)[0], first)
-                result = app.update_overview("1970-2024", "all", code, "temperature", "globe", 1970, 0, "#overview", current)
+                self.assertEqual(app.lay_cac_nam_ban_do(frame, code)[0], first)
+                result = app.cap_nhat_tong_quan("1970-2024", "all", code, "temperature", "globe", 1970, 0, "#overview", current)
                 self.assertEqual(result[7], first)
                 self.assertEqual(result[10], first)
                 self.assertEqual(result[11], str(first))
@@ -286,11 +286,11 @@ class DashboardSmokeTests(unittest.TestCase):
                     self.assertTrue(all(row[1] == first for row in trace.customdata))
 
     def test_overview_period_change_moves_map_to_latest_year(self):
-        old_frame = filter_data("1961-1969")
-        current = app.create_globe(old_frame[old_frame.year.eq(1969)]).to_plotly_json()
+        old_frame = loc_du_lieu("1961-1969")
+        current = app.tao_ban_do_the_gioi(old_frame[old_frame.year.eq(1969)]).to_plotly_json()
         with patch.object(app, "ctx") as context:
             context.triggered_id = "year-range"
-            result = app.update_overview(
+            result = app.cap_nhat_tong_quan(
                 "1961-2024", "all", "all", "temperature", "globe",
                 1969, 0, "#overview", current,
             )
@@ -304,9 +304,9 @@ class DashboardSmokeTests(unittest.TestCase):
                       "2000-2009", "2010-2019", "2020-2024"]:
             for continent, country in [("all", "all"), ("Europe", "all"), ("Asia", "VNM"),
                                        ("North America", "BLM"), ("all", "ATA")]:
-                result = app.export_data(1, None, years, continent, country)
+                result = app.xuat_du_lieu(1, None, years, continent, country)
                 actual = pd.read_csv(StringIO(result["content"]))
-                expected = filter_data(years, continent, country).reset_index(drop=True)
+                expected = loc_du_lieu(years, continent, country).reset_index(drop=True)
                 pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
 
     def test_wsgi_entrypoint(self):
@@ -319,9 +319,9 @@ class DashboardSmokeTests(unittest.TestCase):
         with patch.object(app, "ctx") as context:
             context.triggered_id = "country-filter"
             for route in ("overview", "earth"):
-                result = app.render_page(f"#{route}", "1970-2024", "all", "VNM", "temperature")
+                result = app.hien_thi_trang(f"#{route}", "1970-2024", "all", "VNM", "temperature")
                 self.assertIn("Vietnam", self._component_text(result[0]))
-                ready = app.render_page(f"#{route}", "1970-2024", "all", "VNM", "temperature",
+                ready = app.hien_thi_trang(f"#{route}", "1970-2024", "all", "VNM", "temperature",
                                         "overview-globe" if route == "overview" else None,
                                         "globe" if route == "earth" else None)
                 self.assertIs(ready[0], app.no_update)
@@ -330,11 +330,11 @@ class DashboardSmokeTests(unittest.TestCase):
         for year in (1970, 2023, 2024):
             frame = DATA[DATA.year == year]
             expected = SECTOR_DATA[SECTOR_DATA.year == year].co2.sum()
-            self.assertAlmostEqual(sector_totals(frame, use_global=True).sum(), expected)
+            self.assertAlmostEqual(tong_co2_theo_nganh(frame, use_global=True).sum(), expected)
 
     def test_overview_donut_uses_global_continent_totals(self):
-        frame = filter_data()
-        overview = app.overview_comparison(frame, "all", 2024)
+        frame = loc_du_lieu()
+        overview = app.tao_so_sanh_tong_quan(frame, "all", 2024)
         overview_plot = overview.children[1].children[1].figure
         expected = DATA[DATA.year.eq(2024)].groupby("continent").co2.sum(min_count=1)
         actual = dict(zip(overview_plot.data[0].labels, overview_plot.data[0].values))
@@ -348,34 +348,34 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertIn("TỔNG CO₂", overview_plot.layout.annotations[0].text)
 
     def test_trend_charts_do_not_hide_missing_years(self):
-        frame = filter_data("2020-2024", country="VNM")
+        frame = loc_du_lieu("2020-2024", country="VNM")
         frame.loc[frame.year == 2022, ["temperature_anomaly", "co2"]] = np.nan
-        for create in (app.create_temperature_chart, app.create_co2_chart):
+        for create in (app.tao_bieu_do_nhiet_do, app.tao_bieu_do_co2):
             trace = create(frame).data[0]
             self.assertEqual(list(trace.x), list(range(2020, 2025)))
             self.assertTrue(pd.isna(trace.y[2]))
 
     def test_all_observed_data_pages_share_filters_and_csv(self):
         for page, _, _ in app.MENU:
-            result = app.render_page(f"#{page}", "1990-2023", "all", "VNM", "temperature")
+            result = app.hien_thi_trang(f"#{page}", "1990-2023", "all", "VNM", "temperature")
             self.assertEqual(result[4], page == "scenario")
             self.assertEqual("hidden-filter" in result[8], page == "scenario")
             if page != "scenario":
                 self.assertEqual(result[2], "Vietnam · 1990–2023")
 
     def test_sector_shares_follow_selected_country_and_year(self):
-        frame = filter_data("2000-2023", country="VNM")
-        totals = sector_totals(frame)
+        frame = loc_du_lieu("2000-2023", country="VNM")
+        totals = tong_co2_theo_nganh(frame)
         source = SECTOR_DATA[(SECTOR_DATA.iso_alpha == "VNM") & (SECTOR_DATA.year == 2023)]
         self.assertAlmostEqual(totals.sum(), source.co2.sum())
-        figure = app.create_sector_chart(totals)
+        figure = app.tao_bieu_do_nganh(totals)
         self.assertAlmostEqual(sum(figure.data[0].x), 100)
         self.assertEqual(figure.data[0].y[-1], totals.index[0])
 
     def test_insights_handle_missing_and_single_year_data(self):
         for country in ("VNM", "ESH", "ATA"):
-            frame = filter_data("2024-2024", country=country)
-            content = app.create_insights_page(frame, aggregate(frame), country)
+            frame = loc_du_lieu("2024-2024", country=country)
+            content = app.tao_trang_nhan_dinh(frame, tong_hop_du_lieu(frame), country)
             text = self._component_text(content)
             self.assertIn("Chưa đủ dữ liệu nhiệt độ", text)
             self.assertIn("Chưa đủ dữ liệu CO₂", text)
@@ -383,21 +383,21 @@ class DashboardSmokeTests(unittest.TestCase):
             json.dumps(content, cls=PlotlyJSONEncoder)
 
     def test_insights_use_complete_calendar_windows_and_actual_co2_years(self):
-        frame = filter_data("1970-2024", country="VNM")
-        series = aggregate(frame)
-        content = app.create_insights_page(frame, series, "Vietnam")
+        frame = loc_du_lieu("1970-2024", country="VNM")
+        series = tong_hop_du_lieu(frame)
+        content = app.tao_trang_nhan_dinh(frame, series, "Vietnam")
         first = series[series.year.between(1970, 1974)].temperature_anomaly.mean()
         last = series[series.year.between(2020, 2024)].temperature_anomaly.mean()
         self.assertEqual(content[1].children[0].children[0].children[1].children, f"{last-first:+.2f} °C")
         series.loc[series.year.eq(1970), "temperature_anomaly"] = np.nan
         series.loc[series.year.eq(2024), "co2"] = np.nan
-        text = self._component_text(app.create_insights_page(frame, series, "Vietnam"))
+        text = self._component_text(app.tao_trang_nhan_dinh(frame, series, "Vietnam"))
         self.assertIn("Chưa đủ dữ liệu nhiệt độ", text)
         self.assertIn("2023:", text)
 
     def test_co2_continent_area_and_industry_treemap_use_filtered_data(self):
-        frame = filter_data("2015-2024", "Asia", "VNM")
-        content = app.render_page("#co2", "2015-2024", "Asia", "VNM", "co2")[0].children
+        frame = loc_du_lieu("2015-2024", "Asia", "VNM")
+        content = app.hien_thi_trang("#co2", "2015-2024", "Asia", "VNM", "co2")[0].children
         cards = content.children[0].children[1].children
         area = cards[3].children[1].figure
         tree = cards[4].children[1].figure
@@ -406,7 +406,7 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertEqual(area.data[0].name, "Châu Á")
         np.testing.assert_array_equal(area.data[0].x, expected_area.index)
         np.testing.assert_allclose(np.asarray(area.data[0].y, dtype=float), expected_area.values)
-        sectors = filtered_sectors(frame)
+        sectors = loc_du_lieu_nganh(frame)
         totals = sectors.groupby(["sector", "year"]).co2.sum(min_count=1).groupby("sector").mean()
         self.assertAlmostEqual(sum(tree.data[0].values), totals.sum())
         self.assertAlmostEqual(sum(row[0] for row in tree.data[0].customdata), 100)
@@ -415,14 +415,14 @@ class DashboardSmokeTests(unittest.TestCase):
         self.assertEqual(set(app.PAGE_INFO), {page for page, _, _ in app.MENU})
         for page, _, _ in app.MENU:
             with self.subTest(page=page):
-                result = app.render_page(
+                result = app.hien_thi_trang(
                     f"#{page}", "1970-2024", "all", "all",
                     "temperature",
                 )
                 self.assertEqual(len(result), 9)
 
     def test_scenario_page_has_controls_charts_and_download(self):
-        content = app.render_page(
+        content = app.hien_thi_trang(
             "#scenario", "1970-2024", "all", "all",
             "temperature",
         )[0]
@@ -441,7 +441,7 @@ class DashboardSmokeTests(unittest.TestCase):
         }
         for page, gallery_id in expected.items():
             with self.subTest(page=page):
-                content = app.render_page(
+                content = app.hien_thi_trang(
                     f"#{page}", "1970-2024", "all", "all",
                     "temperature",
                 )[0]
@@ -450,7 +450,7 @@ class DashboardSmokeTests(unittest.TestCase):
     def test_member_pages_only_show_declared_member_artifacts(self):
         for page in ("temperature", "co2"):
             with self.subTest(page=page):
-                content = app.render_page(
+                content = app.hien_thi_trang(
                     f"#{page}", "1970-2024", "all", "all",
                     "temperature",
                 )[0]
@@ -461,7 +461,7 @@ class DashboardSmokeTests(unittest.TestCase):
                 self.assertIn("Biểu đồ tương tác", text)
                 self.assertLess(text.index("Biểu đồ tương tác"), text.index("Biểu đồ tĩnh"))
 
-        gallery = app.render_page("#temperature", "1970-2024", "all", "all", "temperature")[0].children
+        gallery = app.hien_thi_trang("#temperature", "1970-2024", "all", "all", "temperature")[0].children
         interactive_section = gallery.children[0]
         self.assertIn("interactive", interactive_section.className)
         self.assertIn("interactive", interactive_section.children[1].className)
@@ -469,10 +469,10 @@ class DashboardSmokeTests(unittest.TestCase):
     def test_member_charts_use_filtered_source_values(self):
         for continent, country in [("all", "all"), ("Asia", "all"), ("Asia", "VNM")]:
             for page, field in [("temperature", "temperature_anomaly"), ("co2", "co2")]:
-                frame = filter_data("2015-2024", continent, country, temperature=page == "temperature")
-                series = (temperature_series(frame, "2015-2024", use_global=continent == country == "all")
-                          if page == "temperature" else aggregate(frame, use_global=continent == country == "all"))
-                content = app.render_page(f"#{page}", "2015-2024", continent, country, "temperature")[0].children
+                frame = loc_du_lieu("2015-2024", continent, country, temperature=page == "temperature")
+                series = (chuoi_nhiet_do(frame, "2015-2024", use_global=continent == country == "all")
+                          if page == "temperature" else tong_hop_du_lieu(frame, use_global=continent == country == "all"))
+                content = app.hien_thi_trang(f"#{page}", "2015-2024", continent, country, "temperature")[0].children
                 cards = content.children[0].children[1].children
                 figure = cards[0].children[1].figure
                 np.testing.assert_array_equal(figure.data[0].x, series.year)
@@ -490,7 +490,7 @@ class DashboardSmokeTests(unittest.TestCase):
     def test_member_pages_handle_missing_and_single_year_data(self):
         for page in ("temperature", "co2"):
             for country in ("VNM", "ESH", "ATA"):
-                content = app.render_page(f"#{page}", "2024-2024", "all", country, "temperature")[0]
+                content = app.hien_thi_trang(f"#{page}", "2024-2024", "all", country, "temperature")[0]
                 json.dumps(content, cls=PlotlyJSONEncoder)
                 self.assertNotIn("nan", self._component_text(content).lower())
 
@@ -533,19 +533,19 @@ class DashboardSmokeTests(unittest.TestCase):
 
 class MemberEdaTests(unittest.TestCase):
     def test_decade_filter_covers_data_once_and_marks_partial_decade(self):
-        dropdown = app.create_filters().children[0].children[1]
+        dropdown = app.tao_bo_loc().children[0].children[1]
         options = dropdown.options
         periods = [item["value"] for item in options[1:]]
         self.assertEqual(periods[0], "1961-1969")
         self.assertEqual(periods[-1], "2020-2024")
         self.assertEqual(len(periods), 7)
         self.assertIn("chưa đủ 10 năm", options[-1]["label"])
-        pieces = [filter_data(period) for period in periods]
+        pieces = [loc_du_lieu(period) for period in periods]
         pd.testing.assert_frame_equal(pd.concat(pieces).sort_index(), DATA[DATA.year.ge(1961)])
         self.assertEqual([piece.year.nunique() for piece in pieces], [9] + [10] * 5 + [5])
 
     def test_decade_mean_uses_available_years_and_keeps_zero(self):
-        from bang_dieu_khien.nguyen_khang.thap_ky import country_decade_means
+        from bang_dieu_khien.nguyen_khang.thap_ky import trung_binh_quoc_gia_theo_thap_ky
 
         frame = pd.DataFrame({
             "iso_alpha": ["VNM"] * 5 + ["ATA"] * 5,
@@ -553,17 +553,17 @@ class MemberEdaTests(unittest.TestCase):
             "year": list(range(2020, 2025)) * 2,
             "co2_per_capita": [0, 2, np.nan, 4, np.nan] + [np.nan] * 5,
         })
-        result = country_decade_means(frame, "co2_per_capita")
+        result = trung_binh_quoc_gia_theo_thap_ky(frame, "co2_per_capita")
         self.assertEqual(result.iso_alpha.tolist(), ["VNM"])
         self.assertEqual(result.period.tolist(), ["2020–2024"])
         self.assertEqual(result.years.tolist(), [3])
         self.assertEqual(result.co2_per_capita.tolist(), [2.0])
 
     def test_scatter_averages_only_years_with_both_indicators(self):
-        frame = filter_data("2020-2024", country="VNM")
+        frame = loc_du_lieu("2020-2024", country="VNM")
         frame["co2_per_capita"] = [10, np.nan, 30, 50, np.nan]
         frame["renewable_percent"] = [np.nan, 90, 70, 50, np.nan]
-        figures = app.co2_figures(aggregate(frame), frame, filtered_sectors(frame))
+        figures = app.co2_figures(tong_hop_du_lieu(frame), frame, loc_du_lieu_nganh(frame))
         trace = figures["06_scatter_co2pc_renewable"].data[0]
         self.assertEqual(list(trace.x), [60])
         self.assertEqual(list(trace.y), [40])
@@ -576,11 +576,11 @@ class MemberEdaTests(unittest.TestCase):
                       "2010-2019", "2020-2024", "2024-2024", "1971-1979"]:
             for continent, country in scopes:
                 with self.subTest(years=years, continent=continent, country=country):
-                    frame = filter_data(years, continent, country)
-                    series = aggregate(frame, continent == country == "all")
-                    monthly = filtered_months(frame, continent == country == "all")
+                    frame = loc_du_lieu(years, continent, country)
+                    series = tong_hop_du_lieu(frame, continent == country == "all")
+                    monthly = loc_du_lieu_thang(frame, continent == country == "all")
                     temperature = list(app.temperature_figures(series, frame, monthly).values())
-                    sectors = filtered_sectors(frame, continent == country == "all")
+                    sectors = loc_du_lieu_nganh(frame, continent == country == "all")
                     co2 = list(app.co2_figures(series, frame, sectors).values())
                     periods = {decade: f"{group.year.min()}–{group.year.max()}"
                                for decade, group in frame.groupby(frame.year // 10 * 10)}
@@ -657,25 +657,25 @@ class MemberEdaTests(unittest.TestCase):
         for route, field in [("temperature", "temperature_anomaly"), ("co2", "co2_per_capita")]:
             for continent, country in [("all", "all"), ("Asia", "VNM"), ("all", "ATA")]:
                 with self.subTest(route=route, country=country):
-                    page = app.render_page(f"#{route}", "1990-2023", continent, country, "temperature")[0]
+                    page = app.hien_thi_trang(f"#{route}", "1990-2023", continent, country, "temperature")[0]
                     cards = page.children.children[0].children[1].children
                     figure = cards[2].children[1].figure
-                    frame = filter_data("1990-2023", continent, country, temperature=route == "temperature")
+                    frame = loc_du_lieu("1990-2023", continent, country, temperature=route == "temperature")
                     self.assert_map_decades(figure, frame, field)
-                    self.assertIn(f"{app.scope_name(continent, country)} · 1990–2023", figure.layout.meta["scope"])
+                    self.assertIn(f"{app.ten_pham_vi(continent, country)} · 1990–2023", figure.layout.meta["scope"])
                     if country != "ATA":
-                        series = (temperature_series(frame, "1990-2023", use_global=continent == country == "all")
-                                  if route == "temperature" else aggregate(frame, continent == country == "all"))
+                        series = (chuoi_nhiet_do(frame, "1990-2023", use_global=continent == country == "all")
+                                  if route == "temperature" else tong_hop_du_lieu(frame, continent == country == "all"))
                         expected = series.temperature_anomaly if route == "temperature" else series.co2
                         np.testing.assert_allclose(cards[0].children[1].figure.data[0].y, expected, equal_nan=True)
 
     def test_continent_colors_do_not_change_with_filters(self):
         from phan_tich_co2.quan.tao_bieu_do_plotly import CONTINENT_COLORS
 
-        frame = filter_data("2015-2024", country="VNM")
-        sectors = filtered_sectors(frame)
-        for countries in (frame, filter_data("2015-2024")):
-            figure = app.co2_figures(aggregate(countries), countries, sectors)["04_stacked_area_chau_luc"]
+        frame = loc_du_lieu("2015-2024", country="VNM")
+        sectors = loc_du_lieu_nganh(frame)
+        for countries in (frame, loc_du_lieu("2015-2024")):
+            figure = app.co2_figures(tong_hop_du_lieu(countries), countries, sectors)["04_stacked_area_chau_luc"]
             for trace in figure.data:
                 self.assertEqual(trace.line.color, CONTINENT_COLORS[trace.name])
 
@@ -691,15 +691,15 @@ class MemberEdaTests(unittest.TestCase):
         )
 
     def test_monthly_temperature_keeps_missing_values_and_equal_year_weights(self):
-        frame = filter_data("2020-2021", country="VNM")
+        frame = loc_du_lieu("2020-2021", country="VNM")
         monthly = pd.DataFrame({"year": [2020, 2020, 2021, 2020], "month": [1, 1, 1, 2],
                                 "temperature_anomaly": [0, 2, 4, np.nan]})
-        figure = app.temperature_figures(aggregate(frame), frame, monthly)["06_nhiet_do_theo_thang"]
+        figure = app.temperature_figures(tong_hop_du_lieu(frame), frame, monthly)["06_nhiet_do_theo_thang"]
         self.assertEqual(figure.data[0].y[0], 2.5)
         self.assertEqual(figure.data[0].customdata[0], 2)
         self.assertTrue(np.isnan(figure.data[0].y[1:]).all())
         self.assertFalse(figure.data[0].connectgaps)
-        page = app.render_page("#temperature", "2024-2024", "all", "VNM", "temperature")[0]
+        page = app.hien_thi_trang("#temperature", "2024-2024", "all", "VNM", "temperature")[0]
         figure = page.children.children[0].children[1].children[-1].children[1].figure
         self.assertEqual(len(figure.data[0].y), 12)
         self.assertTrue(np.isfinite(figure.data[0].y).all())
@@ -754,7 +754,7 @@ class MemberEdaTests(unittest.TestCase):
                     self.assertIn("Vietnam · 2015–2024", figure["layout"]["meta"]["scope"])
                     self.assertIn("Vietnam", modal_children[0]["props"]["children"][1]["props"]["children"])
                 else:
-                    expected = filter_data("2015-2024", country="VNM", temperature=True).temperature_anomaly.to_numpy()
+                    expected = loc_du_lieu("2015-2024", country="VNM", temperature=True).temperature_anomaly.to_numpy()
                     actual = modal_children[1]["props"]["figure"]["data"][0]["y"]
                     if isinstance(actual, dict):
                         actual = np.frombuffer(app.base64.b64decode(actual["bdata"]), dtype=actual["dtype"])
@@ -770,7 +770,7 @@ class MemberEdaTests(unittest.TestCase):
         callback = app.app.callback_map[output]
         pattern = callback["inputs"][0]["id"]
         route = "#temperature" if path.startswith("duc/") else "#co2"
-        page = app.render_page(route, "2015-2024", "all", "VNM", "temperature")[0]
+        page = app.hien_thi_trang(route, "2015-2024", "all", "VNM", "temperature")[0]
         cards = page.children.children[0].children[1].children
         figure = cards[int(Path(path).name[:2]) - 1].children[1].figure
         trigger = "close-eda-modal.n_clicks" if close else (
@@ -806,29 +806,29 @@ class MemberEdaTests(unittest.TestCase):
 
 class DucTemperatureTests(unittest.TestCase):
     def test_all_filters_are_saved_separately_for_each_page(self):
-        first = app.update_filters("#overview", "1961-2024", "all", "all", "temperature")
-        overview = app.update_filters("#overview", "1990-1999", "Asia", "VNM", "co2", saved=first[3])
-        temperature = app.update_filters("#temperature", overview[1], "Asia", "VNM", "co2", saved=overview[3])
+        first = app.cap_nhat_bo_loc("#overview", "1961-2024", "all", "all", "temperature")
+        overview = app.cap_nhat_bo_loc("#overview", "1990-1999", "Asia", "VNM", "co2", saved=first[3])
+        temperature = app.cap_nhat_bo_loc("#temperature", overview[1], "Asia", "VNM", "co2", saved=overview[3])
         self.assertEqual(temperature[1], "1961-2025")
         self.assertEqual(temperature[5:], ("all", "all", "temperature"))
-        co2 = app.update_filters("#co2", temperature[1], "all", "all", "temperature", saved=temperature[3])
+        co2 = app.cap_nhat_bo_loc("#co2", temperature[1], "all", "all", "temperature", saved=temperature[3])
         self.assertEqual(co2[1], "1850-2024")
-        restored = app.update_filters("#overview", co2[1], "all", "all", "temperature", saved=co2[3])
+        restored = app.cap_nhat_bo_loc("#overview", co2[1], "all", "all", "temperature", saved=co2[3])
         self.assertEqual(restored[1], "1990-1999")
         self.assertEqual(restored[5:], ("VNM", "Asia", "co2"))
 
     def test_1880_overview_uses_paired_global_values_and_preserves_country_gaps(self):
-        page = app.render_page("#overview", "1880-1889", "all", "all", "temperature")[0]
-        summary, temperature, co2, _ = app.overview_details(filter_data("1880-1889"), "all", 1880, "Toàn cầu")
+        page = app.hien_thi_trang("#overview", "1880-1889", "all", "all", "temperature")[0]
+        summary, temperature, co2, _ = app.tao_chi_tiet_tong_quan(loc_du_lieu("1880-1889"), "all", 1880, "Toàn cầu")
         expected = GLOBAL_DATA[GLOBAL_DATA.year.between(1880, 1889)]
         np.testing.assert_allclose(temperature.data[0].y, expected.temperature_anomaly)
         np.testing.assert_allclose(co2.data[0].y, expected.co2)
         self.assertIn("1880", DashboardSmokeTests._component_text(summary))
         self.assertNotIn("Chưa có dữ liệu trong phạm vi này", DashboardSmokeTests._component_text(page))
-        self.assertTrue(filter_data("1880-1960").temperature_anomaly.isna().all())
-        _, missing, _, _ = app.overview_details(filter_data("1880-1889", country="VNM"), "VNM", 1880, "Vietnam")
+        self.assertTrue(loc_du_lieu("1880-1960").temperature_anomaly.isna().all())
+        _, missing, _, _ = app.tao_chi_tiet_tong_quan(loc_du_lieu("1880-1889", country="VNM"), "VNM", 1880, "Vietnam")
         self.assertEqual(missing.layout.annotations[0].text, "Nhiệt độ quốc gia chỉ có từ 1961")
-        export = app.export_data(1, None, "1880-1889", "all", "all", "#overview")
+        export = app.xuat_du_lieu(1, None, "1880-1889", "all", "all", "#overview")
         pd.testing.assert_frame_equal(pd.read_csv(StringIO(export["content"])), expected.reset_index(drop=True), check_dtype=False)
 
     def test_duc_cleaning_reproduces_all_three_csv_files(self):
@@ -845,7 +845,7 @@ class DucTemperatureTests(unittest.TestCase):
                                                   pd.read_csv(saved / f"{name}.csv"))
 
     def test_temperature_filter_starts_at_national_source_and_retains_global_history(self):
-        result = app.update_filters("#temperature", "1961-2024", "all", "all", "temperature")
+        result = app.cap_nhat_bo_loc("#temperature", "1961-2024", "all", "all", "temperature")
         options, value, header = result[:3]
         self.assertEqual((value, header), ("1961-2025", "1961–2025"))
         self.assertEqual(options[1]["value"], "1961-1969")
@@ -857,12 +857,12 @@ class DucTemperatureTests(unittest.TestCase):
     def test_co2_1850_chart_and_export_match_original_world_series(self):
         result = current_filters("all", "1850-1859", "all", "#co2")
         self.assertEqual(result[1], "1850-1859")
-        page = app.render_page("#co2", result[1], "all", "all", "temperature")[0]
+        page = app.hien_thi_trang("#co2", result[1], "all", "all", "temperature")[0]
         cards = page.children.children[0].children[1].children
         expected = GLOBAL_CO2[GLOBAL_CO2.year.between(1850, 1859)]
         np.testing.assert_array_equal(cards[0].children[1].figure.data[0].x, expected.year)
         np.testing.assert_allclose(cards[0].children[1].figure.data[0].y, expected.co2)
-        national = filter_data(result[1])
+        national = loc_du_lieu(result[1])
         expected_area = (
             national.groupby(["continent", "year"], observed=True).co2
             .sum(min_count=1).dropna()
@@ -874,11 +874,11 @@ class DucTemperatureTests(unittest.TestCase):
             np.testing.assert_allclose(trace.y, values, equal_nan=True)
         for index in (4, 5):
             self.assertFalse(cards[index].children[1].figure.data)
-        export = app.export_data(1, None, result[1], "all", "all", "#co2")
+        export = app.xuat_du_lieu(1, None, result[1], "all", "all", "#co2")
         pd.testing.assert_frame_equal(pd.read_csv(StringIO(export["content"])), expected.reset_index(drop=True))
 
     def test_nasa_1880s_render_without_country_data(self):
-        page = app.render_page("#temperature", "1880-1889", "all", "all", "temperature")[0]
+        page = app.hien_thi_trang("#temperature", "1880-1889", "all", "all", "temperature")[0]
         cards = page.children.children[0].children[1].children
         self.assertEqual(len(cards), 6)
         expected = GLOBAL_TEMPERATURE[GLOBAL_TEMPERATURE.year.between(1880, 1889)]
@@ -894,10 +894,10 @@ class DucTemperatureTests(unittest.TestCase):
         source = pd.read_csv(app.ROOT / "data/du_lieu_da_xu_ly/duc/nhiet_do_quoc_gia.csv")
         for years in ("1960-1969", "2020-2025"):
             with self.subTest(period=years):
-                frame = filter_data(years, country="VNM", temperature=True)
+                frame = loc_du_lieu(years, country="VNM", temperature=True)
                 expected = source[source.iso_alpha.eq("VNM") & source.year.between(*map(int, years.split("-")))]
                 pd.testing.assert_frame_equal(frame, expected)
-                page = app.render_page("#temperature", years, "all", "VNM", "temperature")[0]
+                page = app.hien_thi_trang("#temperature", years, "all", "VNM", "temperature")[0]
                 cards = page.children.children[0].children[1].children
                 np.testing.assert_allclose(cards[0].children[1].figure.data[0].y, expected.temperature_anomaly)
                 self.assertEqual(cards[2].children[1].figure.data[0].customdata[0][1], len(expected))
@@ -912,10 +912,10 @@ class DucTemperatureTests(unittest.TestCase):
     def test_temperature_csv_uses_same_duc_source_as_charts(self):
         for years, country in (("1880-1889", "all"), ("1960-1969", "VNM"), ("2020-2025", "VNM")):
             with self.subTest(period=years, country=country):
-                result = app.export_data(1, None, years, "all", country, "#temperature")
+                result = app.xuat_du_lieu(1, None, years, "all", country, "#temperature")
                 actual = pd.read_csv(StringIO(result["content"]))
-                frame = filter_data(years, country=country, temperature=True)
-                expected = temperature_series(frame, years, use_global=True) if country == "all" else frame
+                frame = loc_du_lieu(years, country=country, temperature=True)
+                expected = chuoi_nhiet_do(frame, years, use_global=True) if country == "all" else frame
                 pd.testing.assert_frame_equal(actual, expected.reset_index(drop=True), check_dtype=False)
 
 
@@ -934,10 +934,10 @@ class EarthInteractionTests(unittest.TestCase):
                 self.assertNotIn("VNM", {option["value"] for option in options})
 
     def test_globe_outside_continent_is_clickable_without_showing_filtered_values(self):
-        snapshot = app.map_snapshot(filter_data("1970-2024", "Asia"), 2024)
+        snapshot = app.lay_du_lieu_ban_do(loc_du_lieu("1970-2024", "Asia"), 2024)
         self.assertEqual(set(snapshot.iso_alpha), set(DATA.loc[DATA.year.eq(2024), "iso_alpha"]))
         self.assertTrue(snapshot.loc[snapshot.outside_scope, ["co2", "temperature_anomaly"]].isna().all().all())
-        figure = app.create_globe(snapshot, "VNM")
+        figure = app.tao_ban_do_the_gioi(snapshot, "VNM")
         trace = next(trace for trace in figure.data if "AUS" in trace.locations)
         self.assertFalse(trace.showscale)
         self.assertEqual(trace.text[list(trace.locations).index("AUS")], "Ngoài châu lục đang chọn")
@@ -966,9 +966,9 @@ class EarthInteractionTests(unittest.TestCase):
             self.assertEqual(result[5:7], ("VNM", "Asia"))
 
     def test_earth_layout_is_focused_and_handles_missing_values(self):
-        frame = filter_data("1970-2024")
+        frame = loc_du_lieu("1970-2024")
         for country in ("all", "VNM", "ESH", "ATA"):
-            content = app.create_earth(frame, country, "co2", app.scope_name("all", country))
+            content = app.tao_trang_ban_do(frame, country, "co2", app.ten_pham_vi("all", country))
             self.assertEqual(DashboardSmokeTests._component_types(content).count("Graph"), 3)
             text = DashboardSmokeTests._component_text(content)
             self.assertIn("triệu tấn", text)
@@ -977,7 +977,7 @@ class EarthInteractionTests(unittest.TestCase):
 
     def test_map_color_range_does_not_hide_extreme_values(self):
         for metric in ("temperature", "co2"):
-            figure = app.create_globe(DATA[DATA.year == 2024], metric=metric)
+            figure = app.tao_ban_do_the_gioi(DATA[DATA.year == 2024], metric=metric)
             trace = next(t for t in figure.data if t.showscale)
             self.assertLessEqual(trace.zmin, min(trace.z))
             self.assertGreaterEqual(trace.zmax, max(trace.z))
@@ -986,7 +986,7 @@ class EarthInteractionTests(unittest.TestCase):
     def test_temperature_colors_stay_consistent_between_years(self):
         palettes = []
         for year in (1970, 2000, 2024):
-            figure = app.create_globe(DATA[DATA.year == year])
+            figure = app.tao_ban_do_the_gioi(DATA[DATA.year == year])
             trace = next(t for t in figure.data if t.showscale)
             self.assertEqual((trace.zmin, trace.zmax), (-6, 6))
             self.assertIn((8 / 12, "#E65C36"), trace.colorscale)
@@ -997,8 +997,8 @@ class EarthInteractionTests(unittest.TestCase):
     def test_year_changes_after_polar_rotation_keep_world_bounds(self):
         for lat in (95, 214.963, -215):
             rotation = {"lon": -255, "lat": lat, "roll": 0}
-            initial = app.create_globe(DATA[DATA.year == 2024], rotation=rotation)
-            changed = app.update_map(DATA[DATA.year == 1970], "VNM", "temperature",
+            initial = app.tao_ban_do_the_gioi(DATA[DATA.year == 2024], rotation=rotation)
+            changed = app.cap_nhat_ban_do(DATA[DATA.year == 1970], "VNM", "temperature",
                                      "globe", 0, initial.to_plotly_json())
             geo = changed.layout.geo
             self.assertEqual(geo.projection.rotation.to_plotly_json(), rotation)
@@ -1007,7 +1007,7 @@ class EarthInteractionTests(unittest.TestCase):
             self.assertEqual(tuple(geo.lataxis.range), (-90, 90))
 
     def test_metric_and_year_changes_keep_selected_country_and_camera(self):
-        figure = app.create_globe(DATA[DATA.year == 2024], "ARG", rotation={"lon": -64, "lat": -34})
+        figure = app.tao_ban_do_the_gioi(DATA[DATA.year == 2024], "ARG", rotation={"lon": -64, "lat": -34})
         figure = json.loads(figure.to_json())
         for changed in ("metric-filter.value", "year-range.value"):
             result = self._earth_callback(figure, "ARG", changed, metric="co2", years="1990-2023")
@@ -1022,17 +1022,17 @@ class EarthInteractionTests(unittest.TestCase):
         with app.server.test_client().get("/assets/world_110m.json") as response:
             self.assertEqual(response.status_code, 200)
             self.assertIn("countries", response.get_json()["objects"])
-        figure = app.create_globe(DATA[DATA.year == 2024])
+        figure = app.tao_ban_do_the_gioi(DATA[DATA.year == 2024])
         self.assertEqual(figure.layout.paper_bgcolor, "white")
         self.assertEqual(figure.layout.geo.oceancolor, "#163E5C")
         self.assertFalse(figure.layout.margin.autoexpand)
-        self.assertEqual(app.graph(figure, globe=True).config["topojsonURL"], "/assets/")
+        self.assertEqual(app.khung_bieu_do(figure, globe=True).config["topojsonURL"], "/assets/")
 
     def test_globe_keeps_every_cleaned_country_clickable(self):
         snapshot = DATA[DATA.year == DATA.year.max()]
         for metric in ("temperature", "co2"):
             with self.subTest(metric=metric):
-                figure = app.create_globe(snapshot, "VNM", metric)
+                figure = app.tao_ban_do_the_gioi(snapshot, "VNM", metric)
                 field = "co2" if metric == "co2" else "temperature_anomaly"
                 locations = {
                     iso
@@ -1056,20 +1056,20 @@ class EarthInteractionTests(unittest.TestCase):
     def test_country_click_accepts_map_location_and_custom_data(self):
         available = {"VNM", "USA"}
         self.assertEqual(
-            app.country_from_click({"points": [{"location": "VNM"}]}, available),
+            app.lay_quoc_gia_duoc_chon({"points": [{"location": "VNM"}]}, available),
             "VNM",
         )
         self.assertEqual(
-            app.country_from_click({"points": [{"customdata": ["USA", 2024]}]}, available),
+            app.lay_quoc_gia_duoc_chon({"points": [{"customdata": ["USA", 2024]}]}, available),
             "USA",
         )
         self.assertIsNone(
-            app.country_from_click({"points": [{"location": "FRA"}]}, available)
+            app.lay_quoc_gia_duoc_chon({"points": [{"location": "FRA"}]}, available)
         )
 
     def test_click_view_switch_and_reset_callbacks(self):
-        frame = filter_data("1970-2024")
-        figure = app.create_globe(
+        frame = loc_du_lieu("1970-2024")
+        figure = app.tao_ban_do_the_gioi(
             frame[frame.year == frame.year.max()], "VNM", "temperature"
         ).to_plotly_json()
         figure = json.loads(json.dumps(figure, cls=PlotlyJSONEncoder))
@@ -1099,9 +1099,9 @@ class EarthInteractionTests(unittest.TestCase):
 
     def test_selection_does_not_reset_rotation_or_revision(self):
         snapshot = DATA[DATA.year == 2024]
-        initial = app.create_globe(snapshot, "VNM").to_plotly_json()
+        initial = app.tao_ban_do_the_gioi(snapshot, "VNM").to_plotly_json()
         initial["layout"]["geo"]["projection"]["rotation"] = {"lon": 60, "lat": 30}
-        selected = app.update_map(snapshot, "CHN", "temperature", "globe", 0, initial)
+        selected = app.cap_nhat_ban_do(snapshot, "CHN", "temperature", "globe", 0, initial)
         self.assertEqual(selected.layout.geo.projection.rotation.lon, 60)
         self.assertEqual(selected.layout.geo.projection.rotation.lat, 30)
         self.assertEqual(selected.layout.geo.uirevision, initial["layout"]["geo"]["uirevision"])
@@ -1118,21 +1118,21 @@ class EarthInteractionTests(unittest.TestCase):
 
     def test_flat_pan_does_not_leak_into_globe(self):
         snapshot = DATA[DATA.year == 2024]
-        initial = app.create_globe(snapshot, rotation={"lon": 72, "lat": 26}).to_plotly_json()
-        flat = app.update_map(snapshot, "CHN", "temperature", "flat", 0, initial).to_plotly_json()
+        initial = app.tao_ban_do_the_gioi(snapshot, rotation={"lon": 72, "lat": 26}).to_plotly_json()
+        flat = app.cap_nhat_ban_do(snapshot, "CHN", "temperature", "flat", 0, initial).to_plotly_json()
         self.assertEqual(flat["layout"]["geo"]["lonaxis"]["range"], [-180, 180])
         flat["layout"]["geo"]["center"] = {"lon": -45, "lat": 50}
         flat["layout"]["geo"]["projection"].update(rotation={"lon": -45}, scale=2)
-        globe = app.update_map(snapshot, "CHN", "temperature", "globe", 0, flat)
+        globe = app.cap_nhat_ban_do(snapshot, "CHN", "temperature", "globe", 0, flat)
         self.assertEqual(globe.layout.geo.projection.rotation.lon, 72)
         self.assertEqual(globe.layout.geo.projection.rotation.lat, 26)
         self.assertEqual(globe.layout.geo.projection.scale, 1)
         self.assertEqual(tuple(globe.layout.geo.lonaxis.range), (-180, 180))
         self.assertEqual(tuple(globe.layout.geo.lataxis.range), (-90, 90))
         self.assertEqual(globe.layout.geo.center.to_plotly_json(), {"lon": 72, "lat": 26})
-        again = app.update_map(snapshot, "CHN", "temperature", "flat", 0, globe.to_plotly_json())
+        again = app.cap_nhat_ban_do(snapshot, "CHN", "temperature", "flat", 0, globe.to_plotly_json())
         self.assertEqual(again.layout.meta["globe_rotation"]["lon"], 72)
-        reset = app.update_map(snapshot, "CHN", "temperature", "globe", 1, globe.to_plotly_json(), reset=True)
+        reset = app.cap_nhat_ban_do(snapshot, "CHN", "temperature", "globe", 1, globe.to_plotly_json(), reset=True)
         self.assertEqual(reset.layout.geo.projection.rotation.lon, 105)
         self.assertEqual(reset.layout.meta["selected"], "CHN")
 

@@ -9,8 +9,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from bang_dieu_khien.nguyen_khang.thap_ky import (  # noqa: E402
-    country_decade_means,
-    decade_labels,
+    trung_binh_quoc_gia_theo_thap_ky,
+    nhan_thap_ky,
 )
 
 ROOT = Path(__file__).resolve().parent
@@ -28,8 +28,8 @@ CHARTS = [
 
 def build_figures(series, countries, monthly):
     series = series.sort_values("year")
-    periods = decade_labels(countries)
-    map_data = country_decade_means(countries, "temperature_anomaly")
+    periods = nhan_thap_ky(countries)
+    map_data = trung_binh_quoc_gia_theo_thap_ky(countries, "temperature_anomaly")
     countries = countries.dropna(subset=["temperature_anomaly"]).copy()
     countries["decade"] = (countries.year // 10 * 10).map(periods)
     labels = {"year": "Năm", "temperature_anomaly": "Chênh nhiệt độ (°C)",
@@ -43,7 +43,7 @@ def build_figures(series, countries, monthly):
     trend.update_layout(xaxis_title="Năm", yaxis_title=labels["temperature_anomaly"], hovermode="x unified")
     trend.add_hline(y=0, line_dash="dot", line_color="#96A7BA")
     trend.update_traces(hovertemplate="%{x}: %{y:+.2f} °C<extra>%{fullData.name}</extra>")
-    decades = series.assign(decade=(series.year // 10 * 10).map(decade_labels(series))).groupby("decade").agg(
+    decades = series.assign(decade=(series.year // 10 * 10).map(nhan_thap_ky(series))).groupby("decade").agg(
         temperature_anomaly=("temperature_anomaly", "mean"), years=("temperature_anomaly", "count"))
     bars = go.Figure(go.Bar(
         x=decades.index, y=decades.temperature_anomaly,
@@ -59,7 +59,7 @@ def build_figures(series, countries, monthly):
                              color_continuous_scale="RdBu_r", labels=labels)
     if world_map.frames:
         for button, label in zip(world_map.layout.updatemenus[0].buttons, ("▶ Phát", "■ Dừng")):
-            button.update(label=label, execute=False)
+            button.update(label=label)
         world_map.layout.sliders[0].update(x=.05, len=1)
     pivot = countries.pivot_table(index="continent", columns="decade", values="temperature_anomaly")
     heatmap = (px.imshow(pivot, text_auto=".2f", aspect="auto", range_color=[-2.5, 2.5],

@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from bang_dieu_khien.nguyen_khang.thap_ky import country_decade_means  # noqa: E402
+from bang_dieu_khien.nguyen_khang.thap_ky import trung_binh_quoc_gia_theo_thap_ky  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 PROC = ROOT.parents[1] / "data/du_lieu_da_xu_ly/quan"
@@ -61,7 +61,7 @@ def build_figures(series, countries, sectors):
     keys = ["iso_alpha", "country", "continent"]
     averages = countries.groupby(keys, as_index=False, dropna=False).agg(
         co2=("co2", "mean"), years=("co2", "count"))
-    map_data = country_decade_means(countries, "co2_per_capita")
+    map_data = trung_binh_quoc_gia_theo_thap_ky(countries, "co2_per_capita")
     labels = {"year": "Năm", "co2": "CO₂ (triệu tấn)", "country": "Quốc gia",
               "continent": "Châu lục", "sector": "Ngành", "co2_per_capita": "CO₂/người (tấn)",
               "renewable_percent": "Năng lượng tái tạo (%)", "period": "Thập kỷ",
@@ -106,7 +106,7 @@ def build_figures(series, countries, sectors):
     world_map = figures["03_choropleth_co2pc"]
     if world_map.frames:
         for button, label in zip(world_map.layout.updatemenus[0].buttons, ("▶ Phát", "■ Dừng")):
-            button.update(label=label, execute=False)
+            button.update(label=label)
         world_map.layout.sliders[0].update(x=.05, len=1)
     treemap = figures["05_treemap_nganh"]
     treemap.update_traces(

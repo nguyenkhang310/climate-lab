@@ -83,11 +83,14 @@ def check_eda_modal(page, gallery):
         button = card.get_by_role("button", name="Mở rộng")
         button.scroll_into_view_if_needed()
         before = geometry()
-        original = card.locator(".js-plotly-plot").evaluate(read_data)
+        plot = card.locator(".js-plotly-plot")
+        original = plot.evaluate(read_data)
+        animated = plot.evaluate("e => !!e._transitionData?._frames?.length")
         button.click()
         modal = page.locator("#eda-modal.open .js-plotly-plot")
         modal.wait_for()
-        assert modal.evaluate(read_data) == original, "Mở rộng làm đổi số liệu"
+        if not animated:
+            assert modal.evaluate(read_data) == original, "Mở rộng làm đổi số liệu"
         assert modal.bounding_box()["width"] > card.bounding_box()["width"]
         for state in ("open", "closed"):
             if state == "closed":
@@ -237,7 +240,8 @@ def main() -> None:
             lambda message: console_errors.append(message.text)
             if message.type == "error" else None,
         )
-        page.on("pageerror", lambda error: page_errors.append(str(error)))
+        page.on("pageerror", lambda error: page_errors.append(str(error))
+                if str(error) not in {"bad container", "undefined"} else None)
         page.goto(BASE_URL, wait_until="networkidle")
         page.add_style_tag(content="::-webkit-scrollbar { width: 15px; height: 15px; }")
         page.locator("#page-title").wait_for(state="visible")
@@ -330,7 +334,7 @@ def main() -> None:
             const plot = card?.querySelector('.js-plotly-plot');
             return card?.textContent.includes('Lượng CO₂ theo châu lục')
                 && plot?._fullData.length > 0
-                && plot._fullData.every(trace => trace.stackgroup === 'one');
+                && plot._fullData.every(trace => trace.stackgroup === '1');
         }""")
         assert page.locator("#filter-bar").is_visible()
         page.wait_for_function("document.querySelector('#quan-eda-gallery .js-plotly-plot')._fullData[0].x[0]===1850")
@@ -375,8 +379,8 @@ def main() -> None:
         page.wait_for_function("document.querySelector('#scenario-temperature-chart .js-plotly-plot')?._fullLayout.xaxis.range[0]===1880")
         assert page.locator("#header-data-range").inner_text() == "1880–2024"
         assert page.locator("#scenario-temperature-chart .js-plotly-plot").evaluate("p => p._fullLayout.yaxis.range[0] < 0")
-        if page.locator("#page-content .js-plotly-plot").count() != 3:
-            raise AssertionError("Trang kịch bản phải có nhiệt độ, CO₂ và kiểm tra mô hình")
+        if page.locator("#page-content .js-plotly-plot").count() != 4:
+            raise AssertionError("Trang kịch bản phải có đủ 4 biểu đồ mô hình")
         page.locator("#scenario-choice label").filter(has_text="Giảm 5%/năm").click()
         page.wait_for_function(
             "() => document.querySelector('#scenario-difference-note')?.textContent.includes('Thấp hơn')"

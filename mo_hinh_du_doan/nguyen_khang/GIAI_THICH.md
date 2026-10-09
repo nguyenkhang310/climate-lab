@@ -48,7 +48,7 @@ không đặt lại lượng tích lũy về 0 tại năm bắt đầu bộ lọ
 4. **Tùy chỉnh trên dashboard:** người dùng chọn từ -10% đến +5% mỗi năm.
 
 CO₂ hằng năm của mỗi kịch bản được cộng vào CO₂ tích lũy. Giá trị tích lũy sau đó được
-đưa vào phương trình hồi quy để mô phỏng xu hướng nhiệt độ. Hàm `kich_ban()` được dùng
+đưa vào phương trình hồi quy để mô phỏng xu hướng nhiệt độ. Hàm `tao_kich_ban()` được dùng
 chung cho CSV và thanh trượt dashboard để hai nơi luôn cho cùng kết quả.
 
 Dải trên biểu đồ lấy phân vị 5%–95% từ **circular block residual bootstrap**:
@@ -56,7 +56,7 @@ Dải trên biểu đồ lấy phân vị 5%–95% từ **circular block residua
 lag đầu tiên từ 5–15 có tương quan không còn vượt ngưỡng nhiễu `1,96/√n`; dữ liệu
 hiện tại chọn khối **10 năm**. Các khối giữ sự phụ thuộc giữa
 các phần dư lân cận; mỗi lần lấy mẫu tính lại hệ số hồi quy và lấy khối phần dư
-cho tương lai. `prediction_interval()` được dùng chung cho CSV và kịch bản tùy chỉnh.
+cho tương lai. `tinh_khoang_du_doan()` được dùng chung cho CSV và kịch bản tùy chỉnh.
 
 Phần dư có tương quan lag 1 khoảng 0,929, vì vậy không tiếp tục dùng công thức OLS
 giả định các phần dư độc lập. Bootstrap vẫn là xấp xỉ, phụ thuộc giả định cấu trúc
