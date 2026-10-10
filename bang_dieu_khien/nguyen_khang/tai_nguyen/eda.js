@@ -6,6 +6,17 @@ function closeEda(event) {
 document.addEventListener("keydown", closeEda);
 document.addEventListener("click", closeEda);
 
+function syncEdaModal() {
+  const body = document.body;
+  const open = !!document.querySelector("#eda-modal.open");
+  if (open === (body.style.overflow === "hidden")) return;
+  const width = body.clientWidth;
+  const top = window.scrollY;
+  body.style.overflow = open ? "hidden" : "";
+  body.style.width = open ? `calc(100% - ${body.clientWidth - width}px)` : "";
+  window.scrollTo(0, top);
+}
+
 function autoplayEdaMap() {
   document.querySelectorAll(".eda-gallery .js-plotly-plot").forEach(plot => {
     const play = plot.querySelector(".slider-container")
@@ -16,7 +27,10 @@ function autoplayEdaMap() {
   });
 }
 
-new MutationObserver(autoplayEdaMap).observe(document.documentElement, {
+new MutationObserver(() => {
+  syncEdaModal();
+  autoplayEdaMap();
+}).observe(document.documentElement, {
   childList: true,
   subtree: true,
 });

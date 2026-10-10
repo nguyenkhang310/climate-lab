@@ -75,10 +75,13 @@ def phuc_vu_tep_eda(member, filename):
 
 
 DUC_TEMPERATURE_ARTIFACTS = [
-    (title, "1880–2025" if name.startswith("01") else "", f"duc/{folder}/{name}.{extension}")
-    for name, title in CHARTS
+    (title, period, f"duc/{folder}/{name}.{extension}")
+    for (name, title), period in zip(CHARTS, [
+        "NASA GISTEMP · 1880–2025", "NASA GISTEMP · 1880–2025",
+        "FAOSTAT · 2020–2025", "FAOSTAT · 1961–2025",
+        "FAOSTAT · 1961–2025", "NASA GISTEMP · 1880–2025",
+    ])
     for folder, extension in [("tinh", "png"), ("tuong_tac", "html")]
-    if extension == "html" or not name.startswith("06")
 ]
 
 QUAN_ARTIFACTS = [
@@ -330,7 +333,7 @@ def tao_thu_vien_eda_thanh_vien(artifacts, gallery_id, figures, notes, scope, pe
         values = [getattr(trace, fields.get(trace.type, "y"), None) for trace in figure.data]
         if not any(value is not None and len(value) and pd.notna(value).any() for value in values):
             figure = tao_bieu_do_trong()
-        chart_scope = f"{scope} · {period} · {note}"
+        chart_scope = f"{scope} · Dữ liệu {period} · {note}"
         tao_kieu_bieu_do(figure, 380)
         figure.update_layout(title=None,
                              meta=dict(scope=chart_scope),
@@ -342,7 +345,6 @@ def tao_thu_vien_eda_thanh_vien(artifacts, gallery_id, figures, notes, scope, pe
         figure.update_coloraxes(colorbar=dict(title=dict(side="right", font_size=10), thickness=10, len=.85))
         figure.update_geos(projection_type="natural earth", showframe=False, bgcolor="white")
         if figure.frames:
-            note = chart_scope
             figure.update_layout(margin_b=105)
             figure.layout.sliders[0].update(x=.05, len=1, pad=dict(t=48, b=0),
                                             currentvalue=dict(prefix="Thập kỷ: ", xanchor="right", font_size=12))
@@ -352,7 +354,7 @@ def tao_thu_vien_eda_thanh_vien(artifacts, gallery_id, figures, notes, scope, pe
         if figure.data and figure.data[0].type == "heatmap":
             figure.update_yaxes(tickvals=list(figure.data[0].y),
                                 ticktext=[CONTINENT_NAMES.get(name, name) for name in figure.data[0].y])
-        cards.append(tao_the_eda(title.replace(" toàn cầu", ""), note, path, figure))
+        cards.append(tao_the_eda(title.replace(" toàn cầu", ""), chart_scope, path, figure))
     return html.Section([
         html.Div([
             html.Div([
@@ -362,7 +364,7 @@ def tao_thu_vien_eda_thanh_vien(artifacts, gallery_id, figures, notes, scope, pe
             html.Div(cards, className="eda-artifact-grid interactive"),
         ], className="eda-format-section interactive"),
         html.Details([
-            html.Summary("Biểu đồ tĩnh · Toàn bộ dữ liệu, không áp dụng bộ lọc"),
+            html.Summary("Biểu đồ tĩnh · Không áp dụng bộ lọc"),
             html.Div([tao_the_eda(*item) for item in artifacts if item[2].endswith(".png")],
                      className="eda-artifact-grid static"),
         ], className="eda-format-section static"),
@@ -691,7 +693,7 @@ def tao_trang_nhan_dinh(frame, series, scope):
          tao_bieu_do_nganh(totals), "green"),
     ]
     source = ("NASA GISTEMP · Chênh nhiệt độ so với 1951–1980" if scope == "Toàn cầu"
-              else "FAOSTAT · Trung bình đủ 12 tháng của năm lịch · Mốc 1951–1980" +
+              else "FAOSTAT · Trung bình đủ 12 tháng của năm lịch · So với trung bình 1951–1980" +
               (" · Trung bình các nước có số liệu" if frame.iso_alpha.nunique() > 1 else ""))
     return [
         html.Div([html.H2("Kết quả phân tích"), html.Span(f"{scope} · {start}–{end}")],
@@ -1001,10 +1003,11 @@ def hien_thi_trang(route, years, continent, country, metric, overview_id=None, e
         if frame.iso_alpha.nunique() > 1 and scope != "Toàn cầu":
             source += " · Trung bình các nước có số liệu"
         year_basis = "Năm lịch" if use_global else "Năm khí tượng (tháng 12–11)"
-        notes = [f"{source} · {year_basis} · Mốc 1951–1980", "Trung bình các năm có số liệu",
+        notes = [f"{source} · {year_basis} · So với trung bình 1951–1980",
+                 f"{source} · Trung bình các năm có số liệu",
                  "FAOSTAT · Trung bình thập kỷ · Năm khí tượng",
                  "FAOSTAT · Trung bình quốc gia–năm", "FAOSTAT · Theo quốc gia–năm",
-                 f"{source} · Trung bình tháng · Mốc 1951–1980"]
+                 f"{source} · Trung bình từng tháng · So với trung bình 1951–1980"]
         if frame.empty:
             notes[2:5] = ["FAOSTAT · Nhiệt độ theo quốc gia chỉ có từ 1961"] * 3
         content = tao_thu_vien_eda_thanh_vien(DUC_TEMPERATURE_ARTIFACTS, "duc-eda-gallery",

@@ -826,10 +826,6 @@ h1, h2, h3, h4, p {
   background: rgba(8, 25, 42, .78);
 }
 
-body:has(.eda-modal.open) {
-  overflow: hidden;
-}
-
 .eda-modal-box {
   position: relative;
   width: min(1400px, 96vw);

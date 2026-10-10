@@ -355,8 +355,17 @@ def main() -> None:
         check_eda_layout(page, duc_gallery)
         if not interactive_card.locator(".eda-artifact-heading h3").inner_text().strip():
             raise AssertionError("Biểu đồ tương tác bị mất tiêu đề")
-        if duc_gallery.locator("img").count() != 5:
-            raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 5 biểu đồ tĩnh của Đức")
+        if duc_gallery.locator("img").count() != 6:
+            raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 6 biểu đồ tĩnh của Đức")
+        duc_gallery.locator("summary").click()
+        monthly_static = duc_gallery.locator(".static .eda-artifact-card").last
+        monthly_static.scroll_into_view_if_needed()
+        page.wait_for_function("document.querySelector('#duc-eda-gallery .static img[src$=\"06_nhiet_do_theo_thang.png\"]')?.naturalWidth > 0")
+        assert "1880–2025" in monthly_static.inner_text()
+        monthly_static.get_by_role("button", name="Mở rộng").click()
+        page.locator('#eda-modal.open img[src$="06_nhiet_do_theo_thang.png"]').wait_for()
+        page.locator("#close-eda-modal").click()
+        duc_gallery.locator("summary").click()
         if duc_gallery.locator(".js-plotly-plot").count() != 6:
             raise AssertionError("Trang Nhiệt độ chưa hiển thị đủ 6 biểu đồ tương tác của Đức")
         assert page.locator("#filter-bar").is_visible()

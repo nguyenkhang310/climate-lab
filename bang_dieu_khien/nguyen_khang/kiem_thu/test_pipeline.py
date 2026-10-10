@@ -455,6 +455,7 @@ class DashboardSmokeTests(unittest.TestCase):
                     "temperature",
                 )[0]
                 self.assertEqual(self._component_types(content).count("Graph"), 6)
+                self.assertEqual(self._component_types(content).count("Img"), 6 if page == "temperature" else 5)
                 self.assertNotIn("Iframe", self._component_types(content))
                 text = self._component_text(content)
                 self.assertIn("Biểu đồ tĩnh", text)
@@ -572,16 +573,14 @@ class MemberEdaTests(unittest.TestCase):
     def test_all_twelve_charts_match_each_filtered_table(self):
         scopes = [("all", "all"), ("Asia", "all"), ("Europe", "all"),
                   ("all", "VNM"), ("all", "ESH"), ("all", "ATA")]
-        for years in ["1970-2024", "1970-1979", "1980-1989", "1990-1999", "2000-2009",
-                      "2010-2019", "2020-2024", "2024-2024", "1971-1979"]:
+        for years in ["1961-1969", "1970-2024", "1970-1979", "1980-1989", "1990-1999", "2000-2009",
+                      "2010-2019", "2020-2025", "2024-2024", "1971-1979"]:
             for continent, country in scopes:
                 with self.subTest(years=years, continent=continent, country=country):
-                    frame = loc_du_lieu(years, continent, country)
-                    series = tong_hop_du_lieu(frame, continent == country == "all")
-                    monthly = loc_du_lieu_thang(frame, continent == country == "all")
+                    frame = loc_du_lieu(years, continent, country, temperature=True)
+                    series = chuoi_nhiet_do(frame, years, continent == country == "all")
+                    monthly = loc_du_lieu_thang(frame, continent == country == "all", years)
                     temperature = list(app.temperature_figures(series, frame, monthly).values())
-                    sectors = loc_du_lieu_nganh(frame, continent == country == "all")
-                    co2 = list(app.co2_figures(series, frame, sectors).values())
                     periods = {decade: f"{group.year.min()}–{group.year.max()}"
                                for decade, group in frame.groupby(frame.year // 10 * 10)}
                     valid = frame.dropna(subset=["temperature_anomaly"]).assign(decade=lambda d: (d.year // 10 * 10).map(periods))
@@ -599,6 +598,10 @@ class MemberEdaTests(unittest.TestCase):
                     np.testing.assert_array_equal(temperature[5].data[0].x, range(1, 13))
                     np.testing.assert_allclose(temperature[5].data[0].y, expected.mean().reindex(range(1, 13)), equal_nan=True)
                     np.testing.assert_allclose(temperature[5].data[0].customdata, expected.count().reindex(range(1, 13)), equal_nan=True)
+                    frame = loc_du_lieu(years, continent, country)
+                    series = tong_hop_du_lieu(frame, continent == country == "all", co2_only=True)
+                    sectors = loc_du_lieu_nganh(frame, continent == country == "all")
+                    co2 = list(app.co2_figures(series, frame, sectors).values())
                     np.testing.assert_allclose(co2[0].data[0].y, series.co2, equal_nan=True)
                     top = frame.groupby("country", as_index=False).co2.mean().dropna(subset=["co2"]).nlargest(15, "co2")
                     actual = {name: value for trace in co2[1].data for name, value in zip(trace.y, trace.x)}
@@ -662,7 +665,7 @@ class MemberEdaTests(unittest.TestCase):
                     figure = cards[2].children[1].figure
                     frame = loc_du_lieu("1990-2023", continent, country, temperature=route == "temperature")
                     self.assert_map_decades(figure, frame, field)
-                    self.assertIn(f"{app.ten_pham_vi(continent, country)} · 1990–2023", figure.layout.meta["scope"])
+                    self.assertIn(f"{app.ten_pham_vi(continent, country)} · Dữ liệu 1990–2023", figure.layout.meta["scope"])
                     if country != "ATA":
                         series = (chuoi_nhiet_do(frame, "1990-2023", use_global=continent == country == "all")
                                   if route == "temperature" else tong_hop_du_lieu(frame, continent == country == "all"))
@@ -736,6 +739,7 @@ class MemberEdaTests(unittest.TestCase):
         cases = [
             ("duc/tuong_tac/01_xu_huong_nhiet_do_toan_cau.html", "Graph"),
             ("duc/tinh/01_xu_huong_nhiet_do_toan_cau.png", "Img"),
+            ("duc/tinh/06_nhiet_do_theo_thang.png", "Img"),
             ("duc/tuong_tac/03_ban_do_nhiet_do.html", "Graph"),
             ("quan/tuong_tac/03_choropleth_co2pc.html", "Graph"),
         ]
@@ -751,7 +755,7 @@ class MemberEdaTests(unittest.TestCase):
                     figure = modal_children[1]["props"]["figure"]
                     self.assertEqual([frame["name"] for frame in figure["frames"]],
                                      ["2015–2019", "2020–2024"])
-                    self.assertIn("Vietnam · 2015–2024", figure["layout"]["meta"]["scope"])
+                    self.assertIn("Vietnam · Dữ liệu 2015–2024", figure["layout"]["meta"]["scope"])
                     self.assertIn("Vietnam", modal_children[0]["props"]["children"][1]["props"]["children"])
                 else:
                     expected = loc_du_lieu("2015-2024", country="VNM", temperature=True).temperature_anomaly.to_numpy()
@@ -805,6 +809,27 @@ class MemberEdaTests(unittest.TestCase):
 
 
 class DucTemperatureTests(unittest.TestCase):
+    def test_monthly_chart_matches_raw_nasa_for_every_period(self):
+        raw = pd.read_csv(app.ROOT / "data/du_lieu_goc/duc/nasa_nhiet_do_toan_cau_1880_2026.csv",
+                          header=1, na_values="***")
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        options = current_filters("all", "1961-2025", "all", "#temperature")[0]
+        for years in ["1880-2025", "2025-2025"] + [item["value"] for item in options]:
+            with self.subTest(period=years):
+                gallery = app.hien_thi_trang("#temperature", years, "all", "all", "temperature")[0].children
+                cards = gallery.children[0].children[1].children
+                selected = raw[raw.Year.between(*map(int, years.split("-")))][months]
+                trace = cards[5].children[1].figure.data[0]
+                np.testing.assert_allclose(trace.y, selected.mean(), atol=1e-12)
+                np.testing.assert_array_equal(trace.customdata, selected.count())
+                for card in cards:
+                    self.assertIn(f"Dữ liệu {years.replace('-', '–')}", DashboardSmokeTests._component_text(card))
+                for index in (0, 5):
+                    self.assertIn("So với trung bình 1951–1980", DashboardSmokeTests._component_text(cards[index]))
+                static = gallery.children[1].children[1].children[-1]
+                self.assertTrue(static.children[1].src.endswith("tinh/06_nhiet_do_theo_thang.png"))
+                self.assertIn("1880–2025", DashboardSmokeTests._component_text(static))
+
     def test_all_filters_are_saved_separately_for_each_page(self):
         first = app.cap_nhat_bo_loc("#overview", "1961-2024", "all", "all", "temperature")
         overview = app.cap_nhat_bo_loc("#overview", "1990-1999", "Asia", "VNM", "co2", saved=first[3])
