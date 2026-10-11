@@ -34,8 +34,9 @@ from mo_hinh_du_doan.nguyen_khang.ghep_du_lieu import build_country_year, build_
 from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import tao_kich_ban
 
 def current_filters(continent, years, country, route="#overview", **clicks):
-    return app.cap_nhat_bo_loc(route, years, continent, country, "temperature",
-                              saved={"page": route}, **clicks)
+    with patch.object(app, "set_props"):
+        return app.cap_nhat_bo_loc(route, years, continent, country, "temperature",
+                                  saved={"page": route}, **clicks)
 
 class ClimateDataTests(unittest.TestCase):
     def test_territories_have_continents_from_reference(self):
@@ -277,7 +278,7 @@ class DashboardSmokeTests(unittest.TestCase):
             context.triggered_id = "country-filter"
             for code, first in [("BLM", 2011), ("GUM", 1990), ("MNP", 1992)]:
                 self.assertEqual(app.lay_cac_nam_ban_do(frame, code)[0], first)
-                result = app.cap_nhat_tong_quan("1970-2024", "all", code, "temperature", "globe", 1970, 0, "#overview", current)
+                result = app.cap_nhat_tong_quan("1970-2024", "all", code, "temperature", "globe", 1970, 0, None, None, "#overview", current)
                 self.assertEqual(result[7], first)
                 self.assertEqual(result[10], first)
                 self.assertEqual(result[11], str(first))
@@ -292,7 +293,7 @@ class DashboardSmokeTests(unittest.TestCase):
             context.triggered_id = "year-range"
             result = app.cap_nhat_tong_quan(
                 "1961-2024", "all", "all", "temperature", "globe",
-                1969, 0, "#overview", current,
+                1969, 0, None, None, "#overview", current,
             )
         self.assertEqual(result[10], 2024)
         self.assertEqual(result[11], "2024")
@@ -335,17 +336,91 @@ class DashboardSmokeTests(unittest.TestCase):
     def test_overview_donut_uses_global_continent_totals(self):
         frame = loc_du_lieu()
         overview = app.tao_so_sanh_tong_quan(frame, "all", 2024)
-        overview_plot = overview.children[1].children[1].figure
+        overview_plot = overview[1]
         expected = DATA[DATA.year.eq(2024)].groupby("continent").co2.sum(min_count=1)
         actual = dict(zip(overview_plot.data[0].labels, overview_plot.data[0].values))
         expected = {app.CONTINENT_NAMES.get(name, name): value for name, value in expected.items() if value > 0}
         self.assertEqual(set(actual), set(expected))
         for name, value in expected.items():
             self.assertAlmostEqual(actual[name], value)
-        self.assertAlmostEqual(overview_plot.data[0].hole, .52)
+        self.assertAlmostEqual(overview_plot.data[0].hole, .62)
         self.assertEqual(overview_plot.layout.height, 350)
         self.assertTrue(overview_plot.layout.showlegend)
-        self.assertIn("TỔNG CO₂", overview_plot.layout.annotations[0].text)
+        self.assertEqual(overview_plot.layout.legend.orientation, "v")
+        self.assertLessEqual(overview_plot.data[0].domain.x[1], .62)
+        self.assertIn("tỷ tấn", overview_plot.layout.annotations[0].text)
+
+    def test_overview_keeps_year_slider_inside_globe_card(self):
+        page = app.tao_trang_tong_quan(loc_du_lieu(), "all", "Toàn cầu", "temperature")
+        tree = page.to_plotly_json()
+
+        def find(component_id=None, class_name=None, node=tree):
+            if isinstance(node, dict):
+                props = node.get("props", {})
+                if props.get("id") == component_id or props.get("className") == class_name:
+                    return node
+                return next((found for value in node.values()
+                             if (found := find(component_id, class_name, value))), None)
+            if isinstance(node, list):
+                return next((found for value in node
+                             if (found := find(component_id, class_name, value))), None)
+
+        globe_card = find(class_name="card overview-map-card")
+        slider = find("overview-year", node=globe_card)
+        self.assertIsNotNone(slider)
+        self.assertNotIn("Dùng chung", self._component_text(page))
+
+    def test_overview_chart_clicks_keep_country_and_continent_filters_consistent(self):
+        with patch.object(app, "ctx") as context:
+            context.triggered_id = "overview-ranking"
+            click = {"points": [{"customdata": ["CHN", 2024]}]}
+            result = current_filters("Asia", "1961-2024", "all", ranking_click=click)
+            self.assertEqual(result[5:7], ("CHN", "Asia"))
+            self.assertIs(result[1], app.no_update)
+            result = current_filters("Asia", "1961-2024", "CHN", ranking_click=click)
+            self.assertEqual(result[5:7], ("all", "Asia"))
+            context.triggered_id = "overview-continents"
+            click = {"points": [{"customdata": ["Europe", 2024]}]}
+            result = current_filters("Asia", "1961-2024", "CHN", continent_click=click)
+            self.assertEqual(result[5:7], ("all", "Europe"))
+            self.assertIs(result[1], app.no_update)
+            self.assertNotIn("CHN", {item["value"] for item in result[4]})
+
+    def test_overview_trend_click_updates_all_historical_charts_to_same_year(self):
+        frame = loc_du_lieu("1961-2024")
+        current = app.tao_ban_do_the_gioi(frame[frame.year.eq(2024)]).to_plotly_json()
+        for graph in ("overview-temperature", "overview-co2"):
+            with self.subTest(graph=graph), patch.object(app, "ctx") as context, patch.object(app, "set_props") as clear:
+                context.triggered_id = graph
+                click = {"points": [{"x": 2000}]}
+                result = app.cap_nhat_tong_quan("1961-2024", "all", "VNM", "temperature", "globe",
+                                               2024, 0, click, click, "#overview", current)
+                self.assertEqual(result[10:12], (2000, "2000"))
+                clear.assert_called_once_with(graph, {"clickData": None})
+                for plot in result[1:3]:
+                    self.assertEqual(plot.layout.shapes[0].x0, 2000)
+                for trace in result[5].data:
+                    self.assertTrue(all(row[1] == 2000 for row in trace.customdata))
+                ranking, continents = result[12:14]
+                indexed = DATA[DATA.year.eq(2000)].set_index("iso_alpha")
+                for (code, year), value in zip(ranking.data[0].customdata, ranking.data[0].x):
+                    self.assertEqual(year, 2000)
+                    self.assertAlmostEqual(value, indexed.loc[code, "co2"])
+                self.assertTrue(all(row[1] == 2000 for row in continents.data[0].customdata))
+
+    def test_overview_scenario_click_links_emissions_and_temperature(self):
+        with patch.object(app, "ctx") as context, patch.object(app, "set_props") as clear:
+            for graph in ("overview-forecast", "overview-scenario-co2"):
+                context.triggered_id = graph
+                click = {"points": [{"customdata": ["decline", -5]}]}
+                selected, forecast, emissions = app.cap_nhat_kich_ban_tong_quan("trend", click, click)
+                self.assertEqual(selected, "decline")
+                clear.assert_called_with(graph, {"clickData": None})
+                expected = SCENARIO_DATA[SCENARIO_DATA.scenario_id.eq("decline")]
+                np.testing.assert_allclose(forecast.data[0].y, expected.upper_90)
+                highlighted = next(trace for trace in emissions.data if trace.line.width == 3)
+                np.testing.assert_allclose(highlighted.y, expected.co2 / 1000)
+            self.assertEqual(app.cap_nhat_kich_ban_tong_quan("trend", None, None), (app.no_update,) * 3)
 
     def test_trend_charts_do_not_hide_missing_years(self):
         frame = loc_du_lieu("2020-2024", country="VNM")
@@ -945,6 +1020,44 @@ class DucTemperatureTests(unittest.TestCase):
 
 
 class EarthInteractionTests(unittest.TestCase):
+    def test_external_selection_focuses_but_map_click_keeps_camera(self):
+        current = app.tao_ban_do_the_gioi(
+            DATA[DATA.year.eq(2024)], rotation={"lon": 70, "lat": 25}).to_plotly_json()
+        for source in ("overview-globe", "globe", "overview-ranking", "overview-continents",
+                       "country-filter", "continent-filter"):
+            continent, country = ("Europe", "all") if "continent" in source else ("all", "ARG")
+            expected = ({"lon": 70, "lat": 25} if source in ("overview-globe", "globe")
+                        else app.goc_nhin_ban_do(country, continent))
+            with self.subTest(source=source), patch.object(app, "ctx") as context:
+                context.triggered_id = "continent-filter" if country == "all" else "country-filter"
+                filters = {"source": source}
+                overview = app.cap_nhat_tong_quan(
+                    "1961-2024", continent, country, "temperature", "globe", 2024, 0,
+                    None, None, "#overview", current, filters)[5]
+                earth = app.cap_nhat_trang_ban_do(
+                    country, "temperature", "1961-2024", continent, 0, "globe", current,
+                    "#earth", filters)[2]
+                for figure in (overview, earth):
+                    self.assertEqual(figure.layout.geo.projection.rotation.to_plotly_json(), expected)
+                    self.assertEqual(figure.layout.geo.center.to_plotly_json(), expected)
+
+    def test_focus_survives_year_updates_and_projection_switches(self):
+        snapshot = DATA[DATA.year.eq(2024)]
+        current = app.tao_ban_do_the_gioi(snapshot).to_plotly_json()
+        focused = app.cap_nhat_ban_do(snapshot, "all", "temperature", "globe", 0,
+                                     current, focus="South America")
+        self.assertNotEqual(focused.layout.geo.uirevision, current["layout"]["geo"]["uirevision"])
+        revision = focused.layout.geo.uirevision
+        expected = {"lon": -60, "lat": -20}
+        for mode in ("globe", "flat", "globe"):
+            updated = app.cap_nhat_ban_do(DATA[DATA.year.eq(1970)], "all", "co2", mode, 0,
+                                         focused.to_plotly_json())
+            self.assertEqual(updated.layout.meta["globe_rotation"], expected)
+            if mode == "globe":
+                self.assertEqual(updated.layout.geo.projection.rotation.to_plotly_json(), expected)
+                self.assertEqual(updated.layout.geo.uirevision, revision)
+            focused = updated
+
     def test_map_click_can_switch_continent_and_country_together(self):
         for trigger in ("overview-globe", "globe"):
             with self.subTest(map=trigger), patch.object(app, "ctx") as context:
@@ -957,6 +1070,13 @@ class EarthInteractionTests(unittest.TestCase):
                 self.assertEqual((country, continent), ("AUS", "Oceania"))
                 self.assertIn("AUS", {option["value"] for option in options})
                 self.assertNotIn("VNM", {option["value"] for option in options})
+
+    def test_clicking_selected_country_clears_cross_filter(self):
+        click = {"points": [{"location": "VNM", "customdata": ["Vietnam", 2024]}]}
+        with patch.object(app, "ctx") as context:
+            context.triggered_id = "overview-globe"
+            result = current_filters("Asia", "1961-2024", "VNM", overview_click=click)
+        self.assertEqual(result[5:7], ("all", "Asia"))
 
     def test_globe_outside_continent_is_clickable_without_showing_filtered_values(self):
         snapshot = app.lay_du_lieu_ban_do(loc_du_lieu("1970-2024", "Asia"), 2024)
@@ -1007,6 +1127,8 @@ class EarthInteractionTests(unittest.TestCase):
             self.assertLessEqual(trace.zmin, min(trace.z))
             self.assertGreaterEqual(trace.zmax, max(trace.z))
             self.assertEqual(len(trace.customdata[0]), 2)
+            self.assertEqual(trace.colorbar.orientation, "v")
+            self.assertEqual(figure.layout.margin.b, 4)
 
     def test_temperature_colors_stay_consistent_between_years(self):
         palettes = []
@@ -1186,6 +1308,7 @@ class EarthInteractionTests(unittest.TestCase):
             "state": [
                 {"id": "globe", "property": "figure", "value": figure},
                 {"id": "url", "property": "hash", "value": "#earth"},
+                {"id": "filter-store", "property": "data", "value": {}},
             ],
             "changedPropIds": [changed],
         }

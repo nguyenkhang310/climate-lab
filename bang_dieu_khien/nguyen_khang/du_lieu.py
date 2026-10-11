@@ -37,12 +37,16 @@ COUNTRY_NAMES = (
 )
 
 COORDINATES = {
-    "VNM": (108, 16), "CHN": (104, 35), "USA": (-100, 38),
-    "IND": (79, 22), "JPN": (138, 37), "DEU": (10, 51),
-    "FRA": (2, 47), "BRA": (-52, -12), "CAN": (-106, 57),
-    "AUS": (134, -25), "ZAF": (25, -29), "THA": (101, 15),
-    "RUS": (95, 60), "IDN": (118, -3), "EGY": (30, 27),
+    country["id"]: country["properties"]["ct"]
+    for country in json.loads(Path(__file__).with_name("tai_nguyen").joinpath(
+        "world_110m.json").read_text())["objects"]["countries"]["geometries"]
+    if "id" in country
 }
+COORDINATES.update({
+    "Africa": (20, 0), "Asia": (100, 30), "Europe": (15, 50),
+    "North America": (-100, 45), "South America": (-60, -20),
+    "Oceania": (140, -25), "Antarctica": (0, -90), "all": (105, 15),
+})
 
 def gioi_han_nam(year_range, data):
     if isinstance(year_range, str):

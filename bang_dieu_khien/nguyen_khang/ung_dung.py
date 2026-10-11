@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 
-from dash import ALL, Dash, Input, Output, State, ctx, dcc, html, no_update
+from dash import ALL, Dash, Input, Output, State, ctx, dcc, html, no_update, set_props
 from dash.exceptions import MissingCallbackContextException
 from flask import send_from_directory
 from mo_hinh_du_doan.nguyen_khang.mo_hinh_nhiet_do import tao_kich_ban
@@ -155,7 +155,16 @@ def _tao_truong_loc(label, dropdown_id, options, value, symbol,
         dcc.Dropdown(options, value, id=dropdown_id, clearable=False, **dropdown_props),
     ], **wrapper)
 
-def cap_nhat_ban_do(snapshot, selected, metric, mode, resets, current, reset=False):
+def goc_nhin_ban_do(selected, continent="all"):
+    if selected != "all":
+        rows = DATA.loc[DATA.iso_alpha.eq(selected), "continent"]
+        if not rows.empty:
+            continent = rows.iloc[0]
+    lon, lat = COORDINATES.get(selected if selected != "all" else continent,
+                               COORDINATES.get(continent, COORDINATES["all"]))
+    return {"lon": lon, "lat": lat}
+
+def cap_nhat_ban_do(snapshot, selected, metric, mode, resets, current, reset=False, focus=None):
     layout = current["layout"]
 
     projection = layout["geo"]["projection"]
@@ -163,7 +172,14 @@ def cap_nhat_ban_do(snapshot, selected, metric, mode, resets, current, reset=Fal
                 else layout["meta"]["globe_rotation"])
     if reset:
         rotation = {"lon": 105, "lat": 15}
-    return tao_ban_do_the_gioi(snapshot, selected, metric, resets or 0, rotation, view_mode=mode or "globe")
+    elif focus is not None:
+        rotation = goc_nhin_ban_do(selected, focus)
+    revision = layout["meta"].get("focus_revision", 0) + (focus is not None)
+    figure = tao_ban_do_the_gioi(snapshot, selected, metric,
+                               f"{resets or 0}.{revision}" if revision else resets or 0,
+                               rotation, view_mode=mode or "globe")
+    figure.layout.meta["focus_revision"] = revision
+    return figure
 
 def lay_du_lieu_ban_do(frame, year):
     snapshot = DATA[DATA.year.eq(year)].copy()
@@ -259,6 +275,13 @@ def tao_bo_loc():
     ], id="filter-bar", className="filter-bar")
 
 def khung_bieu_do(figure, graph_id=None, globe=False):
+    if figure.frames:
+        for menu in figure.layout.updatemenus:
+            for button in menu.buttons:
+                button.execute = False
+        for slider in figure.layout.sliders:
+            for step in slider.steps:
+                step.execute = False
     config = {
         "displayModeBar": False if globe else "hover",
         "displaylogo": False,
@@ -351,6 +374,10 @@ def tao_thu_vien_eda_thanh_vien(artifacts, gallery_id, figures, notes, scope, pe
             figure.layout.updatemenus[0].update(x=0, xanchor="left", pad=dict(t=8, r=0))
         for trace in figure.data:
             trace.name = CONTINENT_NAMES.get(trace.name, trace.name)
+        for traces in [figure.data, *[frame.data for frame in figure.frames]]:
+            for trace in traces:
+                if trace.hovertemplate:
+                    trace.hovertemplate = f"<b>{scope} · {period}</b><br>" + trace.hovertemplate
         if figure.data and figure.data[0].type == "heatmap":
             figure.update_yaxes(tickvals=list(figure.data[0].y),
                                 ticktext=[CONTINENT_NAMES.get(name, name) for name in figure.data[0].y])
@@ -434,8 +461,8 @@ def tao_chi_tiet_tong_quan(frame, selected, year, scope):
     ]
     temperature = (tao_bieu_do_trong("Nhiệt độ quốc gia chỉ có từ 1961", 200)
                    if series.year.max() < 1961 and series.temperature_anomaly.isna().all()
-                   else tao_bieu_do_nhiet_do(series, 200))
-    co2 = tao_bieu_do_co2(series, 200)
+                   else tao_bieu_do_nhiet_do(series, 360, scope))
+    co2 = tao_bieu_do_co2(series, 260, scope)
     for figure in (temperature, co2):
         figure.add_vline(x=year, line_width=1, line_dash="dot", line_color="#8496AA")
     return summary, temperature, co2, f"{scope} · {period}"
@@ -448,26 +475,25 @@ def tao_so_sanh_tong_quan(frame, selected, year):
         highlighted = snapshot.loc[snapshot.iso_alpha.eq(selected), "continent"].iloc[0]
     elif frame.continent.nunique() == 1:
         highlighted = frame.continent.iloc[0]
-    return html.Div([
-        tao_the_bieu_do("Quốc gia thải CO₂ nhiều nhất", f"Top 5{' & quốc gia đang chọn' if selected != 'all' else ''} · {year} · OWID/GCP",
-                          tao_bieu_do_xep_hang(snapshot, selected, limit=5, height=350),
-                          "compare", "overview-ranking"),
-        tao_the_bieu_do("CO₂ theo châu lục", f"Tổng quốc gia có dữ liệu · {year} · OWID/GCP",
-                          tao_bieu_do_ty_trong_chau_luc(world, CONTINENT_NAMES, highlighted),
-                          "globe", "overview-continents"),
-    ], className="chart-grid")
+    region = CONTINENT_NAMES.get(frame.continent.iloc[0], "") if frame.continent.nunique() == 1 else "Toàn cầu"
+    return (
+        tao_bieu_do_xep_hang(snapshot, selected, limit=5, height=350),
+        tao_bieu_do_ty_trong_chau_luc(world, CONTINENT_NAMES, highlighted),
+        f"{region} · {year} · Top 5" + (" và nước đang chọn" if selected != "all" else ""),
+        f"Toàn cầu · {year} · Tỷ trọng trong tổng các nước có số liệu",
+    )
 
 
 def tao_trang_tong_quan(frame, selected, scope, metric):
     years = lay_cac_nam_ban_do(frame, selected)
     year = years[-1]
     snapshot = lay_du_lieu_ban_do(frame, year)
-    lon, lat = COORDINATES.get(selected, (105, 15))
+    continent = frame.continent.iloc[0] if frame.continent.nunique() == 1 else "all"
     globe = tao_ban_do_the_gioi(
         snapshot,
         selected,
         metric,
-        rotation={"lon": lon, "lat": lat},
+        rotation=goc_nhin_ban_do(selected, continent),
     )
     summary, temperature, co2, subtitle = tao_chi_tiet_tong_quan(frame, selected, year, scope)
 
@@ -477,7 +503,7 @@ def tao_trang_tong_quan(frame, selected, scope, metric):
     ], className="overview-map-selection", **{"aria-live": "polite"})
     timeline = html.Div([
         html.Div([
-            html.Label("Năm đang xem", htmlFor="overview-year"),
+            html.Label("Năm đối chiếu", htmlFor="overview-year"),
             html.Strong(str(year), id="overview-year-label"),
         ], className="overview-year-heading"),
         dcc.Slider(
@@ -517,19 +543,40 @@ def tao_trang_tong_quan(frame, selected, scope, metric):
         "cloud",
         graph_id="overview-co2",
     )
-    forecast = html.Section([
+    ranking, continents, ranking_note, continent_note = tao_so_sanh_tong_quan(frame, selected, year)
+    comparisons = html.Div([
+        tao_the_bieu_do("Quốc gia thải CO₂ nhiều nhất", html.Span(ranking_note, id="overview-ranking-note"),
+                       ranking, "compare", "overview-ranking"),
+        tao_the_bieu_do("CO₂ theo châu lục", html.Span(continent_note, id="overview-continents-note"),
+                       continents, "globe", "overview-continents"),
+    ], className="chart-grid")
+    forecast = html.Div([
         html.Div([
-            html.Div([html.H3("Nhiệt độ toàn cầu đến 2050"),
-                      html.P("Mô hình dự đoán · Trung bình 5 năm · °C so với 1951–1980")]),
+            dcc.RadioItems(id="overview-scenario", value="trend", className="forecast-options",
+                           options=[{"label": html.Span(label, style={"color": SCENARIO_COLORS[key]}), "value": key}
+                                    for key, label in SCENARIO_LABELS.items()
+                                    if key != "custom"]),
             dcc.Link("Khám phá mô hình →", href="#scenario", className="text-link"),
-            tao_chu_thich_kich_ban(),
         ], className="forecast-heading"),
-        khung_bieu_do(tao_bieu_do_du_bao_nhiet_do(GLOBAL_DATA, SCENARIO_DATA, "trend"), "overview-forecast"),
-    ], className="card")
+        html.Div([
+            tao_the_bieu_do("Giả định lượng CO₂", "Toàn cầu · 2025–2050 · Bấm đường để chọn kịch bản",
+                           tao_bieu_do_kich_ban_co2(SCENARIO_DATA, "trend").update_layout(height=350),
+                           "cloud", "overview-scenario-co2"),
+            tao_the_bieu_do("Nhiệt độ theo kịch bản", "Toàn cầu · Trung bình 5 năm · Vùng mờ: khoảng dự báo 90%",
+                           tao_bieu_do_du_bao_nhiet_do(GLOBAL_DATA, SCENARIO_DATA, "trend"),
+                           "trend", "overview-forecast"),
+        ], className="chart-grid"),
+    ])
     return html.Div([
-        html.Div([summary_card, map_card, temperature_card, co2_card], className="overview-grid"),
-        html.Div(tao_so_sanh_tong_quan(frame, selected, year), id="overview-comparison"),
-        forecast,
+        summary_card,
+        *[html.Section([
+            html.H2(title, className="overview-section-heading"), content,
+        ], className="overview-section") for title, content in [
+            ("01 · Nhiệt độ", html.Div([map_card, temperature_card],
+                                       className="chart-grid overview-temperature-grid")),
+            ("02 · Khí thải CO₂", html.Div([co2_card, comparisons], className="overview-co2-group")),
+            ("03 · Dự đoán đến 2050", forecast),
+        ]],
     ], className="overview-page")
 
 def tao_chi_tiet_ban_do(frame, selected, scope):
@@ -544,9 +591,9 @@ def tao_chi_tiet_ban_do(frame, selected, scope):
 
 def tao_trang_ban_do(frame, selected, metric, scope):
     panel, charts = tao_chi_tiet_ban_do(frame, selected, scope)
-    lon, lat = COORDINATES.get(selected, (105, 15))
+    continent = frame.continent.iloc[0] if frame.continent.nunique() == 1 else "all"
     figure = tao_ban_do_the_gioi(lay_du_lieu_ban_do(frame, int(frame.year.max())), selected, metric,
-                          rotation={"lon": lon, "lat": lat})
+                          rotation=goc_nhin_ban_do(selected, continent))
     return [
         html.Div([
             html.Section([
@@ -663,7 +710,7 @@ def tao_trang_nhan_dinh(frame, series, scope):
               and first.notna().all() and last.notna().all() else float("nan"))
     temperature_note = (f"{start}–{start + window - 1}: {first.mean():+.2f} °C · "
                         f"{end - window + 1}–{end}: {last.mean():+.2f} °C") if pd.notna(change) else "Chưa có đủ hai giai đoạn để so sánh"
-    temperature_chart = tao_bieu_do_nhiet_do(series, 320)
+    temperature_chart = tao_bieu_do_nhiet_do(series, 320, scope)
     if pd.notna(change):
         for left, right in [(start, start + window - 1), (end - window + 1, end)]:
             temperature_chart.add_vrect(x0=left - .5, x1=right + .5, fillcolor="#EF4444",
@@ -685,7 +732,7 @@ def tao_trang_nhan_dinh(frame, series, scope):
         ("02", "Lượng CO₂", dinh_dang_so(growth, "+.1f") + "%" if pd.notna(growth) else "—",
          ("Lượng CO₂ tăng so với đầu kỳ" if growth > 0 else "Lượng CO₂ giảm so với đầu kỳ" if growth < 0
           else "Lượng CO₂ không đổi" if growth == 0 else "Chưa đủ dữ liệu CO₂"),
-         co2_note, tao_bieu_do_co2(series, 290), "blue"),
+         co2_note, tao_bieu_do_co2(series, 290, scope), "blue"),
         ("03", "CO₂ theo ngành", dinh_dang_so(share, ".1f") + "%" if pd.notna(share) else "—",
          f"{totals.index[0]} chiếm tỷ trọng cao nhất" if pd.notna(share) else "Chưa có dữ liệu theo ngành",
          (f"{end} · Tổng các ngành có số liệu: {totals.sum():,.1f} triệu tấn · "
@@ -891,11 +938,15 @@ def lay_giai_doan_trang(route):
     Input("overview-globe", "clickData", allow_optional=True),
     Input("globe", "clickData", allow_optional=True),
     Input({"type": "eda-chart", "path": ALL}, "clickData"),
+    Input("overview-ranking", "clickData", allow_optional=True),
+    Input("overview-continents", "clickData", allow_optional=True),
     State("filter-store", "data"),
     State({"type": "eda-chart", "path": ALL}, "id"),
 )
 def cap_nhat_bo_loc(route, years, continent, country, metric, overview_click=None,
-                   earth_click=None, eda_clicks=None, saved=None, eda_ids=None):
+                   earth_click=None, eda_clicks=None, ranking_click=None, continent_click=None,
+                   saved=None, eda_ids=None):
+    previous_years = years
     route = route if route in {"#" + key for key in PAGE_INFO} else "#overview"
     saved = saved or {}
     choices = dict(saved.get("pages", {}))
@@ -917,16 +968,26 @@ def cap_nhat_bo_loc(route, years, continent, country, metric, overview_click=Non
         trigger = ctx.triggered_id
     except MissingCallbackContextException:
         trigger = None
-    if trigger in ("overview-globe", "globe") or isinstance(trigger, dict):
+    if trigger == "overview-continents":
+        points = (continent_click or {}).get("points", [])
+        picked = (points[0].get("customdata") or [None])[0] if points else None
+        if route != "#overview" or picked not in CONTINENTS:
+            return (no_update,) * 8
+        set_props(trigger, {"clickData": None})
+        continent, country = "all" if picked == continent else picked, "all"
+    if trigger in ("overview-globe", "overview-ranking", "globe") or isinstance(trigger, dict):
         click = earth_click if trigger == "globe" else overview_click
+        if trigger == "overview-ranking":
+            click = ranking_click if route == "#overview" else None
         if isinstance(trigger, dict):
             click = next((value for graph_id, value in zip(eda_ids or [], eda_clicks or [])
                           if graph_id == trigger and Path(graph_id["path"]).name.startswith("03_")), None)
         selected = lay_quoc_gia_duoc_chon(click, set(available.iso_alpha))
-        if not selected or selected == country:
+        if not selected:
             return (no_update,) * 8
-        country = selected
-        if continent != "all":
+        set_props(trigger, {"clickData": None})
+        country = "all" if selected == country else selected
+        if continent != "all" and country != "all":
             continent = available.loc[available.iso_alpha.eq(country), "continent"].iloc[0]
     if continent != "all":
         available = available[available.continent.eq(continent)]
@@ -936,7 +997,8 @@ def cap_nhat_bo_loc(route, years, continent, country, metric, overview_click=Non
     if country not in set(available.iso_alpha):
         country = "all"
     choices[route] = dict(years=years, continent=continent, country=country, metric=metric)
-    return (year_options, years, f"{start}–{end}", {"page": route, "pages": choices},
+    year_value = years if years != previous_years or trigger in (None, "url", "year-range") else no_update
+    return (year_options, year_value, f"{start}–{end}", {"page": route, "pages": choices, "source": trigger},
             country_options, country, continent, metric)
 
 @app.callback(
@@ -1070,7 +1132,10 @@ def hien_thi_trang(route, years, continent, country, metric, overview_id=None, e
     Output("overview-year", "marks"),
     Output("overview-year", "value"),
     Output("overview-year-label", "children"),
-    Output("overview-comparison", "children"),
+    Output("overview-ranking", "figure"),
+    Output("overview-continents", "figure"),
+    Output("overview-ranking-note", "children"),
+    Output("overview-continents-note", "children"),
     Input("year-range", "value"),
     Input("continent-filter", "value"),
     Input("country-filter", "value"),
@@ -1078,33 +1143,69 @@ def hien_thi_trang(route, years, continent, country, metric, overview_id=None, e
     Input("overview-map-view", "value", allow_optional=True),
     Input("overview-year", "value", allow_optional=True),
     Input("overview-reset", "n_clicks", allow_optional=True),
+    Input("overview-temperature", "clickData", allow_optional=True),
+    Input("overview-co2", "clickData", allow_optional=True),
     State("url", "hash"),
     State("overview-globe", "figure", allow_optional=True),
+    State("filter-store", "data"),
     prevent_initial_call=True,
 )
-def cap_nhat_tong_quan(year_range, continent, selected, metric, map_view, year, resets, route, current_figure):
+def cap_nhat_tong_quan(year_range, continent, selected, metric, map_view, year, resets,
+                      temperature_click, co2_click, route, current_figure, filters=None):
     if route not in (None, "", "#overview") or current_figure is None:
-        return (no_update,) * 13
+        return (no_update,) * 16
     frame = loc_du_lieu(year_range, continent)
     if frame.empty or (selected != "all" and selected not in frame.iso_alpha.values):
-        return (no_update,) * 13
+        return (no_update,) * 16
 
     years = lay_cac_nam_ban_do(frame, selected)
+    if ctx.triggered_id in ("overview-temperature", "overview-co2"):
+        click = temperature_click if ctx.triggered_id == "overview-temperature" else co2_click
+        points = (click or {}).get("points", [])
+        picked = points[0].get("x") if points else None
+        if points:
+            set_props(ctx.triggered_id, {"clickData": None})
+        if picked not in years or picked == year:
+            return (no_update,) * 16
+        year = int(picked)
     year = years[-1] if ctx.triggered_id == "year-range" else max(
         years[0], min(year or years[-1], years[-1])
     )
+    focus = (continent if ctx.triggered_id in ("country-filter", "continent-filter")
+             and (filters or {}).get("source") not in ("overview-globe", "globe") else None)
     figure = cap_nhat_ban_do(lay_du_lieu_ban_do(frame, year), selected, metric, map_view, resets,
-                        current_figure, reset=ctx.triggered_id == "overview-reset")
+                        current_figure, reset=ctx.triggered_id == "overview-reset", focus=focus)
 
     if ctx.triggered_id in ("overview-map-view", "overview-reset", "metric-filter"):
-        return (no_update,) * 5 + (figure,) + (no_update,) * 7
+        return (no_update,) * 5 + (figure,) + (no_update,) * 10
     scope = ten_pham_vi(continent, selected)
     summary, temperature, co2, subtitle = tao_chi_tiet_tong_quan(frame, selected, year, scope)
     return (
         summary, temperature, co2, subtitle, subtitle, figure, scope,
         years[0], years[-1], tao_moc_thanh_truot(years), year, str(year),
-        tao_so_sanh_tong_quan(frame, selected, year),
+        *tao_so_sanh_tong_quan(frame, selected, year),
     )
+
+@app.callback(
+    Output("overview-scenario", "value"),
+    Output("overview-forecast", "figure"),
+    Output("overview-scenario-co2", "figure"),
+    Input("overview-scenario", "value", allow_optional=True),
+    Input("overview-forecast", "clickData", allow_optional=True),
+    Input("overview-scenario-co2", "clickData", allow_optional=True),
+    prevent_initial_call=True,
+)
+def cap_nhat_kich_ban_tong_quan(scenario, forecast_click, co2_click):
+    if ctx.triggered_id in ("overview-forecast", "overview-scenario-co2"):
+        click = forecast_click if ctx.triggered_id == "overview-forecast" else co2_click
+        points = (click or {}).get("points", [])
+        scenario = (points[0].get("customdata") or [None])[0] if points else None
+        if points:
+            set_props(ctx.triggered_id, {"clickData": None})
+    if scenario not in {"trend", "stable", "decline"}:
+        return (no_update,) * 3
+    return (scenario, tao_bieu_do_du_bao_nhiet_do(GLOBAL_DATA, SCENARIO_DATA, scenario),
+            tao_bieu_do_kich_ban_co2(SCENARIO_DATA, scenario).update_layout(height=350))
 
 @app.callback(
     Output("country-panel", "children"),
@@ -1118,16 +1219,20 @@ def cap_nhat_tong_quan(year_range, continent, selected, metric, map_view, year, 
     Input("earth-map-view", "value", allow_optional=True),
     State("globe", "figure", allow_optional=True),
     State("url", "hash"),
+    State("filter-store", "data"),
     prevent_initial_call=True,
 )
-def cap_nhat_trang_ban_do(selected, metric, years, continent, resets, map_view, current_figure, route):
+def cap_nhat_trang_ban_do(selected, metric, years, continent, resets, map_view, current_figure, route,
+                        filters=None):
     if route != "#earth" or current_figure is None:
         return (no_update,) * 3
     frame = loc_du_lieu(years, continent)
     if frame.empty or (selected != "all" and selected not in frame.iso_alpha.values):
         return (no_update,) * 3
+    focus = (continent if ctx.triggered_id in ("country-filter", "continent-filter")
+             and (filters or {}).get("source") not in ("overview-globe", "globe") else None)
     figure = cap_nhat_ban_do(lay_du_lieu_ban_do(frame, int(frame.year.max())), selected, metric, map_view,
-                        resets, current_figure, reset=ctx.triggered_id == "reset-globe")
+                        resets, current_figure, reset=ctx.triggered_id == "reset-globe", focus=focus)
     if ctx.triggered_id in ("earth-map-view", "reset-globe", "metric-filter"):
         return no_update, no_update, figure
     panel, charts = tao_chi_tiet_ban_do(frame, selected, ten_pham_vi(continent, selected))

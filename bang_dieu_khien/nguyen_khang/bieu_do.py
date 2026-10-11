@@ -54,27 +54,27 @@ def _tao_duong_xu_huong(series, field, *, color, marker, fill, name, hover, y_ti
         fill="tozeroy", fillcolor=fill, name=name, hovertemplate=hover,
     ))
     tao_kieu_bieu_do(fig, height)
-    if height <= 200:
-        fig.update_layout(margin={"l": 39, "r": 10, "t": 6, "b": 29}, font_size=12)
     fig.update_xaxes(dtick=10, tickformat="d", title=None)
     fig.update_yaxes(title=y_title, **y_axis)
     fig.update_layout(hovermode="x unified")
     return fig
 
-def tao_bieu_do_nhiet_do(series, height=270):
+def tao_bieu_do_nhiet_do(series, height=270, scope="Phạm vi đang xem"):
     return _tao_duong_xu_huong(
         series, "temperature_anomaly", color=RED,
         marker={"size": 5, "color": "white", "line": {"width": 2, "color": RED}},
         fill="rgba(239,68,68,.045)", name="Nhiệt độ ghi nhận",
-        hover=("%{x}<br>So với 1951–1980: <b>%{text} °C</b><extra>NASA / FAOSTAT</extra>"),
+        hover=(scope + " · Năm %{x}<br>Chênh nhiệt độ: <b>%{text} °C</b>"
+               "<br>So với trung bình 1951–1980<extra>NASA / FAOSTAT</extra>"),
         y_title="Chênh lệch (°C)", y_axis={"tickformat": ".1f", "nticks": 5}, height=height,
     )
 
-def tao_bieu_do_co2(series, height=270):
+def tao_bieu_do_co2(series, height=270, scope="Phạm vi đang xem"):
     return _tao_duong_xu_huong(
         series, "co2", color=BLUE, marker={"size": 4, "color": BLUE},
         fill="rgba(22,137,232,.10)", name="Lượng CO₂ ghi nhận",
-        hover=("%{x}<br>Lượng CO₂: <b>%{text} triệu tấn</b><extra>OWID / Global Carbon Project</extra>"),
+        hover=(scope + " · Năm %{x}<br>CO₂ trong năm: <b>%{text} triệu tấn</b>"
+               "<extra>OWID / Global Carbon Project</extra>"),
         y_title="CO₂ (triệu tấn)", y_axis={"rangemode": "tozero", "tickformat": ",.0f", "nticks": 5},
         height=height,
     )
@@ -92,10 +92,12 @@ def tao_bieu_do_xep_hang(snapshot, selected="all", limit=7, height=290):
         colors[-1] = BLUE
     fig = go.Figure(go.Bar(
         y=data.country, x=data.co2, orientation="h", marker_color=colors,
+        customdata=data[["iso_alpha", "year"]],
         text=data.co2.map("{:,.1f}".format), texttemplate="%{text}", textposition="outside",
         cliponaxis=False, textfont={"size": 12, "color": TEXT}, width=.55,
         hovertemplate=(
-            "%{y}<br>CO₂: <b>%{text} triệu tấn</b><extra>OWID / GCP</extra>"
+            "<b>%{y}</b> · Năm %{customdata[1]}<br>CO₂ trong năm: <b>%{text} triệu tấn</b>"
+            "<br>Bấm để chọn quốc gia<extra>OWID / GCP</extra>"
         ),
     ))
     tao_kieu_bieu_do(fig, max(height, len(data) * 28 + 70))
@@ -145,10 +147,10 @@ def tao_ban_do_the_gioi(
             marker_line_width=[3 if iso == selected else .75 for iso in rows.iso_alpha],
             name=("CO₂" if is_co2 else "Nhiệt độ") if has_data else "Chưa có dữ liệu",
             colorbar={
-                "title": {"text": "CO₂ (triệu tấn)" if is_co2 else "Chênh nhiệt độ (°C)",
+                "title": {"text": "triệu tấn" if is_co2 else "°C",
                           "side": "top", "font_size": 11, "font_color": TEXT},
-                "orientation": "h", "x": .5, "xanchor": "center", "y": 0,
-                "yanchor": "top", "len": .6, "thickness": 7,
+                "orientation": "v", "xref": "container", "x": .99, "xanchor": "right", "y": .5,
+                "yanchor": "middle", "len": .62, "thickness": 8,
                 "tickfont": {"size": 10, "color": MUTED}, "outlinewidth": 0,
             },
             hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
@@ -174,7 +176,7 @@ def tao_ban_do_the_gioi(
         lataxis={"showgrid": False, "range": [-90, 90]},
     )
     fig.update_layout(
-        height=height, margin={"l": 4, "r": 4, "t": 4, "b": 60, "autoexpand": False},
+        height=height, margin={"l": 48, "r": 48, "t": 4, "b": 4, "autoexpand": False},
         paper_bgcolor="white", font={"family": FONT_FAMILY, "color": MUTED},
         showlegend=False, geo_uirevision=f"{view_mode}-{reset}", clickmode="event",
         dragmode="pan", hovermode="closest", transition={"duration": 0},
@@ -190,10 +192,12 @@ def tao_bieu_do_nganh(totals, height=290):
     shares = (totals / totals.sum() * 100).sort_values()
     fig = go.Figure(go.Bar(
         y=shares.index, x=shares, orientation="h", width=.55,
+        customdata=totals.reindex(shares.index),
         marker_color=["#AECAC4"] * (len(shares) - 1) + ["#169873"],
         text=shares.map(lambda v: "<0.1%" if 0 < v < .05 else f"{v:.1f}%"),
         texttemplate="%{text}", textposition="outside",
-        cliponaxis=False, hovertemplate="%{y}: <b>%{text}</b><extra>EDGAR · CO₂</extra>",
+        cliponaxis=False, hovertemplate=("<b>%{y}</b><br>CO₂: %{customdata:,.1f} triệu tấn"
+                                        "<br>Tỷ trọng trong các ngành có số liệu: %{text}<extra>EDGAR</extra>"),
     ))
     tao_kieu_bieu_do(fig, height)
     fig.update_layout(margin={"l": 12, "r": 40, "t": 12, "b": 35})
@@ -211,49 +215,51 @@ def tao_bieu_do_ty_trong_chau_luc(snapshot, continent_names, selected="all", hei
     )
     if totals.empty:
         return tao_bieu_do_trong("Năm này chưa có dữ liệu CO₂", height)
-    labels = [continent_names.get(name, name) for name in totals.index]
+    names = [continent_names.get(name, name) for name in totals.index]
     colors = {
         "Africa": "#00A881", "Asia": "#E9604D", "Europe": "#9563CC",
         "North America": "#5575CE", "Oceania": "#19A5B8",
         "South America": "#E89741", "Antarctica": "#96A7BA",
     }
     fig = go.Figure(go.Pie(
-        labels=labels,
+        labels=names,
         values=totals.values,
-        hole=.52,
+        customdata=[[name, int(snapshot.year.iloc[0])] for name in totals.index],
+        hole=.62,
         sort=False,
         direction="clockwise",
-        rotation=-45,
-        domain={"x": [0, 1], "y": [.20, 1]},
+        rotation=-35,
+        domain={"x": [0, .62], "y": [.06, .94]},
         marker={
             "colors": [colors.get(name, "#96A7BA") for name in totals.index],
-            "line": {"color": "white", "width": 3},
+            "line": {
+                "color": [TEXT if name == selected else "white" for name in totals.index],
+                "width": [2.5 if name == selected else 1.5 for name in totals.index],
+            },
         },
-        pull=[.04 if name == selected else 0 for name in totals.index],
-        textinfo="percent",
-        textposition="inside",
-        textfont={"size": 13, "color": "white"},
-        insidetextorientation="horizontal",
-        hovertemplate="%{label}<br><b>%{value:,.1f} triệu tấn</b><br>%{percent}<extra></extra>",
+        textinfo="none",
+        hovertemplate=("<b>%{label}</b> · Năm %{customdata[1]}"
+                       "<br>CO₂: %{value:,.1f} triệu tấn"
+                       "<br>Tỷ trọng: %{percent:.1%}<br>Trong tổng các nước có số liệu"
+                       "<extra>OWID / GCP</extra>"),
     ))
     tao_kieu_bieu_do(fig, height)
     fig.update_layout(
-        margin={"l": 28, "r": 28, "t": 8, "b": 8},
+        margin={"l": 16, "r": 16, "t": 8, "b": 8},
         showlegend=True,
-        uniformtext={"minsize": 11, "mode": "hide"},
         legend={
-            "orientation": "h", "x": .5, "xanchor": "center",
-            "y": .02, "yanchor": "bottom", "font": {"size": 11, "color": TEXT},
+            "orientation": "v", "x": .68, "xanchor": "left",
+            "y": .5, "yanchor": "middle", "font": {"size": 11, "color": TEXT},
             "itemclick": False, "itemdoubleclick": False,
         },
         annotations=[{
             "text": (
-                "<span style='font-size:10px;color:#6B7F93'>TỔNG CO₂</span><br>"
-                f"<b>{totals.sum() / 1000:,.1f}</b><br>"
-                "<span style='font-size:11px;color:#6B7F93'>tỷ tấn</span>"
+                f"<span style='font-size:18px'><b>{totals.sum() / 1000:,.1f}</b></span><br>"
+                "<span style='font-size:10px;color:#6B7F93'>tỷ tấn</span>"
             ),
-            "x": .5, "y": .60, "showarrow": False,
-            "font": {"size": 24, "color": TEXT},
+            "x": .31, "y": .5, "showarrow": False,
+            "xref": "paper", "yref": "paper", "xanchor": "center", "yanchor": "middle",
+            "font": {"size": 12, "color": TEXT},
         }],
     )
     return fig
@@ -285,7 +291,8 @@ def tao_bieu_do_du_bao_nhiet_do(history, scenarios, active_id, milestone=2050):
         text=temperature_trend.map("{:+.2f}".format),
         name="Thực tế · Trung bình 5 năm", mode="lines",
         line={"color": TEXT, "width": 2.5},
-        hovertemplate="<b>%{text} °C</b><extra>Thực tế · Trung bình 5 năm</extra>",
+        hovertemplate=("Năm %{x} · Toàn cầu<br>Trung bình 5 năm: <b>%{text} °C</b>"
+                       "<br>So với trung bình 1951–1980<extra>NASA GISTEMP</extra>"),
     ))
     for scenario_id, group in scenarios.groupby("scenario_id", sort=False):
         fig.add_trace(go.Scatter(
@@ -294,9 +301,11 @@ def tao_bieu_do_du_bao_nhiet_do(history, scenarios, active_id, milestone=2050):
             line={"color": SCENARIO_COLORS[scenario_id],
                   "width": 3 if scenario_id == active_id else 1.8, "dash": "dash"},
             opacity=1 if scenario_id == active_id else .65,
-            customdata=group[["temperature_prediction", "lower_90", "upper_90"]].map("{:+.2f}".format),
-            hovertemplate=("<b>%{customdata[0]} °C</b>"
-                           "<br>Khoảng ước tính 90%: %{customdata[1]} – %{customdata[2]}"
+            customdata=group[["scenario_id", "lower_90", "upper_90", "annual_change_pct"]],
+            hovertemplate=("Năm %{x} · Toàn cầu<br>Xu hướng nhiệt độ: <b>%{y:+.2f} °C</b>"
+                           "<br>So với trung bình 1951–1980"
+                           "<br>Khoảng dự báo 90%: %{customdata[1]:+.2f} – %{customdata[2]:+.2f} °C"
+                           "<br>Giả định CO₂ hằng năm: %{customdata[3]:+.2f}%/năm"
                            "<extra>%{fullData.name}</extra>"),
         ))
     tao_kieu_bieu_do(fig, 350)
@@ -319,7 +328,7 @@ def tao_bieu_do_du_bao_nhiet_do(history, scenarios, active_id, milestone=2050):
     for x, label in (((start + history.year.max()) / 2, "THỰC TẾ"), (2037, "DỰ ĐOÁN")):
         fig.add_annotation(x=x, y=1.06, yref="paper", text=label,
                            showarrow=False, font={"size": 10, "color": MUTED})
-    fig.update_layout(hovermode="x unified", margin={"l": 52, "r": 20, "t": 30, "b": 35})
+    fig.update_layout(hovermode="closest", margin={"l": 52, "r": 20, "t": 30, "b": 35})
     fig.update_xaxes(range=[start, 2052], tickvals=[*range(start, 2050, 40), 2050], showgrid=False)
     fig.update_yaxes(dtick=.5, tickformat=".1f", ticksuffix="°")
     return fig
@@ -331,14 +340,17 @@ def tao_bieu_do_kich_ban_co2(scenarios, active_id, milestone=2050):
         fig.add_trace(go.Scatter(
             x=group.year, y=group.co2 / 1000, name=group.scenario.iloc[0],
             text=(group.co2 / 1000).map("{:.1f}".format),
+            customdata=group[["scenario_id", "annual_change_pct"]],
             mode="lines", line={"color": SCENARIO_COLORS[scenario_id],
                                  "width": 3 if scenario_id == active_id else 1.8},
             opacity=1 if scenario_id == active_id else .65,
-            hovertemplate="<b>%{text} tỷ tấn CO₂</b><extra>%{fullData.name}</extra>",
+            hovertemplate=("Năm %{x} · Toàn cầu<br>CO₂ trong năm: <b>%{text} tỷ tấn</b>"
+                           "<br>Giả định thay đổi: %{customdata[1]:+.2f}%/năm"
+                           "<extra>%{fullData.name}</extra>"),
         ))
     tao_kieu_bieu_do(fig, 230)
     fig.add_vline(x=milestone, line_color="#A5B4C4", line_dash="dot")
-    fig.update_layout(hovermode="x unified", margin={"l": 45, "r": 20, "t": 12, "b": 35})
+    fig.update_layout(hovermode="closest", margin={"l": 45, "r": 20, "t": 12, "b": 35})
     fig.update_xaxes(dtick=10, range=[2024, 2051], showgrid=False)
     fig.update_yaxes(rangemode="tozero", title="CO₂ (tỷ tấn)", nticks=4)
     return fig
@@ -354,7 +366,8 @@ def tao_bieu_do_kiem_tra_du_bao(backtest):
             x=backtest.year, y=backtest[field], name=name, mode="lines+markers",
             text=backtest[field].map("{:+.3f}".format),
             line={"color": color, "width": 2, "dash": dash}, marker_size=5,
-            hovertemplate="<b>%{text} °C</b><extra>%{fullData.name}</extra>",
+            hovertemplate=("Năm %{x} · Toàn cầu<br>Trung bình 5 năm: <b>%{text} °C</b>"
+                           "<br>So với trung bình 1951–1980<extra>%{fullData.name}</extra>"),
         ))
     tao_kieu_bieu_do(fig, 230)
     fig.update_layout(
@@ -383,10 +396,12 @@ def tao_bieu_do_phan_du(residuals):
         data = residuals[residuals.influential == influential]
         fig.add_trace(go.Scatter(
             x=data.year, y=data.residual, name=name, mode="markers",
-            customdata=data[["cooks_distance"]],
+            customdata=data[["cooks_distance", "temperature_actual", "temperature_fitted"]],
             marker={"color": color, "size": 7 if influential else 5},
-            hovertemplate=("Năm %{x}<br>Phần dư: <b>%{y:+.3f} °C</b>"
-                           "<br>Khoảng cách Cook: %{customdata[0]:.3f}<extra>%{fullData.name}</extra>"),
+            hovertemplate=("Năm %{x} · Trung bình 5 năm<br>Thực tế: %{customdata[1]:+.3f} °C"
+                           "<br>Mô hình: %{customdata[2]:+.3f} °C"
+                           "<br>Phần dư (thực tế − dự đoán): <b>%{y:+.3f} °C</b>"
+                           "<br>Mức ảnh hưởng (Cook): %{customdata[0]:.3f}<extra>%{fullData.name}</extra>"),
         ))
     tao_kieu_bieu_do(fig, 230)
     fig.add_hline(y=0, line_color="#64748B", line_width=1)

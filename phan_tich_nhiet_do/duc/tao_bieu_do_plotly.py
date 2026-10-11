@@ -42,7 +42,8 @@ def build_figures(series, countries, monthly):
     ])
     trend.update_layout(xaxis_title="Năm", yaxis_title=labels["temperature_anomaly"], hovermode="x unified")
     trend.add_hline(y=0, line_dash="dot", line_color="#96A7BA")
-    trend.update_traces(hovertemplate="%{x}: %{y:+.2f} °C<extra>%{fullData.name}</extra>")
+    trend.update_traces(hovertemplate="Năm %{x}<br>Chênh nhiệt độ: %{y:+.2f} °C"
+                       "<br>So với trung bình 1951–1980<extra>%{fullData.name}</extra>")
     decades = series.assign(decade=(series.year // 10 * 10).map(nhan_thap_ky(series))).groupby("decade").agg(
         temperature_anomaly=("temperature_anomaly", "mean"), years=("temperature_anomaly", "count"))
     bars = go.Figure(go.Bar(
@@ -50,13 +51,19 @@ def build_figures(series, countries, monthly):
         marker_color=["#3478B8" if v < 0 else "#D94835" for v in decades.temperature_anomaly],
         customdata=decades.years, text=decades.temperature_anomaly.map("{:+.2f}".format),
         textposition="outside", cliponaxis=False,
-        hovertemplate="%{x} · %{customdata} năm có số liệu<br>%{y:+.2f} °C<extra></extra>"))
+        hovertemplate="Giai đoạn %{x}<br>Chênh nhiệt độ trung bình: %{y:+.2f} °C"
+                      "<br>%{customdata} năm có số liệu · So với 1951–1980<extra></extra>"))
     bars.update_layout(xaxis_title="Thập kỷ", yaxis_title=labels["temperature_anomaly"])
     world_map = px.choropleth(map_data,
                              locations="iso_alpha", color="temperature_anomaly",
                              animation_frame="period", animation_group="iso_alpha",
                              hover_name="country", hover_data=["period", "years"], range_color=[-6, 6],
                              color_continuous_scale="RdBu_r", labels=labels)
+    for traces in [world_map.data, *[frame.data for frame in world_map.frames]]:
+        for trace in traces:
+            trace.hovertemplate = ("<b>%{hovertext}</b> · %{customdata[0]}"
+                                   "<br>Chênh nhiệt độ trung bình: %{z:+.2f} °C"
+                                   "<br>%{customdata[1]} năm có số liệu · So với 1951–1980<extra>FAOSTAT</extra>")
     if world_map.frames:
         for button, label in zip(world_map.layout.updatemenus[0].buttons, ("▶ Phát", "■ Dừng")):
             button.update(label=label)
@@ -66,6 +73,8 @@ def build_figures(series, countries, monthly):
                         color_continuous_scale="RdBu_r",
                         labels=dict(x="Thập kỷ", y="Châu lục", color="Chênh nhiệt độ (°C)"))
                if not pivot.empty else go.Figure())
+    heatmap.update_traces(hovertemplate="%{y} · %{x}<br>Trung bình quốc gia–năm: %{z:+.2f} °C"
+                          "<br>So với trung bình 1951–1980<extra>FAOSTAT</extra>")
     box = px.box(countries, x="decade", y="temperature_anomaly", color="decade",
                  points="outliers", hover_data=["country", "year"], labels=labels)
     by_month = monthly.groupby(["year", "month"]).temperature_anomaly.mean().groupby("month")
@@ -73,7 +82,9 @@ def build_figures(series, countries, monthly):
     profile = go.Figure(go.Scatter(
         x=months.index, y=months["mean"], customdata=months["count"], mode="lines+markers",
         line=dict(color="#D94835", width=2.5), marker_size=7, connectgaps=False,
-        hovertemplate="Tháng %{x}<br>Chênh nhiệt độ: %{y:+.2f} °C<br>%{customdata} năm có số liệu<extra></extra>"))
+        hovertemplate="Tháng %{x}<br>Chênh nhiệt độ trung bình: %{y:+.2f} °C"
+                      "<br>Trung bình tháng này qua %{customdata} năm có số liệu"
+                      "<br>So với trung bình 1951–1980<extra></extra>"))
     profile.update_layout(xaxis=dict(title="Tháng", tickmode="array", tickvals=list(range(1, 13))),
                           yaxis_title=labels["temperature_anomaly"])
     profile.add_hline(y=0, line_dash="dot", line_color="#96A7BA")

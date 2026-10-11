@@ -100,10 +100,22 @@ def build_figures(series, countries, sectors):
     }
     if len(series) == 1:
         figures["01_line_co2_toan_cau"].update_traces(mode="lines+markers")
+    figures["01_line_co2_toan_cau"].update_traces(
+        hovertemplate="Năm %{x}<br>CO₂ trong năm: %{y:,.1f} triệu tấn<extra>OWID / GCP</extra>")
+    figures["02_bar_top15"].update_traces(
+        hovertemplate="<b>%{y}</b><br>CO₂ trung bình: %{x:,.1f} triệu tấn/năm"
+                      "<br>%{customdata[0]} năm có số liệu<extra>OWID / GCP</extra>")
+    figures["04_stacked_area_chau_luc"].update_traces(
+        hovertemplate="Năm %{x}<br>Tổng CO₂ các nước có số liệu: %{y:,.1f} triệu tấn<extra>%{fullData.name}</extra>")
     figures["02_bar_top15"].update_yaxes(categoryorder="total ascending", title=None, tickmode="linear", dtick=1)
     figures["03_choropleth_co2pc"].update_coloraxes(
         colorbar=dict(tickvals=[0, 10, 20, 30, 40], ticktext=["0", "10", "20", "30", "≥40"]))
     world_map = figures["03_choropleth_co2pc"]
+    for traces in [world_map.data, *[frame.data for frame in world_map.frames]]:
+        for trace in traces:
+            trace.hovertemplate = ("<b>%{hovertext}</b> · %{customdata[0]}"
+                                   "<br>CO₂/người trung bình: %{z:.2f} tấn/người/năm"
+                                   "<br>%{customdata[1]} năm có số liệu<extra>OWID / GCP</extra>")
     if world_map.frames:
         for button, label in zip(world_map.layout.updatemenus[0].buttons, ("▶ Phát", "■ Dừng")):
             button.update(label=label)
@@ -111,11 +123,15 @@ def build_figures(series, countries, sectors):
     treemap = figures["05_treemap_nganh"]
     treemap.update_traces(
         texttemplate="%{label}<br>%{customdata[0]:.1f}%",
-        hovertemplate="%{label}<br>TB %{value:,.1f} triệu tấn/năm · %{customdata[0]:.1f}%<extra></extra>")
+        hovertemplate="%{label}<br>CO₂ trung bình: %{value:,.1f} triệu tấn/năm"
+                      "<br>Tỷ trọng: %{customdata[0]:.1f}% trong các ngành có số liệu<extra>EDGAR</extra>")
     figures["02_bar_top15"].update_xaxes(title="CO₂ trung bình năm (triệu tấn/năm)")
     figures["06_scatter_co2pc_renewable"].update_xaxes(title="Năng lượng tái tạo trung bình (%)")
     figures["06_scatter_co2pc_renewable"].update_yaxes(title="CO₂/người trung bình (tấn/người/năm)")
-    figures["06_scatter_co2pc_renewable"].update_traces(marker_size=8)
+    figures["06_scatter_co2pc_renewable"].update_traces(marker_size=8,
+        hovertemplate="<b>%{hovertext}</b><br>Tái tạo: %{x:.2f}% tiêu thụ năng lượng cuối cùng"
+                      "<br>CO₂/người: %{y:.2f} tấn/người/năm"
+                      "<br>Trung bình %{customdata[0]} năm có đủ hai chỉ số<extra></extra>")
     figures["05_treemap_nganh"].update_layout(meta={"coverage_note": sector_coverage_note(sectors)})
     figures["06_scatter_co2pc_renewable"].update_layout(meta={"coverage_note": renewable_coverage_note(countries)})
     return figures

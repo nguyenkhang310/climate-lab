@@ -887,19 +887,16 @@ h1, h2, h3, h4, p {
   object-fit: contain;
 }
 
-.overview-page { display: grid; gap: 18px; }
-.overview-page > #overview-comparison > .chart-grid { margin-bottom: 0; }
-.overview-page > .card > .forecast-heading .forecast-legend { flex-basis: 100%; }
+.overview-page { display: grid; gap: 20px; }
+.overview-section, .overview-co2-group { display: grid; gap: 16px; min-width: 0; }
+.overview-section .chart-grid { margin: 0; }
+.overview-section-heading { font-size: 18px; }
+.overview-section .card-header { min-height: 90px; }
+.overview-temperature-grid .chart-card { display: flex; flex-direction: column; }
+.overview-temperature-grid>.chart-card .chart { flex: 1; min-height: 360px; height: auto!important; }
+.overview-section .forecast-heading { padding: 0 0 14px; }
 .overview-summary { display: grid; grid-template-columns: .8fr 2fr; align-items: center; gap: 24px; grid-column: 1 / -1; }
 .overview-summary .selection-heading { margin-bottom: 0; }
-#overview-comparison .card-header { min-height: 78px; }
-.overview-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  grid-template-rows: auto 1fr 1fr;
-  gap: 14px 18px;
-  align-items: stretch;
-}
 
 .overview-map-card, .globe-card {
   min-width: 0;
@@ -907,8 +904,6 @@ h1, h2, h3, h4, p {
   flex-direction: column;
   overflow: hidden;
 }
-
-.overview-map-card { grid-row: 2 / span 2; }
 
 .overview-map-header {
   display: flex;
@@ -1012,11 +1007,12 @@ h1, h2, h3, h4, p {
 }
 
 #overview-globe, #globe {
-  height: clamp(300px, 42vw, 520px)!important;
   margin: 0;
   cursor: grab;
   touch-action: pan-y;
 }
+
+#overview-globe { height: 385px!important; }
 
 #overview-globe:active, #globe:active {
   cursor: grabbing;
@@ -1032,8 +1028,7 @@ h1, h2, h3, h4, p {
 }
 
 .overview-timeline {
-  margin-top: auto;
-  padding: 10px 20px 8px;
+  padding: 8px 18px;
   border-top: 1px solid var(--border);
 }
 
@@ -1041,20 +1036,22 @@ h1, h2, h3, h4, p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 13px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 20px;
   color: var(--secondary);
 }
 
 .overview-year-heading strong {
   color: var(--text);
-  font-size: 16px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
 
-.overview-timeline .rc-slider {
-  height: 32px;
-}
+.overview-timeline #overview-year { padding: 0 14px 7px!important; }
+.overview-timeline .rc-slider { height: 28px; }
+
+.overview-timeline .rc-slider-mark { top: 20px; }
 
 .overview-timeline .rc-slider-rail {
   height: 4px;
@@ -1070,14 +1067,21 @@ h1, h2, h3, h4, p {
   width: 16px;
   height: 16px;
   margin-top: -6px;
-  border: 3px solid var(--primary);
+  border: 2px solid var(--primary);
   background: #fff;
   opacity: 1;
+  box-shadow: none;
+}
+
+.overview-timeline .rc-slider-handle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
 }
 
 .overview-timeline .rc-slider-mark-text {
   color: var(--secondary);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .overview-summary {
@@ -1132,10 +1136,6 @@ h1, h2, h3, h4, p {
   font-size: 23px;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
-}
-
-.overview-grid>.chart-card .card-header {
-  padding-top: 14px;
 }
 
 .text-link {
@@ -1491,7 +1491,7 @@ h1, h2, h3, h4, p {
   .insight-grid { grid-template-columns: 1fr; }
   .insight-card:first-child { display: block; }
   .insight-copy { min-height: 0; padding: 20px; }
-  .overview-grid, .earth-grid {
+  .earth-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
   }
@@ -1509,11 +1509,6 @@ h1, h2, h3, h4, p {
 
   .overview-map-selection {
     padding: 0 14px 4px;
-  }
-
-  .overview-timeline {
-    padding-left: 18px;
-    padding-right: 18px;
   }
 
   .overview-summary {
@@ -1652,6 +1647,8 @@ h1, h2, h3, h4, p {
 }
 
 @media (max-width: 480px) {
+  #overview-globe, #globe { height: 280px!important; }
+  #overview-continents { height: 240px!important; }
   .map-view-switch label { padding: 0 4px; font-size: 11px; }
   .overview-timeline .rc-slider-mark-text:nth-child(even):not(:last-child) {
     display: none;

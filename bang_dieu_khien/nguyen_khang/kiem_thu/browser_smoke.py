@@ -18,6 +18,7 @@ PAGES = {
 }
 
 def check_eda_country_click(page, gallery):
+    page.wait_for_load_state("networkidle")
     field = page.locator("#country-filter")
     previous = field.inner_text().strip()
     field.click()
@@ -25,6 +26,10 @@ def check_eda_country_click(page, gallery):
     field.locator("input").press("Enter")
     plot = gallery.locator(".interactive .eda-artifact-card").nth(2).locator(".js-plotly-plot")
     page.wait_for_function("id => document.querySelector('#'+id+' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.data?.some(t=>t.locations?.includes('AUS'))", arg=gallery.get_attribute("id"))
+    stop = plot.get_by_text("■ Dừng", exact=True)
+    if stop.count():
+        stop.click()
+        page.wait_for_function("id => !document.querySelector('#'+id+' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?._transitionData?._frameQueue?.length", arg=gallery.get_attribute("id"))
     plot.scroll_into_view_if_needed()
     x, y = plot.evaluate("""e => {
         const [x,y]=e._fullLayout.geo._subplot.projection([134,-25]), b=e.getBoundingClientRect();
@@ -35,20 +40,22 @@ def check_eda_country_click(page, gallery):
     page.mouse.click(x, y)
     page.wait_for_function("document.querySelector('#country-filter').innerText.trim()==='Australia'")
     page.wait_for_function("document.querySelector('#page-subtitle').textContent.startsWith('Australia ·')")
-    page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot')?.layout.meta.scope.startsWith('Australia ·')", arg=gallery.get_attribute("id"))
+    page.wait_for_function("id => [...document.querySelectorAll('#'+id+' .js-plotly-plot')].every(p=>p._fullLayout?.meta?.scope.startsWith('Australia ·'))", arg=gallery.get_attribute("id"))
     field.click()
     field.locator("input").fill(previous)
     field.locator("input").press("Enter")
-    page.wait_for_function("([id,name]) => document.querySelector('#'+id+' .js-plotly-plot')?.layout.meta.scope.startsWith(name+' ·')", arg=[gallery.get_attribute("id"), "Toàn cầu" if previous == "Tất cả quốc gia" else previous])
+    page.wait_for_function("([id,name]) => [...document.querySelectorAll('#'+id+' .js-plotly-plot')].every(p=>p._fullLayout?.meta?.scope.startsWith(name+' ·'))", arg=[gallery.get_attribute("id"), "Toàn cầu" if previous == "Tất cả quốc gia" else previous])
+    page.wait_for_load_state("networkidle")
 
 def check_eda_layout(page, gallery):
     cards = gallery.locator(".interactive .eda-artifact-card")
     animated = cards.nth(2).locator(".js-plotly-plot").evaluate("e => !!e._transitionData?._frames?.length")
     if animated:
-        cards.nth(2).get_by_text("▶ Phát", exact=True).click()
-        page.wait_for_function("id => document.querySelector('#' + id + ' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.layout?.sliders?.[0]?.active > 0",
-                               arg=gallery.get_attribute("id"))
-        cards.nth(2).get_by_text("■ Dừng", exact=True).click()
+        for _ in range(3):
+            cards.nth(2).get_by_text("▶ Phát", exact=True).click()
+            page.wait_for_function("id => document.querySelector('#' + id + ' .interactive .eda-artifact-card:nth-child(3) .js-plotly-plot')?.layout?.sliders?.[0]?.active > 0",
+                                   arg=gallery.get_attribute("id"))
+            cards.nth(2).get_by_text("■ Dừng", exact=True).click()
     for width in (1440, 1024, 390, 1440):
         page.set_viewport_size({"width": width, "height": 1000})
         page.wait_for_function("""() => [...document.querySelectorAll('.interactive .js-plotly-plot')].every(p => {
@@ -140,6 +147,158 @@ def check_year_slider(page):
     page.locator("#overview-reset").click()
     page.wait_for_function("document.querySelector('#overview-globe .js-plotly-plot')._fullLayout.geo.projection.rotation.lat===15")
 
+def check_overview_links(page):
+    def check_focus(lon, lat):
+        page.wait_for_function("""([lon,lat]) => {
+            const p=document.querySelector('#overview-globe .js-plotly-plot');
+            const r=p._fullLayout.geo.projection.rotation;
+            return Math.abs(r.lon-lon)<.01 && Math.abs(r.lat-lat)<.01;
+        }""", arg=[lon, lat])
+        offset = page.locator("#overview-globe .js-plotly-plot").evaluate("""(p, coords) => {
+            const b=p.getBoundingClientRect(), f=p.querySelector('.frame path').getBoundingClientRect();
+            const [x,y]=p._fullLayout.geo._subplot.projection(coords);
+            return [x+b.x-f.x-f.width/2,y+b.y-f.y-f.height/2,f.width-f.height];
+        }""", [lon, lat])
+        assert all(abs(v)<1 for v in offset), offset
+
+    ranking = page.locator("#overview-ranking .js-plotly-plot")
+    name, code = ranking.evaluate("e => [e.data[0].y[0], e.data[0].customdata[0][0]]")
+    bar = ranking.locator(".barlayer .point path").first
+    bar.hover(force=True)
+    page.wait_for_function("document.querySelector('#overview-ranking .hoverlayer').textContent.includes('triệu tấn')")
+    assert "Năm 2024" in ranking.locator(".hoverlayer").text_content()
+    bar.click(force=True)
+    page.wait_for_function("name => document.querySelector('#overview-summary h2').textContent === name", arg=name)
+    page.wait_for_function("code => document.querySelector('#overview-globe .js-plotly-plot').layout.meta.selected === code", arg=code)
+    world = json.loads(Path(__file__).parents[1].joinpath("tai_nguyen/world_110m.json").read_text())
+    coordinates = next(g["properties"]["ct"] for g in world["objects"]["countries"]["geometries"] if g.get("id") == code)
+    check_focus(*coordinates)
+    bar.click(force=True)
+    page.wait_for_function("document.querySelector('#overview-summary h2').textContent === 'Toàn cầu'")
+    pie = page.locator("#overview-continents .js-plotly-plot")
+    index = pie.evaluate("e => e.data[0].labels.indexOf('Châu Âu')")
+    pie.locator(".slice").nth(index).click()
+    page.wait_for_function("document.querySelector('#overview-summary h2').textContent === 'Châu Âu'")
+    page.wait_for_function("document.querySelector('#overview-ranking-note').textContent.startsWith('Châu Âu')")
+    check_focus(15, 50)
+    paths = pie.locator(".slice .surface").evaluate_all("nodes=>nodes.map(e=>e.getAttribute('d'))")
+    for expected in ("Toàn cầu", "Châu Âu", "Toàn cầu"):
+        page.mouse.down()
+        page.mouse.up()
+        page.wait_for_function("v=>document.querySelector('#overview-summary h2').textContent===v", arg=expected)
+        assert pie.locator(".slice .surface").evaluate_all("nodes=>nodes.map(e=>e.getAttribute('d'))") == paths
+    for region, label, lon, lat in (
+        ("Africa", "Châu Phi", 20, 0), ("Asia", "Châu Á", 100, 30),
+        ("Europe", "Châu Âu", 15, 50), ("North America", "Bắc Mỹ", -100, 45),
+        ("South America", "Nam Mỹ", -60, -20), ("Oceania", "Châu Đại Dương", 140, -25),
+    ):
+        index = pie.evaluate("(e, name)=>e.data[0].customdata.findIndex(d=>d[0]===name)", region)
+        for expected in (label, "Toàn cầu"):
+            pie.scroll_into_view_if_needed()
+            x, y = pie.evaluate("""(e,i) => {
+                const d=e.calcdata[0], p=d[i], r=d[0].r*.81, b=e.getBoundingClientRect();
+                return [b.x+d[0].cx+r*Math.sin(p.midangle), b.y+d[0].cy-r*Math.cos(p.midangle)];
+            }""", index)
+            page.mouse.click(x, y)
+            page.wait_for_function("v=>document.querySelector('#overview-summary h2').textContent===v", arg=expected)
+            check_focus(lon if expected == label else 105, lat if expected == label else 15)
+    for chart, year in [("overview-temperature", 2000), ("overview-co2", 2010)]:
+        plot = page.locator(f"#{chart} .js-plotly-plot")
+        index = plot.evaluate("(e, year) => Array.from(e._fullData[0].x).indexOf(year)", year)
+        point = plot.locator(".scatterlayer .points path").nth(index)
+        point.hover(force=True)
+        page.wait_for_function("([id,y]) => document.querySelector('#'+id+' .hoverlayer').textContent.includes('Năm '+y)", arg=[chart, year])
+        point.click(force=True)
+        page.wait_for_function("y => document.querySelector('#overview-year-label').textContent === String(y)", arg=year)
+        page.wait_for_function("y => document.querySelector('#overview-ranking-note').textContent.includes(String(y))", arg=year)
+        for target in ("overview-temperature", "overview-co2"):
+            assert page.locator(f"#{target} .js-plotly-plot").evaluate("e => e.layout.shapes[0].x0") == year
+        page.wait_for_function("y => document.querySelector('#overview-globe .js-plotly-plot').data.every(t=>t.customdata.every(r=>r[1]===y))", arg=year)
+        page.locator('#overview-year [role="slider"]').press("End")
+        page.wait_for_function("document.querySelector('#overview-year-label').textContent==='2024'")
+        point.click(force=True)
+        page.wait_for_function("y=>document.querySelector('#overview-year-label').textContent===String(y)", arg=year)
+    name = ranking.evaluate("e => e.data[0].y[0]")
+    index = pie.evaluate("e => e.data[0].labels.indexOf('Châu Âu')")
+    for element, scope in [(bar, name), (pie.locator(".slice").nth(index), "Châu Âu")]:
+        for expected in (scope, "Toàn cầu"):
+            element.hover(force=True)
+            element.click(force=True)
+            page.wait_for_function("v => document.querySelector('#overview-summary h2').textContent === v", arg=expected)
+            assert page.locator('#overview-year-label').inner_text() == "2010", "Chọn vùng không được đổi năm"
+    page.locator('#overview-year [role="slider"]').press("End")
+    page.wait_for_function("document.querySelector('#overview-year-label').textContent === '2024'")
+    for chart, index, selected in [("overview-scenario-co2", 2, "decline"), ("overview-forecast", 3, "trend")]:
+        plot = page.locator(f"#{chart} .js-plotly-plot")
+        for repeat in range(2):
+            plot.scroll_into_view_if_needed()
+            x, y = plot.evaluate("""(e, index) => {
+                const t=e._fullData[index], l=e._fullLayout, box=e.getBoundingClientRect(), i=20;
+                return [box.x+l.xaxis._offset+l.xaxis.l2p(t.x[i]), box.y+l.yaxis._offset+l.yaxis.l2p(t.y[i])];
+            }""", index)
+            page.mouse.move(x, y)
+            page.wait_for_timeout(150)
+            page.mouse.click(x, y)
+            label = "Giảm 5%/năm" if selected == "decline" else "Tiếp diễn"
+            page.wait_for_function("v => document.querySelector('#overview-scenario input:checked').parentElement.textContent === v", arg=label)
+            page.wait_for_function("v => document.querySelector('#overview-scenario-co2 .js-plotly-plot').data.find(t=>t.line.width===3).customdata[0][0] === v", arg=selected)
+            if repeat == 0:
+                page.locator("#overview-scenario label").filter(has_text="Giữ mức 2024").click()
+                page.wait_for_function("document.querySelector('#overview-scenario-co2 .js-plotly-plot').data.find(t=>t.line.width===3).customdata[0][0]==='stable'")
+    for width in (1440, 1024, 768, 360, 390, 1440):
+        page.set_viewport_size({"width": width, "height": 1000})
+        page.wait_for_function("""() => {
+            const e=document.querySelector('#overview-globe'), p=e?.querySelector('.js-plotly-plot');
+            return p?._fullLayout && Math.abs(e.clientWidth-p._fullLayout.width)<2;
+        }""")
+        page.wait_for_timeout(250)
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), width
+        geometry = page.locator("#overview-globe").evaluate("""e => {
+            const b=e.getBoundingClientRect(), g=e.querySelector('.frame path').getBoundingClientRect();
+            return [g.x+g.width/2-b.x-b.width/2,g.width-g.height,g.x-b.x,b.right-g.right];
+        }""")
+        assert abs(geometry[0]) < 1 and abs(geometry[1]) < 1 and min(geometry[2:]) >= 0, (width, geometry)
+        globe_frame = page.locator("#overview-globe .frame path").bounding_box()
+        colorbar = page.locator("#overview-globe .colorbar").bounding_box()
+        assert colorbar["x"] >= globe_frame["x"] + globe_frame["width"], (width, globe_frame, colorbar)
+        timeline = page.locator(".overview-timeline")
+        assert timeline.bounding_box()["height"] < 85
+        heading = timeline.locator(".overview-year-heading").bounding_box()
+        handle = timeline.locator(".rc-slider-handle").bounding_box()
+        mark = timeline.locator(".rc-slider-mark-text").first.bounding_box()
+        assert handle["y"] - heading["y"] - heading["height"] >= 4
+        assert mark["y"] - handle["y"] - handle["height"] >= 4
+        ring = pie.locator(".pielayer .trace").bounding_box()
+        label = pie.locator(".annotation-text-g").bounding_box()
+        legend = pie.locator(".legend").bounding_box()
+        assert abs(label["x"] + label["width"]/2 - ring["x"] - ring["width"]/2) < 1
+        assert abs(label["y"] + label["height"]/2 - ring["y"] - ring["height"]/2) < 1
+        assert (label["width"]**2 + label["height"]**2)**.5 < ring["width"] * .62
+        assert ring["x"] + ring["width"] + 8 <= legend["x"]
+        assert legend["x"] + legend["width"] <= pie.bounding_box()["x"] + pie.bounding_box()["width"]
+        if width > 1000:
+            if width == 1440:
+                assert globe_frame["height"] > 350
+            for grid in page.locator(".overview-section .chart-grid").all():
+                left, right = [card.bounding_box() for card in grid.locator(":scope > .card").all()]
+                assert abs(left["width"]-right["width"]) < 1 and abs(left["y"]-right["y"]) < 1
+                assert abs(left["height"]-right["height"]) < 1
+        if width in (1440, 390):
+            page.evaluate("window.scrollTo(0, 0)")
+            page.mouse.move(0, 0)
+            page.screenshot(path=OUTPUT / f"climate_overview_{width}.png", full_page=True)
+    for collapsed in (True, False):
+        page.locator("#collapse-sidebar").click()
+        page.wait_for_function("v => document.querySelector('#app-shell').classList.contains('collapsed') === v", arg=collapsed)
+        page.wait_for_function("""() => {
+            const e=document.querySelector('#overview-globe'), p=e.querySelector('.js-plotly-plot');
+            const b=e.getBoundingClientRect(), g=e.querySelector('.frame path').getBoundingClientRect();
+            return Math.abs(p._fullLayout.width-e.clientWidth)<2 && Math.abs(g.x+g.width/2-b.x-b.width/2)<1;
+        }""")
+        page.wait_for_timeout(250)
+        assert page.evaluate("""[...document.querySelectorAll('.js-plotly-plot')].every(
+            p => !p.offsetParent || Math.abs(p._fullLayout.width-p.clientWidth)<2)""")
+
 def check_map(page, map_id, controls, reset):
     globe = page.locator(f"#{map_id} .js-plotly-plot")
     page.wait_for_function("id => document.querySelectorAll('#'+id+' .choroplethlayer path').length > 200", arg=map_id)
@@ -160,6 +319,8 @@ def check_map(page, map_id, controls, reset):
         page.mouse.up()
 
     def select_country(coordinates, code):
+        if globe.evaluate("(e, code)=>e.layout.meta.selected===code", code):
+            return
         x, y = globe.evaluate("""(e,coordinates) => {
             const [x,y]=e._fullLayout.geo._subplot.projection(coordinates), box=e.getBoundingClientRect();
             return [x+box.x,y+box.y];
@@ -181,6 +342,14 @@ def check_map(page, map_id, controls, reset):
     assert globe.evaluate("e => e.layout.meta.selected") == selected
     select_country([105, 35], "CHN")
     assert all(abs(a-b) < .1 for a, b in zip(camera(), rotated)), (map_id, rotated, camera())
+    x, y = globe.evaluate("""e => {
+        const [x,y]=e._fullLayout.geo._subplot.projection([105,35]), box=e.getBoundingClientRect();
+        return [x+box.x,y+box.y];
+    }""")
+    page.mouse.click(x, y)
+    page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot').layout.meta.selected==='all'", arg=map_id)
+    page.wait_for_function("document.querySelector('#country-filter').innerText.trim()==='Tất cả quốc gia'")
+    select_country([105, 35], "CHN")
     for _ in range(3):
         for label, projection in [("Bản đồ phẳng", "natural earth"), ("Địa cầu", "orthographic")]:
             page.locator(f"#{controls} label").filter(has_text=label).click()
@@ -240,8 +409,7 @@ def main() -> None:
             lambda message: console_errors.append(message.text)
             if message.type == "error" else None,
         )
-        page.on("pageerror", lambda error: page_errors.append(str(error))
-                if str(error) not in {"bad container", "undefined"} else None)
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
         page.goto(BASE_URL, wait_until="networkidle")
         page.add_style_tag(content="::-webkit-scrollbar { width: 15px; height: 15px; }")
         page.locator("#page-title").wait_for(state="visible")
@@ -267,6 +435,7 @@ def main() -> None:
         page.wait_for_function("document.querySelector('#overview-year-label')?.textContent==='2024'")
         checked["independent_decades"] = {"overview": "1961–2024", "co2": "1850–2024", "restored": "1961–1969"}
 
+        check_overview_links(page)
         check_map(page, "overview-globe", "overview-map-view", "overview-reset")
         check_year_slider(page)
 
@@ -290,6 +459,7 @@ def main() -> None:
 
         for route, expected_title in PAGES.items():
             page.locator(f'a[href="#{route}"]').first.click()
+            page.wait_for_load_state("networkidle")
             page.wait_for_function(
                 "expected => document.querySelector('#page-title')?.textContent.trim() === expected",
                 arg=expected_title,

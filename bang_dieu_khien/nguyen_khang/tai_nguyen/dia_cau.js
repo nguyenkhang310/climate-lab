@@ -19,3 +19,20 @@ document.addEventListener("click", e => {
   diemBatDau = null;
   daKeo = false;
 }, true);
+
+let lichCanBieuDo, rongNoiDung = 0;
+function theoDoiBoCuc() {
+  const noiDung = document.querySelector(".main");
+  if (!noiDung) return requestAnimationFrame(theoDoiBoCuc);
+  new ResizeObserver(([khung]) => {
+    if (Math.abs(khung.contentRect.width - rongNoiDung) < 1) return;
+    rongNoiDung = khung.contentRect.width;
+    cancelAnimationFrame(lichCanBieuDo);
+    lichCanBieuDo = requestAnimationFrame(() =>
+      document.querySelectorAll(".js-plotly-plot").forEach(bieuDo => {
+        if (bieuDo.offsetParent) window.Plotly?.Plots.resize(bieuDo);
+      })
+    );
+  }).observe(noiDung);
+}
+theoDoiBoCuc();
