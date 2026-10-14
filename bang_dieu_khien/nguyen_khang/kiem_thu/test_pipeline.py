@@ -1077,6 +1077,15 @@ class EarthInteractionTests(unittest.TestCase):
             context.triggered_id = "overview-globe"
             result = current_filters("Asia", "1961-2024", "VNM", overview_click=click)
         self.assertEqual(result[5:7], ("all", "Asia"))
+        with patch.object(app, "ctx") as context:
+            context.triggered_id = "close-country-panel"
+            result = current_filters("Asia", "1961-2024", "VNM", "#earth", close_clicks=1)
+            self.assertEqual(result[5:7], ("all", "Asia"))
+            current = app.tao_ban_do_the_gioi(DATA[DATA.year.eq(2024)], rotation={"lon": 70, "lat": 25})
+            context.triggered_id = "country-filter"
+            figure = app.cap_nhat_trang_ban_do("all", "temperature", "1961-2024", "Asia", 0,
+                                             "globe", current.to_plotly_json(), "#earth", result[3])[2]
+            self.assertEqual(figure.layout.geo.projection.rotation.to_plotly_json(), {"lon": 70, "lat": 25})
 
     def test_globe_outside_continent_is_clickable_without_showing_filtered_values(self):
         snapshot = app.lay_du_lieu_ban_do(loc_du_lieu("1970-2024", "Asia"), 2024)

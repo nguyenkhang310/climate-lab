@@ -1146,14 +1146,36 @@ h1, h2, h3, h4, p {
   font-weight: 600;
 }
 
-.earth-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
-  gap: 18px;
-  margin-bottom: 18px;
+.earth-map-card { margin-bottom: 24px; }
+.earth-map-card .overview-map-header { padding: 20px 24px 8px; }
+.earth-stage { position: relative; container-type: inline-size; }
+.earth-stage #globe { height: clamp(420px, calc(100dvh - 310px), 660px)!important; }
+.earth-map-footer {
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  padding: 12px 24px 16px; font-size: 12px; color: var(--secondary);
+  border-top: 1px solid var(--border);
 }
-
-.globe-card #globe { height: clamp(300px, 45vw, 580px)!important; }
+.earth-map-footer strong { color: var(--text); font-weight: 600; }
+.earth-popover {
+  position: absolute; z-index: 5; width: 310px; max-width: calc(100% - 24px);
+  background: #fff; border: 1px solid #cbddea; border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(22, 50, 79, .14);
+}
+.earth-popover[hidden], .earth-marker[hidden] { display: none; }
+.earth-panel-close {
+  position: absolute; right: 10px; top: 10px; width: 28px; height: 28px;
+  display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px;
+  background: transparent; color: var(--secondary); font-size: 22px; cursor: pointer;
+}
+.earth-panel-close:hover { background: var(--background); color: var(--text); }
+.earth-panel-close:focus-visible { outline: 2px solid var(--primary); }
+.earth-marker {
+  position: absolute; z-index: 4; width: 10px; height: 10px; border: 2px solid #fff;
+  border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 2px var(--primary);
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+.earth-history-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.earth-history-heading h3 { font-size: 16px; }
 
 .globe-heading {
   display: flex;
@@ -1162,17 +1184,31 @@ h1, h2, h3, h4, p {
 }
 
 .country-panel {
-  padding: 24px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.country-panel .selection-heading { margin: 0; }
-.country-panel .selection-metrics { grid-template-columns: 1fr; gap: 20px; }
-.country-panel .selection-metrics>div { padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-.country-panel .selection-metrics strong { font-size: 30px; }
-.country-panel>.small-meta { color: var(--secondary); font-size: 12px; }
+.country-panel .selection-heading { margin: 0; padding-right: 26px; align-items: flex-start; }
+.country-panel .selection-heading h2 { font-size: 20px; }
+.country-panel .selection-year { font-size: 12px; padding: 4px 7px; }
+.country-panel .selection-metrics { grid-template-columns: 1fr; gap: 10px; }
+.country-panel .selection-metrics>div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.country-panel .selection-metrics span { grid-row: 1 / span 2; align-self: center; font-size: 11px; }
+.country-panel .selection-metrics strong { font-size: 20px; margin: 0; text-align: right; }
+.country-panel .selection-metrics small { grid-column: 2; font-size: 10px; text-align: right; }
+
+@media (max-width: 680px) {
+  .earth-map-card .overview-map-header { padding: 16px 14px 8px; }
+  .earth-map-footer { padding: 12px 14px; }
+}
+
+@container (max-width: 700px) {
+  .earth-stage #globe { height: clamp(300px, 85cqw, 600px)!important; }
+  .earth-popover { position: relative; left: auto!important; top: auto!important; width: auto; max-width: none; margin: 0 12px 12px; box-shadow: none; }
+  .earth-marker { display: none; }
+}
 
 .table-wrap {
   padding: 8px 20px;
@@ -1491,13 +1527,7 @@ h1, h2, h3, h4, p {
   .insight-grid { grid-template-columns: 1fr; }
   .insight-card:first-child { display: block; }
   .insight-copy { min-height: 0; padding: 20px; }
-  .earth-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-  }
-
   .overview-map-card, .overview-summary, .globe-card { grid-column: 1; grid-row: auto; }
-  .country-panel { padding: 18px; gap: 14px; }
 
   .overview-map-header {
     padding: 18px 14px 12px;

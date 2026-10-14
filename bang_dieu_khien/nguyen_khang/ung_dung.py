@@ -177,8 +177,10 @@ def cap_nhat_ban_do(snapshot, selected, metric, mode, resets, current, reset=Fal
     revision = layout["meta"].get("focus_revision", 0) + (focus is not None)
     figure = tao_ban_do_the_gioi(snapshot, selected, metric,
                                f"{resets or 0}.{revision}" if revision else resets or 0,
-                               rotation, view_mode=mode or "globe")
+                               rotation, view_mode=mode or "globe",
+                               chu_thich_ngang=layout["meta"].get("chu_thich_ngang", False))
     figure.layout.meta["focus_revision"] = revision
+    figure.layout.meta["coordinates"] = COORDINATES.get(selected)
     return figure
 
 def lay_du_lieu_ban_do(frame, year):
@@ -581,28 +583,41 @@ def tao_trang_tong_quan(frame, selected, scope, metric):
 
 def tao_chi_tiet_ban_do(frame, selected, scope):
     summary, temperature, co2, subtitle = tao_chi_tiet_tong_quan(frame, selected, int(frame.year.max()), scope)
-    panel = summary
-    charts = [
+    charts = [html.Div([
+        html.H3("Diễn biến theo thời gian"), html.Span(subtitle, className="small-meta"),
+    ], className="earth-history-heading"), html.Div([
         tao_the_bieu_do(title, subtitle, figure.update_layout(height=260), symbol)
         for title, figure, symbol in [("Nhiệt độ qua các năm", temperature, "thermometer"),
                                      ("Lượng CO₂ qua các năm", co2, "cloud")]
-    ]
-    return panel, charts
+    ], className="chart-grid")]
+    return summary, charts
 
 def tao_trang_ban_do(frame, selected, metric, scope):
     panel, charts = tao_chi_tiet_ban_do(frame, selected, scope)
     continent = frame.continent.iloc[0] if frame.continent.nunique() == 1 else "all"
     figure = tao_ban_do_the_gioi(lay_du_lieu_ban_do(frame, int(frame.year.max())), selected, metric,
-                          rotation=goc_nhin_ban_do(selected, continent))
+                          rotation=goc_nhin_ban_do(selected, continent), chu_thich_ngang=True)
+    figure.layout.meta["coordinates"] = COORDINATES.get(selected)
     return [
-        html.Div([
-            html.Section([
-                tao_tieu_de_ban_do("earth-map-view", "reset-globe"),
+        html.Section([
+            tao_tieu_de_ban_do("earth-map-view", "reset-globe"),
+            html.Div([
                 khung_bieu_do(figure, "globe", globe=True),
-            ], className="card globe-card"),
-            html.Aside(panel, id="country-panel", className="card country-panel", **{"aria-live": "polite"}),
-        ], className="earth-grid"),
-        html.Div(charts, id="earth-lower", className="chart-grid"),
+                html.Div([
+                    html.Button("×", id="close-country-panel", n_clicks=0,
+                                className="earth-panel-close", title="Bỏ chọn quốc gia",
+                                **{"aria-label": "Bỏ chọn quốc gia"}),
+                    html.Aside(panel, id="country-panel", className="country-panel",
+                               **{"aria-live": "polite"}),
+                ], id="earth-popover", className="earth-popover", hidden=selected == "all"),
+                html.Span(id="earth-marker", className="earth-marker", hidden=True),
+            ], className="earth-stage"),
+            html.Div([
+                html.Span("Kéo để xoay · Bấm vào quốc gia để xem"),
+                html.Strong(id="earth-map-caption"),
+            ], className="earth-map-footer"),
+        ], className="card globe-card earth-map-card"),
+        html.Section(charts, id="earth-lower", className="earth-history"),
     ]
 
 
@@ -940,12 +955,13 @@ def lay_giai_doan_trang(route):
     Input({"type": "eda-chart", "path": ALL}, "clickData"),
     Input("overview-ranking", "clickData", allow_optional=True),
     Input("overview-continents", "clickData", allow_optional=True),
+    Input("close-country-panel", "n_clicks", allow_optional=True),
     State("filter-store", "data"),
     State({"type": "eda-chart", "path": ALL}, "id"),
 )
 def cap_nhat_bo_loc(route, years, continent, country, metric, overview_click=None,
                    earth_click=None, eda_clicks=None, ranking_click=None, continent_click=None,
-                   saved=None, eda_ids=None):
+                   close_clicks=None, saved=None, eda_ids=None):
     previous_years = years
     route = route if route in {"#" + key for key in PAGE_INFO} else "#overview"
     saved = saved or {}
@@ -968,6 +984,10 @@ def cap_nhat_bo_loc(route, years, continent, country, metric, overview_click=Non
         trigger = ctx.triggered_id
     except MissingCallbackContextException:
         trigger = None
+    if trigger == "close-country-panel":
+        if route != "#earth" or not close_clicks:
+            return (no_update,) * 8
+        country = "all"
     if trigger == "overview-continents":
         points = (continent_click or {}).get("points", [])
         picked = (points[0].get("customdata") or [None])[0] if points else None
@@ -1172,7 +1192,7 @@ def cap_nhat_tong_quan(year_range, continent, selected, metric, map_view, year, 
         years[0], min(year or years[-1], years[-1])
     )
     focus = (continent if ctx.triggered_id in ("country-filter", "continent-filter")
-             and (filters or {}).get("source") not in ("overview-globe", "globe") else None)
+             and (filters or {}).get("source") not in ("overview-globe", "globe", "close-country-panel") else None)
     figure = cap_nhat_ban_do(lay_du_lieu_ban_do(frame, year), selected, metric, map_view, resets,
                         current_figure, reset=ctx.triggered_id == "overview-reset", focus=focus)
 
@@ -1230,7 +1250,7 @@ def cap_nhat_trang_ban_do(selected, metric, years, continent, resets, map_view, 
     if frame.empty or (selected != "all" and selected not in frame.iso_alpha.values):
         return (no_update,) * 3
     focus = (continent if ctx.triggered_id in ("country-filter", "continent-filter")
-             and (filters or {}).get("source") not in ("overview-globe", "globe") else None)
+             and (filters or {}).get("source") not in ("overview-globe", "globe", "close-country-panel") else None)
     figure = cap_nhat_ban_do(lay_du_lieu_ban_do(frame, int(frame.year.max())), selected, metric, map_view,
                         resets, current_figure, reset=ctx.triggered_id == "reset-globe", focus=focus)
     if ctx.triggered_id in ("earth-map-view", "reset-globe", "metric-filter"):

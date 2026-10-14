@@ -115,7 +115,7 @@ def tao_bieu_do_xep_hang(snapshot, selected="all", limit=7, height=290):
 
 def tao_ban_do_the_gioi(
     snapshot, selected="VNM", metric="temperature", reset=0, rotation=None,
-    height=520, view_mode="globe",
+    height=520, view_mode="globe", chu_thich_ngang=False,
 ):
     field = "co2" if metric == "co2" else "temperature_anomaly"
     is_co2 = metric == "co2"
@@ -180,9 +180,17 @@ def tao_ban_do_the_gioi(
         paper_bgcolor="white", font={"family": FONT_FAMILY, "color": MUTED},
         showlegend=False, geo_uirevision=f"{view_mode}-{reset}", clickmode="event",
         dragmode="pan", hovermode="closest", transition={"duration": 0},
-        meta={"selected": selected, "globe_rotation": rotation},
+        meta={"selected": selected, "globe_rotation": rotation, "metric": metric,
+              "year": int(snapshot.year.max()) if not snapshot.empty else None,
+              "chu_thich_ngang": chu_thich_ngang},
         hoverlabel={"bgcolor": "white", "bordercolor": "#DCE7F1", "font": {"color": TEXT, "size": 13}},
     )
+    if chu_thich_ngang:
+        fig.update_traces(colorbar={"orientation": "h", "xref": "paper", "x": .5, "xanchor": "center",
+                                   "y": -.01, "yanchor": "top", "len": .5, "thickness": 6,
+                                   "nticks": 4, "tickvals": None if is_co2 else [-6, -3, 0, 3, 6],
+                                   "title": {"side": "right"}})
+        fig.update_layout(margin={"l": 16, "r": 16, "t": 4, "b": 50, "autoexpand": False})
     return fig
 
 

@@ -342,6 +342,11 @@ def check_map(page, map_id, controls, reset):
     assert globe.evaluate("e => e.layout.meta.selected") == selected
     select_country([105, 35], "CHN")
     assert all(abs(a-b) < .1 for a, b in zip(camera(), rotated)), (map_id, rotated, camera())
+    if map_id == "globe":
+        page.wait_for_function("!document.querySelector('#earth-popover').hidden")
+        card, plot = page.locator("#earth-popover").bounding_box(), globe.bounding_box()
+        center = plot["x"] + plot["width"] / 2
+        assert not card["x"] <= center <= card["x"] + card["width"], "Thẻ thông tin chắn vùng kéo ở giữa địa cầu"
     x, y = globe.evaluate("""e => {
         const [x,y]=e._fullLayout.geo._subplot.projection([105,35]), box=e.getBoundingClientRect();
         return [x+box.x,y+box.y];
@@ -349,6 +354,8 @@ def check_map(page, map_id, controls, reset):
     page.mouse.click(x, y)
     page.wait_for_function("id => document.querySelector('#'+id+' .js-plotly-plot').layout.meta.selected==='all'", arg=map_id)
     page.wait_for_function("document.querySelector('#country-filter').innerText.trim()==='Tất cả quốc gia'")
+    if map_id == "globe":
+        page.wait_for_function("document.querySelector('#earth-popover').hidden")
     select_country([105, 35], "CHN")
     for _ in range(3):
         for label, projection in [("Bản đồ phẳng", "natural earth"), ("Địa cầu", "orthographic")]:
